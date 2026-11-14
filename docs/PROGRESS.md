@@ -4,6 +4,8 @@ Tracking https://github.com/farhanmir/PlayItFirst/issues/2. Work directly on `ma
 
 ## Character polish — first pass
 
+Safely merged teammate `fdb5816` (expired-drink recovery and nearby service-station acceptance) before pushing; preserved both progress sections and all uncommitted dependency edits. Combined main passes **82 tests across 18 files**, typecheck and build.
+
 Improved the original procedural characters with consistent toy-like proportions, varied skin/hair silhouettes, ears, cheeks, eye highlights and brows, collars, buttons, sweater trim and student backpacks. Baristas now have articulated shoulder pivots, visible hands/shoes and a carrying pose. Removed the player's emissive shirt; fabrics use softer roughness. Customer walking/bobbing now follows actual interpolated movement and eases to rest instead of walking in place throughout queue state. These are inexpensive original meshes; no downloaded character assets or simulation changes.
 
 Verified the rebuilt production game locally in Edge with WebGL: one keyboard-driven americano order produced one $9 sales receipt, consumed one cup/bean and left milk unchanged. Two browser clients shared a plant placement, with zero page/console errors or failed requests. Evidence: [gameplay](screenshots/character-gameplay.png), [served](screenshots/character-served.png), [build](screenshots/character-build.png), [phone-sized viewport](screenshots/character-phone.png), [assertions](screenshots/character-verification.json). This is a first visual pass, not a claim of a completed art overhaul or physical-phone performance testing. Public screenshots in the following section show the previously deployed appearance; this pass still needs deployment confirmation.
@@ -19,6 +21,12 @@ Public `scripts/check-deployment.mjs` passes. `/`, `/?demo=1`, `/api/health`, `/
 The ignored normalized `.sponsor/property.json` is **40,483 bytes** and contains the exact suite/model pair, **12 rooms, 66 physical walls, 11 door openings, four windows**, and **$11,047.50/month** base asking rent. `docs/DEPLOY.md` now gives Render Secret File `property.json` instructions and `COSTAR_DATA_FILE=/etc/secrets/property.json`, plus exact API/model/geometry checks after redeploy. Owner will notify us when the file and keys are configured. Until then public `costar-extract`, matched geometry/rent and live Matterport cannot be claimed. The issued SDK key only allows localhost; ask event support to authorize `playitfirst.onrender.com`. The current viewer is a Showcase iframe, not an SDK session.
 
 Added a regression-tested server guard: imported/live sponsor rooms stay on local manager rules unless `ALLOW_SPONSOR_MODEL_CONTEXT=true` is explicitly set after authorization. Google key configuration alone cannot send that context to a model. Local approved restocks remain available. **79 tests, typecheck and build pass**; existing bundle-size warning remains. Pre-existing uncommitted Vitest dependency edits are preserved.
+
+## Interaction recovery — November 14
+
+Fixed the stuck held-drink path reported during the public playtest. When a customer leaves before pickup, the player can clear the unclaimed drink at the counter or pickup with E/Space, with no sale or inventory refund; then the next order can be taken. Station actions now accept any matching station within reach even if another station is slightly closer. Taking another ticket or brewing again cannot overwrite a held drink. The HUD names the clear action and prompts the player to move to a service station when out of range.
+
+Regression coverage includes expired espresso recovery and serving from a valid counter that is not the nearest station. **81 tests passed across 18 files** after the Gemini dependency update; typecheck and production build were rerun. The precise phone interaction reported by the player still needs rechecking on the deployed build after this commit is pushed.
 
 ## Gemini provider and public transport verification (November 14)
 

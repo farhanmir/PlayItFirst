@@ -207,6 +207,41 @@ describe("shared room join", () => {
 });
 
 describe("paid order, inventory, and exactly-once revenue", () => {
+  it("clears a drink when its customer has left, then accepts the next order without inventing a sale", () => {
+    let snap = addPlayer(openCafe(selectProperty(createRoomSnapshot("expired-drink"), listing)), "p1", "Alex", "barista");
+    snap = atStation(snap, "p1", "pickup");
+    snap = {
+      ...snap,
+      players: snap.players.map((p) => ({ ...p, holding: "drink:espresso" })),
+      customers: [customer({ id: "old", state: "leaving", order: "espresso", ticketHolder: "p1" }),
+        customer({ id: "next", state: "ordering", preference: "latte" })],
+    };
+    const revenue = snap.finance.revenue;
+    const inventory = { ...snap.inventory };
+    snap = interact(snap, "p1", "serve");
+    expect(snap.players[0]?.holding).toBeNull();
+    expect(snap.finance.revenue).toBe(revenue);
+    expect(sales(snap)).toHaveLength(0);
+    expect(snap.inventory).toEqual(inventory);
+    expect(snap.eventLog[0]).toMatch(/cleared an unclaimed espresso/i);
+    snap = atStation(snap, "p1", "counter");
+    snap = interact(snap, "p1", "take_order");
+    expect(snap.players[0]?.holding).toBe("ticket:latte");
+  });
+
+  it("serves at a valid counter even when the coffee machine is slightly closer", () => {
+    let snap = addPlayer(openCafe(selectProperty(createRoomSnapshot("overlap-stations"), listing)), "p1", "Alex", "barista");
+    snap = {
+      ...snap,
+      players: snap.players.map((p) => ({ ...p, x: 1.3, z: 5.1, holding: "drink:espresso" })),
+      customers: [customer({ id: "ready", state: "waiting", order: "espresso", ticketHolder: "p1" })],
+    };
+    snap = interact(snap, "p1", "serve");
+    expect(snap.players[0]?.holding).toBeNull();
+    expect(sales(snap)).toHaveLength(1);
+    expect(snap.metrics.customersServed).toBe(1);
+  });
+
   it("consumes milk, beans, and a cup once, then books one matched sale", () => {
     let snap = openCafe(selectProperty(createRoomSnapshot("paid"), listing));
     snap = addPlayer(snap, "p1", "Alex", "barista");
