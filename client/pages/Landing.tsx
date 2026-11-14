@@ -14,27 +14,58 @@ export function Landing({ onStart, onJoin }: Props) {
 
   return (
     <main className="landing">
-      <div className="landing-hero">
-        <div className="landing-copy rise">
-          <p className="brand">PlayFirst</p>
-          <h1>Play your business before you pay for it.</h1>
-          <p className="lede">
-            Build a café inside a real commercial property, invite friends, serve intelligent customers, and turn gameplay
-            into a launch blueprint.
+      <div className="landing-atmosphere" aria-hidden>
+        <div className="landing-glow landing-glow-a" />
+        <div className="landing-glow landing-glow-b" />
+        <div className="landing-wood-grain" />
+        <div className="cafe-hero-visual">
+          <div className="cafe-facade">
+            <div className="facade-awning" />
+            <div className="window-glow" />
+            <div className="window-frame" />
+            <div className="counter-block" />
+            <div className="cup cup-a" />
+            <div className="cup cup-b" />
+            <div className="steam s1" />
+            <div className="steam s2" />
+            <div className="steam s3" />
+          </div>
+        </div>
+      </div>
+
+      <div className="landing-content">
+        <div className="landing-copy">
+          <p className="brand brand-reveal">PlayFirst</p>
+          <h1 className="rise">Play your business before you pay for it.</h1>
+          <p className="lede rise-delay">
+            Build a café inside a real storefront, invite friends, and turn the session into a launch blueprint.
           </p>
-          <div className="landing-cta rise-delay">
+          <div className="landing-cta rise-delay-2">
             <input
               className="name-input"
               placeholder="Your name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               maxLength={24}
+              aria-label="Your name"
             />
-            <div className="mode-toggle">
-              <button className={mode === "host" ? "active" : ""} onClick={() => setMode("host")} type="button">
+            <div className="mode-toggle" role="tablist" aria-label="Host or join">
+              <button
+                className={mode === "host" ? "active" : ""}
+                onClick={() => setMode("host")}
+                type="button"
+                role="tab"
+                aria-selected={mode === "host"}
+              >
                 Host café
               </button>
-              <button className={mode === "join" ? "active" : ""} onClick={() => setMode("join")} type="button">
+              <button
+                className={mode === "join" ? "active" : ""}
+                onClick={() => setMode("join")}
+                type="button"
+                role="tab"
+                aria-selected={mode === "join"}
+              >
                 Join room
               </button>
             </div>
@@ -44,6 +75,7 @@ export function Landing({ onStart, onJoin }: Props) {
                 placeholder="Room code"
                 value={joinCode}
                 onChange={(e) => setJoinCode(e.target.value.trim())}
+                aria-label="Room code"
               />
             )}
             <button
@@ -63,19 +95,6 @@ export function Landing({ onStart, onJoin }: Props) {
               {busy ? "Opening…" : mode === "host" ? "Choose a property" : "Enter café"}
             </button>
           </div>
-        </div>
-
-        <div className="landing-visual rise-delay-2" aria-hidden>
-          <div className="cafe-silhouette">
-            <div className="window-glow" />
-            <div className="steam s1" />
-            <div className="steam s2" />
-            <div className="steam s3" />
-            <div className="counter-block" />
-            <div className="cup cup-a" />
-            <div className="cup cup-b" />
-          </div>
-          <p className="visual-caption">Houston · Los Angeles · real storefront constraints</p>
         </div>
       </div>
     </main>

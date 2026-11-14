@@ -12,15 +12,17 @@ export function PropertySelect() {
   return (
     <main className="property-page">
       <header className="property-head rise">
-        <div>
+        <div className="property-intro">
           <p className="brand-inline">PlayFirst</p>
           <h1>Choose your dream café</h1>
-          <p>Real CoStar-style listings in Houston and Los Angeles. Rent, size, and foot traffic become the rules of the game.</p>
+          <p className="property-lede">
+            Real commercial listings in Houston and Los Angeles. Rent, size, and foot traffic set the rules.
+          </p>
         </div>
-        <div className="join-card panel">
-          <p className="tag">Invite friends</p>
+        <aside className="join-card panel">
+          <p className="join-label">Invite friends</p>
           <div className="qr" dangerouslySetInnerHTML={{ __html: qrSvg || "" }} />
-          <p className="room-code">Room {roomCode}</p>
+          <p className="room-code">{roomCode || "····"}</p>
           {joinUrl && (
             <button
               className="btn btn-ghost btn-small"
@@ -30,19 +32,21 @@ export function PropertySelect() {
               Copy join link
             </button>
           )}
-        </div>
+        </aside>
       </header>
 
       <section className="property-grid rise-delay">
         {properties.map((p) => (
           <article key={p.id} className="property-card" style={{ ["--tone" as string]: p.imageTone }}>
             <div className="property-media">
-              <div className="floorplan-ghost" />
+              <div className="floorplan-ghost" aria-hidden />
               <span className="tag">{p.city}</span>
             </div>
             <div className="property-body">
               <h2>{p.name}</h2>
-              <p className="addr">{p.neighborhood} · {p.address}</p>
+              <p className="addr">
+                {p.neighborhood} · {p.address}
+              </p>
               <p className="desc">{p.description}</p>
               <dl className="stats">
                 <div>
