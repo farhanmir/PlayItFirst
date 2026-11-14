@@ -1,3 +1,4 @@
+import { InstallGame } from "../components/InstallGame";
 import { useEffect, useState } from "react";
 import { useApp } from "../lib/store";
 import { CafeScene } from "../components/CafeScene";
@@ -70,6 +71,7 @@ export function Game() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (document.querySelector("dialog[open]")) return;
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.key === "Tab") {
         e.preventDefault();
@@ -200,15 +202,18 @@ export function Game() {
         ) : null}
       </div>
 
-      <aside className="game-drawer" aria-hidden={!drawerOpen} inert={!drawerOpen}>
+      <aside className="game-drawer" aria-label="Café management" aria-hidden={!drawerOpen} inert={!drawerOpen}>
+        <header className="drawer-heading"><div><p>Your café</p><h2>{snapshot.property.name}</h2></div>
+          <button type="button" className="drawer-close" aria-label="Close café management" onClick={() => setDrawerOpen(false)}>×</button>
+        </header>
         <div className="drawer-tabs">
           {(
             [
-              ["manage", "Manage"],
+              ["manage", "Café"],
               ["build", "Build"],
-              ["table", "Table"],
-              ["future", "Future"],
-              ["plan", "Plan"],
+              ["table", "Layout"],
+              ["future", "Compare"],
+              ["plan", "Blueprint"],
             ] as const
           ).map(([id, label]) => (
             <button
@@ -230,16 +235,20 @@ export function Game() {
           ))}
         </div>
         <div className="drawer-body">
+          <InstallGame />
           {drawerTab === "manage" && (
             <>
               <DirectorPanel snapshot={snapshot} />
-              <IntegrationsBadge />
               <PhotonChat snapshot={snapshot} />
-              <PhotonVoice snapshot={snapshot} />
-              <CrewBoard snapshot={snapshot} />
-              <FinanceLedger snapshot={snapshot} />
-              <InventoryCard snapshot={snapshot} />
-              <EventLog lines={snapshot.eventLog} />
+              <details className="management-section"><summary>Money & supplies</summary>
+                <FinanceLedger snapshot={snapshot} /><InventoryCard snapshot={snapshot} />
+              </details>
+              <details className="management-section"><summary>Your crew</summary>
+                <CrewBoard snapshot={snapshot} /><PhotonVoice snapshot={snapshot} />
+              </details>
+              <details className="management-section"><summary>Activity & connections</summary>
+                <EventLog lines={snapshot.eventLog} /><IntegrationsBadge />
+              </details>
             </>
           )}
           {drawerTab === "build" && (

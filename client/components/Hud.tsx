@@ -40,7 +40,7 @@ export function Hud({
             if (!next) play("ui", 0.2);
           }}
         >
-          {mute ? "Sound off" : "Sound"}
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5Z" />{mute ? <path d="m16 9 6 6m0-6-6 6" /> : <><path d="M15 8a6 6 0 0 1 0 8" /><path d="M18 5a10 10 0 0 1 0 14" /></>}</svg>
         </button>
       </div>
 
@@ -63,14 +63,15 @@ export function Hud({
 
       </div>
 
-      <div className="hud-invite">
-        {qrSvg ? (
-          <div className="hud-qr" dangerouslySetInnerHTML={{ __html: qrSvg }} title="Scan to join" />
-        ) : null}
-        <div className="hud-invite-meta">
+      <details className="hud-invite">
+        <summary aria-label="Invite a friend to your café"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 21v-3a6 6 0 0 1 12 0v3M19 6v8m-4-4h8"/></svg><span>Invite</span></summary>
+        <div className="invite-popover">
+          <strong>Better with a friend</strong>
+          <p>Scan with your phone to join this café.</p>
+          {qrSvg ? <div className="hud-qr" dangerouslySetInnerHTML={{ __html: qrSvg }} title="Scan to join" /> : null}
           <span className="hud-room">{roomCode}</span>
         </div>
-      </div>
+      </details>
     </header>
   );
 }

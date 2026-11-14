@@ -16,7 +16,7 @@ export function ViewModeToggle({
 }) {
   return (
     <div className="view-toggle panel" role="group" aria-label="Camera view">
-      <span className="tag">Camera</span>
+      <svg className="camera-mark" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M3 7h4l2-3h6l2 3h4v13H3Z"/><circle cx="12" cy="13" r="4"/></svg>
       {PLAY_MODES.map((m) => (
         <button
           key={m.id}
@@ -24,7 +24,7 @@ export function ViewModeToggle({
           className={mode === m.id || (mode === "dollhouse" && m.id === "monitor") ? "active" : ""}
           title={m.blurb}
           aria-label={m.label}
-          aria-pressed={mode === m.id}
+          aria-pressed={mode === m.id || (mode === "dollhouse" && m.id === "monitor")}
           onClick={() => {
             play("ui", 0.2);
             onChange(m.id);

@@ -22,7 +22,7 @@ export function OrderRail({
   return (
     <div className={`order-rail ${compact ? "compact" : ""} ${expanded ? "expanded" : ""}`}>
       <div className="order-rail-head">
-        <span className="tag">{compact ? "Next guest" : "Orders"}</span>
+        <span className="order-heading">{compact ? "Next order" : "Orders"}</span>
         {compact ? <button type="button" className="order-expand" aria-expanded={expanded}
           aria-label={expanded ? "Collapse order queue" : `Show ${active.length} orders`}
           onClick={() => setExpanded(!expanded)}>{expanded ? "Close" : `${active.length} in line`}</button> : <strong>{active.length}</strong>}
@@ -33,7 +33,7 @@ export function OrderRail({
           <article key={c.id} className={`ticket persona-${c.persona} state-${c.state}`}>
             <header>
               <strong>{c.name}</strong>
-              {!compact ? <span>{PERSONA[c.persona].label}</span> : <span>{c.state}</span>}
+              {!compact ? <span>{PERSONA[c.persona].label}</span> : <span>{c.state === "queue" ? "In line" : c.state === "ordering" ? "Take order" : "To make"}</span>}
             </header>
             <p className="order-line">{c.order ? titleCase(c.order) : titleCase(c.preference)}</p>
             {!compact ? (

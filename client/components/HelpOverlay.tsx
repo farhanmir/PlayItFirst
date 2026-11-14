@@ -1,58 +1,36 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 
 export function HelpOverlay() {
-  const [open, setOpen] = useState(false);
-
+  const dialog = useRef<HTMLDialogElement>(null);
+  const openHelp = () => {
+    if (document.pointerLockElement) document.exitPointerLock();
+    dialog.current?.showModal();
+  };
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "?" || (e.key === "/" && e.shiftKey)) {
-        e.preventDefault();
-        setOpen((v) => !v);
+    const onKey = (event: KeyboardEvent) => {
+      if (event.target instanceof HTMLElement && event.target.closest("input, textarea, select, [contenteditable=true]")) return;
+      if (event.key === "?" && !dialog.current?.open) {
+        event.preventDefault();
+        openHelp();
       }
-      if (e.key === "Escape") setOpen(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
-
-  return (
-    <>
-      <button type="button" className="help-fab btn-ghost btn-small" onClick={() => setOpen(true)} title="Keyboard help">
-        Help
-      </button>
-      {open && (
-        <div className="help-modal" role="dialog" aria-modal="true" onClick={() => setOpen(false)}>
-          <div className="help-card panel" onClick={(e) => e.stopPropagation()}>
-            <p className="tag">Controls</p>
-            <h3>Play It First shortcuts</h3>
-            <ul>
-              <li>
-                Click canvas · mouse look (1st / 3rd)
-              </li>
-              <li>
-                <kbd>W</kbd>
-                <kbd>A</kbd>
-                <kbd>S</kbd>
-                <kbd>D</kbd> Move (relative to look)
-              </li>
-              <li>
-                <kbd>Space</kbd> Suggested next action
-              </li>
-              <li>
-                <kbd>E</kbd> Take order · <kbd>F</kbd> Brew · <kbd>R</kbd> Serve · <kbd>Q</kbd> Restock
-              </li>
-              <li>Camera: 1st Person · 3rd Person · Monitor · Dollhouse</li>
-              <li>
-                <kbd>?</kbd> Toggle this help
-              </li>
-            </ul>
-            <p className="fine">Phones default to 3rd person — drag the pad to move, swipe the café to look.</p>
-            <button type="button" className="btn" onClick={() => setOpen(false)}>
-              Close
-            </button>
-          </div>
-        </div>
-      )}
-    </>
-  );
+  return <>
+    <button type="button" className="help-fab btn-ghost btn-small" onClick={openHelp} title="Controls and first shift">Help</button>
+    <dialog ref={dialog} className="help-dialog" aria-labelledby="shift-help-title">
+      <p className="tag">How to play</p>
+      <h2 id="shift-help-title">Your first shift</h2>
+      <ol className="shift-steps">
+        <li><strong>Take an order</strong><span>Walk to the counter and use the action button.</span></li>
+        <li><strong>Make the drink</strong><span>Go to the espresso machine. Start brewing and wait for your cup.</span></li>
+        <li><strong>Serve your guest</strong><span>Carry the drink to pickup. Serve it to complete the sale.</span></li>
+      </ol>
+      <div className="help-inputs"><p><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Move · drag the café to look</p>
+        <p><kbd>E</kbd> / <kbd>Space</kbd> Nearby action</p><p><kbd>Tab</kbd> Build · <kbd>Esc</kbd> Menu</p>
+        <p>On your phone, hold the movement pad and drag the café with your other thumb to look.</p></div>
+      <form method="dialog"><button autoFocus className="btn" value="close">Back to the café</button></form>
+    </dialog>
+  </>;
 }

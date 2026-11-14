@@ -31,9 +31,9 @@ export function BuildPanel({
 
   return (
     <aside className="side-panel panel build-panel">
-      <h3>Make yourself at home</h3>
+      <h3>Furnish your café</h3>
       <p>
-        Select an item, then <strong>click the café floor</strong> to place it.
+        Choose a piece, then <strong>tap the floor</strong> to place it.
         {liveEdit ? " Service keeps running for everyone else." : " Layout changes hit everyone in the room live."}
       </p>
       {buildKind ? (
@@ -52,7 +52,7 @@ export function BuildPanel({
       <div className="catalog">
         {FURNITURE_CATALOG.map((item) => (
           <div key={item.kind} className={`catalog-row ${buildKind === item.kind ? "selected" : ""}`}>
-            <button className="catalog-item" type="button" onClick={() => select(item.kind)}>
+            <button className="catalog-item" type="button" aria-pressed={buildKind === item.kind} onClick={() => select(item.kind)}>
               <div>
                 <strong>{item.label}</strong>
                 <span>{item.description}</span>
@@ -62,7 +62,7 @@ export function BuildPanel({
             <button
               type="button"
               className="btn-ghost btn-small catalog-quick"
-              title="Drop at a random valid spot"
+              title="Try placing this item at a random location"
               onClick={() => quickDrop(item.kind)}
             >
               Quick
@@ -101,7 +101,7 @@ export function BuildPanel({
       </div>
       <p className="build-feedback" role="status">{snapshot.eventLog[0]}</p>
       {snapshot.layout && (
-        <ul className="placed-list">
+        <details className="placed-furniture"><summary>Placed furniture <span>{snapshot.layout.furniture.length}</span></summary><ul className="placed-list">
           {snapshot.layout.furniture.map((f) => (
             <li key={f.id}>
               <span>
@@ -115,7 +115,7 @@ export function BuildPanel({
               </button>
             </li>
           ))}
-        </ul>
+        </ul></details>
       )}
     </aside>
   );
