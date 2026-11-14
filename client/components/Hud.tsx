@@ -37,11 +37,16 @@ export function Hud({ snapshot }: { snapshot: RoomSnapshot }) {
 
       <div className="hud-vitals" aria-label="Café vitals">
         <Vital label="Funds" value={`$${Math.round(f.balance).toLocaleString()}`} />
-        <Vital label="Revenue" value={`+$${Math.round(f.revenue).toLocaleString()}`} tone="ok" />
-        <Vital label="Served" value={String(m.customersServed)} />
-        <Vital label="Queue" value={String(m.queueLength)} />
-        <Vital label="Wait" value={`${m.avgWaitSec}s`} />
-        <Vital label="Happy" value={`${Math.round(m.satisfaction)}%`} />
+        <Vital label="Revenue" value={`+$${Math.round(f.revenue).toLocaleString()}`} tone="ok" priority="high" />
+        <Vital label="Served" value={String(m.customersServed)} priority="high" />
+        <Vital label="Queue" value={String(m.queueLength)} priority="high" />
+        <Vital label="Wait" value={`${m.avgWaitSec}s`} priority="low" />
+        <Vital
+          label="Happy"
+          value={`${Math.round(m.satisfaction)}%`}
+          tone={m.satisfaction >= 70 ? "ok" : undefined}
+          priority="high"
+        />
       </div>
 
       <div className="hud-invite">
@@ -61,13 +66,15 @@ function Vital({
   label,
   value,
   tone,
+  priority = "normal",
 }: {
   label: string;
   value: string;
   tone?: "ok";
+  priority?: "high" | "normal" | "low";
 }) {
   return (
-    <div className="vital">
+    <div className={`vital vital-${priority}`}>
       <span>{label}</span>
       <strong className={tone}>{value}</strong>
     </div>

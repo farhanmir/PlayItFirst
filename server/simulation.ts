@@ -418,21 +418,24 @@ export function stepSimulation(snapshot: RoomSnapshot, dt: number): RoomSnapshot
   // Spawn based on foot traffic + capacity pressure (tuned for playable demo pacing)
   const openSlots = Math.max(0, Math.min(10, property.capacity) - customers.length);
   const rush = snapshot.rushBoost ?? 0;
-  const spawnChance = property.footTraffic * (0.12 + rush * 0.08) * dt;
+  const spawnChance = property.footTraffic * (0.1 + rush * 0.06) * dt;
   if (openSlots > 0 && Math.random() < spawnChance) {
     customers.push(spawnCustomer(property, queueAnchor.x, queueAnchor.z));
   }
 
-  // Rush boost from unresolved director events
+  // Rush boost from unresolved director events (keep dramatic but not unmanageable)
   if (snapshot.director && !snapshot.director.resolved && snapshot.director.title.includes("rush")) {
-    if (openSlots > 0 && Math.random() < 0.18 * dt) customers.push(spawnCustomer(property, queueAnchor.x, queueAnchor.z));
+    if (openSlots > 0 && Math.random() < 0.12 * dt) customers.push(spawnCustomer(property, queueAnchor.x, queueAnchor.z));
   }
 
   const queue: Customer[] = [];
   customers = customers.map((c, index) => {
     let next = { ...c };
-    next.patience -= dt * ((c.persona === "office" ? 10 : c.persona === "student" ? 3.5 : 6) - ambience * 0.15);
-    const brewRate = snapshot.menuReduced ? 0.12 : 0.08;
+    // Softer drain — office still impatient, but demo rushes stay recoverable
+    const baseDrain = c.persona === "office" ? 6.5 : c.persona === "student" ? 2.6 : 4.2;
+    const rushEase = rush > 0.4 ? 0.85 : 1;
+    next.patience -= dt * Math.max(1.2, (baseDrain - ambience * 0.2) * rushEase);
+    const brewRate = snapshot.menuReduced ? 0.14 : 0.1;
     next.progress = Math.min(1, next.progress + dt * brewRate * throughput);
 
     if (next.state === "entering") {
@@ -458,11 +461,11 @@ export function stepSimulation(snapshot: RoomSnapshot, dt: number): RoomSnapshot
       next.x += (next.targetX - next.x) * Math.min(1, dt * 2);
       next.z += (next.targetZ - next.z) * Math.min(1, dt * 2);
       // AI auto-serve assist when players are idle
-      if (next.progress >= 1 && Math.random() < 0.15 * dt * throughput) {
+      if (next.progress >= 1 && Math.random() < 0.22 * dt * throughput) {
         const price = next.persona === "office" ? 7.5 : next.persona === "regular" ? 6.25 : 4.75;
         finance = applyTransaction(finance, `${next.order ?? "coffee"} · ${next.name}`, price, "sales");
         metrics.customersServed += 1;
-        metrics.satisfaction = Math.min(100, metrics.satisfaction + 1.5);
+        metrics.satisfaction = Math.min(100, metrics.satisfaction + 2.2);
         next.state = "happy";
         next.progress = 1;
       }
@@ -471,7 +474,7 @@ export function stepSimulation(snapshot: RoomSnapshot, dt: number): RoomSnapshot
     if (next.patience <= 0 && next.state !== "happy" && next.state !== "leaving" && next.state !== "angry") {
       next.state = "angry";
       metrics.customersLost += 1;
-      metrics.satisfaction = Math.max(10, metrics.satisfaction - 4);
+      metrics.satisfaction = Math.max(28, metrics.satisfaction - 2.5);
       log.unshift(`${next.name} left — wait too long`);
     }
 
@@ -511,15 +514,19 @@ export function stepSimulation(snapshot: RoomSnapshot, dt: number): RoomSnapshot
   if (counter && pickup) {
     const dist = Math.hypot(counter.x - pickup.x, counter.z - pickup.z);
     if (dist < 1.5 && queueLength > 2) {
-      metrics.satisfaction = Math.max(15, metrics.satisfaction - dt * 2);
+      metrics.satisfaction = Math.max(30, metrics.satisfaction - dt * 1.2);
     }
   }
 
   metrics.queueLength = queueLength;
   metrics.avgWaitSec = Math.round(avgWait * 10) / 10;
   metrics.revenuePerHour = Math.round(finance.revenue / Math.max(0.05, snapshot.simTime / 3600));
-  if (ambience > 0 && metrics.satisfaction < 92) {
-    metrics.satisfaction = Math.min(92, metrics.satisfaction + dt * 0.15 * ambience);
+  if (ambience > 0 && metrics.satisfaction < 94) {
+    metrics.satisfaction = Math.min(94, metrics.satisfaction + dt * 0.22 * ambience);
+  }
+  // Soft floor during early open / active rush so the pitch stays upbeat
+  if (snapshot.simTime < 90 || rush > 0.35) {
+    metrics.satisfaction = Math.max(55, metrics.satisfaction);
   }
   // Decay residual rush boost
   const rushBoost = Math.max(0, (snapshot.rushBoost ?? 0) - dt * 0.05);
@@ -544,7 +551,8 @@ export function stepSimulation(snapshot: RoomSnapshot, dt: number): RoomSnapshot
   // Jamie (AI) barista: help on long queues or when humans go idle — paced so players still matter
   const humanIdle = next.simTime - (next.lastHumanInteractAt ?? 0) >= AI_IDLE_SEC;
   const needsHelp = queueLength >= 3 || humanIdle;
-  if (needsHelp && next.tick % AI_PERIOD_TICKS === 0) {
+  const period = queueLength >= 5 || rush > 0.5 ? Math.floor(AI_PERIOD_TICKS / 2) : AI_PERIOD_TICKS;
+  if (needsHelp && next.tick % period === 0) {
     next = runAiBaristaAssist(next);
   }
 
@@ -561,7 +569,7 @@ export function seedDemoCrowd(snapshot: RoomSnapshot): RoomSnapshot {
     const c = spawnCustomer(snapshot.property, counter.x, counter.z);
     c.state = states[i];
     // Generous patience so the judge pitch stays playable under the rush
-    c.patience = 220;
+    c.patience = 280;
     c.x = counter.x + 0.2;
     c.z = Math.max(0.8, counter.z - 1.2 - i * 0.7);
     c.targetX = c.x;
@@ -585,7 +593,7 @@ function spawnCustomer(property: PropertyListing, qx: number, qz: number): Custo
   const personas: CustomerPersona[] = ["student", "office", "regular"];
   const persona = personas[Math.floor(Math.random() * personas.length)];
   const budgets = { student: 6, office: 14, regular: 10 };
-  const patience = { student: 100, office: 45, regular: 80 };
+  const patience = { student: 120, office: 70, regular: 95 };
   return {
     id: randomUUID(),
     persona,

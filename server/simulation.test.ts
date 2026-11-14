@@ -168,4 +168,17 @@ describe("café simulation", () => {
     expect(moved.z).toBeCloseTo(counter.z + 1.2, 1);
     expect(snap.eventLog[0]).toMatch(/Tabletop layout synced/i);
   });
+
+  it("keeps Happy above a soft floor during early rush", () => {
+    let snap = openCafe(selectProperty(createRoomSnapshot("demo"), listing));
+    snap = seedDemoCrowd(snap);
+    snap = {
+      ...snap,
+      rushBoost: 0.9,
+      metrics: { ...snap.metrics, satisfaction: 58 },
+      simTime: 20,
+    };
+    for (let i = 0; i < 80; i++) snap = stepSimulation(snap, 0.25);
+    expect(snap.metrics.satisfaction).toBeGreaterThanOrEqual(55);
+  });
 });

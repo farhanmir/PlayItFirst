@@ -146,19 +146,30 @@ async function runJudgeDemo(setPhase: (p: DemoPhase) => void) {
 
     // Seed rush + director so the pitch always has something to click
     conn.send({ t: "demo_boost" });
-    await sleep(700);
+    for (let i = 0; i < 25; i++) {
+      const s = useApp.getState().snapshot;
+      if (s?.director && !s.director.resolved && (s.customers?.length ?? 0) >= 3) break;
+      if (i === 12) conn.send({ t: "demo_boost" }); // retry once if snapshot lagged
+      await sleep(120);
+    }
 
-    // Park the host at the counter and take the first order
+    // Park the host at the counter and run the first order → brew beat
     const snap = useApp.getState().snapshot;
     const counter = snap?.layout?.furniture.find((f) => f.kind === "counter");
+    const machine = snap?.layout?.furniture.find((f) => f.kind === "coffee_machine");
     if (counter) conn.send({ t: "player_move", x: counter.x, z: counter.z });
-    await sleep(200);
+    await sleep(180);
     conn.send({ t: "interact", action: "take_order" });
     play("order");
+    await sleep(280);
+    if (machine) conn.send({ t: "player_move", x: machine.x, z: machine.z });
+    await sleep(160);
+    conn.send({ t: "interact", action: "make_coffee" });
+    play("brew");
 
     setPhase("ready");
     history.replaceState({}, "", `/?room=${code}&demo=1`);
-    await sleep(1800);
+    await sleep(1600);
     setPhase("idle");
   } catch (err) {
     console.warn(err);

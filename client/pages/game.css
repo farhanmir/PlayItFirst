@@ -1163,19 +1163,38 @@
     justify-content: flex-start;
     overflow-x: auto;
     flex-wrap: nowrap;
+    gap: 0.15rem 0.65rem;
     padding-bottom: 0.15rem;
+    -webkit-overflow-scrolling: touch;
   }
 
   .vital {
     border-left: none;
-    padding: 0.15rem 0.55rem 0.15rem 0;
+    padding: 0.15rem 0.4rem 0.15rem 0;
+    flex: 0 0 auto;
+  }
+
+  .vital-low {
+    display: none;
   }
 
   .hud-invite {
     justify-content: flex-start;
   }
 
+  .hud-invite-meta {
+    min-width: 0;
+  }
+
+  .hud-nessie {
+    display: none;
+  }
+
   .hud-qr {
+    display: none;
+  }
+
+  .hud-brand .conn {
     display: none;
   }
 
