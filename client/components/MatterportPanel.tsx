@@ -19,6 +19,8 @@ export function MatterportPanel({ property }: { property: PropertyListing }) {
 
   useEffect(() => {
     let cancelled = false;
+    setModel(null);
+    setOpen(false);
     setError(null);
     void fetch(apiUrl(`/api/matterport/${encodeURIComponent(property.id)}`))
       .then(async (r) => {

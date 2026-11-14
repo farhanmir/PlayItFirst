@@ -2,6 +2,16 @@
 
 Tracking https://github.com/farhanmir/PlayItFirst/issues/2. Work directly on `main` under AGENTS.md.
 
+## Open-issue audit
+
+Closed **#4**: independent QA coverage and the original five production regressions are implemented, with fresh **72-test/typecheck/build** verification and existing browser evidence. Updated every remaining issue (#2, #6–#11) with concrete acceptance gaps; none was closed on partial sponsor evidence.
+
+Fixed #7's missing pre-selection space preview: the property card now lazily opens the matching Matterport panel before committing to the property. Capacity is labeled assumed and traffic simulated for imported records; asking rent is explicitly base asking rent. Cleared stale model/open state on property changes. Edge verified the exact matched model in the iframe and the corrected labels; local screenshot `.sponsor/property-preview.png`. This verifies preview wiring, not the external viewer's complete rendering.
+
+New live geometry probe supersedes the earlier access blocker: the matched model **does expose floor wall edges/vertices**, and the schema includes openings with relative center/width. Private source responses are `.sponsor/geometry-1.json` and `wall-availability.json`. Faithful reconstruction and route/starter placement validation remain implementation work; do not treat geometry as unavailable merely because the CDN floor-plan image returns 403.
+
+Remaining gates: #6 public Render URL/physical-phone checks; #7 geometry reconstruction/publication clearance; #8 model provider key/live run; #9 Photon provisioning/public callbacks; #10 Nessie access plus adapter reconciliation; #11 Grok workflow/eligibility/submission. No model, Nessie or Photon keys were present in local configuration during this audit. Existing local Vitest upgrade remains uncommitted and intact.
+
 ## Authorized CoStar / Matterport pair — issue #7
 
 The owner supplied the event kit and credentials. `scripts/import-costar.py` joins an active USD retail lease space's own Matterport floor-plan attachment to the kit's property/model CSV, then verifies that exact model through the live API. Credentials, archive, normalized local property and API responses stay in ignored `.env` / `.sponsor/`; no raw sponsor records are committed. `COSTAR_DATA_FILE` loads the vetted normalized file server-side with explicit `costar-extract` provenance. Existing mock fallback remains. Judge demo selects the imported property when configured.

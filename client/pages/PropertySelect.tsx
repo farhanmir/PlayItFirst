@@ -1,7 +1,10 @@
 import { useApp } from "../lib/store";
+import { useState } from "react";
+import { MatterportPanel } from "../components/MatterportPanel";
 import "./property.css";
 
 export function PropertySelect() {
+  const [previewId, setPreviewId] = useState<string | null>(null);
   const properties = useApp((s) => s.properties);
   const conn = useApp((s) => s.conn);
   const qrSvg = useApp((s) => s.qrSvg);
@@ -78,7 +81,7 @@ export function PropertySelect() {
                 {p.provenance ? <p className="desc">{p.provenance.geometry} · Asking rent excludes additional charges. Café use and capacity require verification.</p> : null}
                 <dl className="stats">
                   <div>
-                    <dt>Rent</dt>
+                    <dt>{p.provenance ? "Base asking rent" : "Rent"}</dt>
                     <dd>${p.monthlyRent.toLocaleString()}/mo</dd>
                   </div>
                   <div>
@@ -90,11 +93,11 @@ export function PropertySelect() {
                     <dd>{p.sqft.toLocaleString()} sqft</dd>
                   </div>
                   <div>
-                    <dt>Capacity</dt>
+                    <dt>{p.provenance ? "Assumed capacity" : "Capacity"}</dt>
                     <dd>{p.capacity}</dd>
                   </div>
                   <div>
-                    <dt>Traffic</dt>
+                    <dt>{p.provenance ? "Simulated traffic" : "Traffic"}</dt>
                     <dd>{Math.round(p.footTraffic * 100)}%</dd>
                   </div>
                   <div>
@@ -106,6 +109,14 @@ export function PropertySelect() {
                   <span className="mp-label">Floorplate</span>
                   {p.matterportHint}
                 </p>
+                <button
+                  className="btn btn-ghost" type="button"
+                  aria-expanded={previewId === p.id}
+                  onClick={() => setPreviewId(previewId === p.id ? null : p.id)}
+                >
+                  {previewId === p.id ? "Hide space preview" : "Preview this space"}
+                </button>
+                {previewId === p.id ? <MatterportPanel property={p} /> : null}
                 <button
                   className="btn"
                   type="button"
