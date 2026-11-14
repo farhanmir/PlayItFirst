@@ -4,6 +4,52 @@ import type { ManagerAction, ManagerProposal, ManagerView } from "../shared/mana
 import { adjustStaffing, getCafeState, reorderSupplies } from "./deepagents.ts";
 import { createManagerRunner, managerModelConfigured, type ManagerRunner, type ManagerTools } from "./manager-runtime.ts";
 
+/** Snapshot evidence only: no provider call, payment, forecast, or reserved funds. */
+function financialContext(snapshot: RoomSnapshot, now: number) {
+  const finance = snapshot.finance;
+  const sync = finance.nessieSync;
+  const bills = sync?.bills ?? [];
+  const outstanding = bills.filter((bill) => bill.status === "pending" || bill.status === "recurring");
+  const billCents = outstanding.reduce((sum, bill) => sum + bill.amountCents, 0);
+  const age = sync?.checkedAt == null ? null : Math.max(0, now - sync.checkedAt);
+  return {
+    currency: "USD",
+    monetaryUnit: "US dollars; sandbox integer cents have already been converted. Do not divide these values by 100.",
+    local: {
+      source: "authoritative simulated game ledger",
+      operatingCashUSD: finance.balance,
+      revenueUSD: finance.revenue,
+      expensesUSD: finance.expenses,
+      netCashFlowUSD: finance.revenue - finance.expenses,
+      period: `${snapshot.simTime.toFixed(1)} simulated seconds since room creation; includes opening rent/equipment, not a monthly forecast`,
+      restockCostUSD: 35,
+      canAffordRestock: finance.balance >= 35,
+      monthlyBaseRentUSD: snapshot.property?.monthlyRent ?? null,
+    },
+    sandbox: {
+      source: sync ? "Nessie sandbox; mock banking, not real money" : "simulated-only; no Nessie session",
+      status: sync?.status ?? "simulated-only",
+      fetchedAt: sync?.checkedAt ?? null,
+      freshness: age == null ? "not-fetched" : age > 30_000 ? "stale" : "recent",
+      ageMs: age,
+      balanceUSD: sync?.remoteBalanceCents == null ? null : sync.remoteBalanceCents / 100,
+      availableUSD: sync?.remoteAvailableCents == null ? null : sync.remoteAvailableCents / 100,
+      differenceFromLocalUSD: sync?.differenceCents == null ? null : sync.differenceCents / 100,
+      error: sync?.error ?? null,
+      billSetupStatus: sync?.billSetupStatus ?? "not-configured",
+      billsFetchedAt: sync?.billsCheckedAt ?? null,
+      billsFreshness: sync?.billsCheckedAt == null ? "not-fetched" : now - sync.billsCheckedAt > 30_000 ? "stale" : "recent",
+      billError: sync?.billError ?? null,
+      bills: bills.map(({ id, payee, amountCents, dueDate, status }) => ({ id, payee, amountUSD: amountCents / 100, dueDate, status })),
+      outstandingScheduledBillsUSD: billCents / 100,
+      billCoverage: sync?.billsCheckedAt == null ? "No fetched bill list; absence does not mean no obligations" : "Retrieved sandbox bills only; unmodeled expenses may exist",
+      localCashAfterRecordedBillsUSD: bills.length ? finance.balance - billCents / 100 : null,
+      receipts: sync?.records.map(({ localId, remoteId, amountCents, status }) => ({ localId, remoteId: remoteId ?? null, amountUSD: amountCents / 100, status })) ?? [],
+      interpretation: "Queued, pending, failed, unknown and stale records are not confirmed settlement. Local cash controls gameplay approval; remote available funds and upcoming bills inform discussion only. Bills are future obligations, not extra local charges or automatic payments. Do not claim a bank purchase completed without a confirmed matching receipt.",
+    },
+  };
+}
+
 /** Identity must come from an authenticated WS session or a verified provider pairing. */
 export interface ManagerActor { roomCode: string; memberId: string }
 export interface ManagerRoom {
@@ -65,6 +111,7 @@ export class CafeManager {
         provenance: p.provenance ?? (p.source === "costar-live" ? "Live listing feed; scan pairing and geometry still require independent verification" : "Bundled mock listing and stand-in scan; not a verified matched property") } : null,
       stations: s.layout?.furniture.map(({ id, kind, x, z }) => ({ id, kind, x, z })) ?? [],
       ledger: s.finance.transactions.slice(0, 6).map(({ id, label, amount, category }) => ({ id, label, amount, category })),
+      financialContext: financialContext(s, this.now()),
       approvedActionCosts: { reorder_supplies: 35, simplify_menu: 0 },
     };
   }
@@ -205,6 +252,14 @@ export class CafeManager {
       tools.propose("simplify_menu", "A reduced menu changes future orders; no wait-time improvement has been measured yet.");
     }
     tools.outcome();
-    this.view.summary = `Local rules (no model call): $${state.finance.balance.toFixed(2)} available, ${state.metrics.queueLength} in line, milk ${state.inventory.milk}. Review any proposed actions below. Nothing has been purchased.`;
+    const finances = financialContext(state, this.now());
+    const banking = finances.sandbox;
+    const bankNote = banking.availableUSD == null
+      ? "Nessie available funds have not been fetched."
+      : `Nessie last fetched available funds: $${banking.availableUSD.toFixed(2)} (${banking.freshness}${banking.error ? "; reconciliation error, do not treat as current" : ""}).`;
+    const billsNote = banking.bills.length
+      ? `Recorded outstanding sandbox bills: $${banking.outstandingScheduledBillsUSD.toFixed(2)} (${banking.billsFreshness}${banking.billError ? "; bill retrieval/setup error" : ""}); local cash after those obligations would be $${banking.localCashAfterRecordedBillsUSD!.toFixed(2)}. This does not reserve or pay them.`
+      : "Upcoming sandbox bills are not verified; absence is not proof of no expenses.";
+    this.view.summary = `Local rules (no model call): $${state.finance.balance.toFixed(2)} game cash, ${state.metrics.queueLength} in line, milk ${state.inventory.milk}. ${bankNote} ${billsNote} Review proposed actions; nothing has been purchased.`;
   }
 }
