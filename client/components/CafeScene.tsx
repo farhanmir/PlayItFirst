@@ -54,11 +54,14 @@ export function CafeScene({ snapshot, viewMode = "monitor" }: Props) {
   const you = useApp((s) => s.you);
   const me = snapshot.players.find((p) => p.id === you);
   const mode = viewMode;
-  const playCam = (mode === "first" || mode === "third") && me;
 
   return (
     <div className={`cafe-canvas mode-${mode}`}>
-      <Canvas shadows dpr={[1, 1.6]} gl={{ antialias: true, powerPreference: "high-performance" }}>
+      <Canvas
+        shadows
+        dpr={[1, 1.5]}
+        gl={{ antialias: true, powerPreference: "high-performance", failIfMajorPerformanceCaveat: false }}
+      >
         <color attach="background" args={[PALETTE.bg]} />
         <fog attach="fog" args={[PALETTE.fog, mode === "dollhouse" ? 18 : 12, mode === "dollhouse" ? 42 : 34]} />
 
@@ -83,38 +86,12 @@ export function CafeScene({ snapshot, viewMode = "monitor" }: Props) {
         <pointLight position={[property.width * 0.35, 2.4, property.depth * 0.4]} intensity={0.55} color="#d9773f" distance={10} decay={2} />
         <pointLight position={[property.width * 0.7, 2.4, property.depth * 0.55]} intensity={0.4} color="#c4a574" distance={9} decay={2} />
 
-        {playCam && mode === "first" ? (
-          <FirstPersonCam x={me.x} z={me.z} />
-        ) : playCam && mode === "third" ? (
-          <ThirdPersonCam x={me.x} z={me.z} />
-        ) : mode === "dollhouse" ? (
-          <>
-            <PerspectiveCamera
-              makeDefault
-              position={[property.width / 2 + 2, 16, property.depth / 2 + 10]}
-              fov={38}
-            />
-            <OrbitControls
-              target={[property.width / 2, 0.2, property.depth / 2]}
-              maxPolarAngle={Math.PI / 2.4}
-              minPolarAngle={0.15}
-              minDistance={8}
-              maxDistance={36}
-            />
-          </>
-        ) : (
-          <>
-            <PerspectiveCamera makeDefault position={[property.width / 2, 11, property.depth + 8]} fov={42} />
-            <OrbitControls
-              target={[property.width / 2, 0.4, property.depth / 2]}
-              maxPolarAngle={Math.PI / 2.15}
-              minDistance={6}
-              maxDistance={28}
-              enableDamping
-              dampingFactor={0.08}
-            />
-          </>
-        )}
+        <CameraRig
+          mode={mode}
+          me={me ? { x: me.x, z: me.z } : null}
+          width={property.width}
+          depth={property.depth}
+        />
 
         <CafeRoom
           property={property}
@@ -146,10 +123,30 @@ export function CafeScene({ snapshot, viewMode = "monitor" }: Props) {
   );
 }
 
-function usePointerLook(enabled: boolean) {
+/** One stable camera — swapping remounts was killing WebGL on some GPUs. */
+function CameraRig({
+  mode,
+  me,
+  width,
+  depth,
+}: {
+  mode: CafeViewMode;
+  me: { x: number; z: number } | null;
+  width: number;
+  depth: number;
+}) {
+  const camRef = useRef<ThreePerspectiveCamera>(null);
+  const controlsRef = useRef<{ enabled: boolean; target: { set: (x: number, y: number, z: number) => void }; update: () => void } | null>(null);
+  const smooth = useRef({ x: me?.x ?? width / 2, z: me?.z ?? depth / 2 });
   const { gl } = useThree();
+  const playLook = mode === "first" || mode === "third";
+  const orbit = mode === "monitor" || mode === "dollhouse";
+
   useEffect(() => {
-    if (!enabled) return;
+    if (!playLook) {
+      if (document.pointerLockElement === gl.domElement) document.exitPointerLock();
+      return;
+    }
     const el = gl.domElement;
     const onClick = () => {
       if (document.pointerLockElement !== el) void el.requestPointerLock();
@@ -161,7 +158,7 @@ function usePointerLook(enabled: boolean) {
     const onTouch = (e: TouchEvent) => {
       if (e.touches.length !== 1) return;
       const t = e.touches[0];
-      const prev = (el as HTMLCanvasElement & { __lookX?: number; __lookY?: number });
+      const prev = el as HTMLCanvasElement & { __lookX?: number; __lookY?: number };
       if (prev.__lookX != null && prev.__lookY != null) {
         nudgeLook(t.clientX - prev.__lookX, t.clientY - prev.__lookY, 0.004);
       }
@@ -186,51 +183,83 @@ function usePointerLook(enabled: boolean) {
       el.removeEventListener("touchcancel", onTouchEnd);
       if (document.pointerLockElement === el) document.exitPointerLock();
     };
-  }, [enabled, gl]);
-}
+  }, [playLook, gl]);
 
-/** True FPS mouse-look camera locked to your barista. */
-function FirstPersonCam({ x, z }: { x: number; z: number }) {
-  const ref = useRef<ThreePerspectiveCamera>(null);
-  const smooth = useRef({ x, z });
-  usePointerLook(true);
+  useEffect(() => {
+    const cam = camRef.current;
+    if (!cam) return;
+    if (mode === "dollhouse") {
+      cam.fov = 38;
+      cam.position.set(width / 2 + 2, 16, depth / 2 + 10);
+      cam.near = 0.1;
+      cam.far = 80;
+      cam.updateProjectionMatrix();
+      controlsRef.current?.target.set(width / 2, 0.2, depth / 2);
+    } else if (mode === "monitor") {
+      cam.fov = 42;
+      cam.position.set(width / 2, 11, depth + 8);
+      cam.near = 0.1;
+      cam.far = 70;
+      cam.updateProjectionMatrix();
+      controlsRef.current?.target.set(width / 2, 0.4, depth / 2);
+    } else if (mode === "first") {
+      cam.fov = 78;
+      cam.near = 0.05;
+      cam.far = 60;
+      cam.updateProjectionMatrix();
+    } else {
+      cam.fov = 55;
+      cam.near = 0.1;
+      cam.far = 70;
+      cam.updateProjectionMatrix();
+    }
+  }, [mode, width, depth]);
 
   useFrame((_, dt) => {
-    if (!ref.current) return;
-    const k = 1 - Math.exp(-14 * dt);
-    smooth.current.x = MathUtils.lerp(smooth.current.x, x, k);
-    smooth.current.z = MathUtils.lerp(smooth.current.z, z, k);
-    const { yaw, pitch } = getLook();
-    ref.current.position.set(smooth.current.x, 1.55, smooth.current.z);
-    ref.current.rotation.order = "YXZ";
-    ref.current.rotation.y = yaw;
-    ref.current.rotation.x = pitch;
+    const cam = camRef.current;
+    if (!cam) return;
+    if (controlsRef.current) controlsRef.current.enabled = orbit;
+
+    if ((mode === "first" || mode === "third") && me) {
+      const k = 1 - Math.exp(-(mode === "first" ? 14 : 10) * dt);
+      smooth.current.x = MathUtils.lerp(smooth.current.x, me.x, k);
+      smooth.current.z = MathUtils.lerp(smooth.current.z, me.z, k);
+      const { yaw, pitch } = getLook();
+      if (mode === "first") {
+        cam.position.set(smooth.current.x, 1.55, smooth.current.z);
+        cam.rotation.order = "YXZ";
+        cam.rotation.y = yaw;
+        cam.rotation.x = pitch;
+        cam.rotation.z = 0;
+      } else {
+        const dist = 4.4;
+        const height = 2.55 - Math.sin(pitch) * 0.9;
+        cam.position.set(
+          smooth.current.x - Math.sin(yaw) * dist,
+          Math.max(1.4, height),
+          smooth.current.z + Math.cos(yaw) * dist,
+        );
+        cam.lookAt(smooth.current.x, 1.25, smooth.current.z);
+      }
+    }
   });
 
-  return <PerspectiveCamera ref={ref} makeDefault fov={78} near={0.05} far={60} />;
-}
-
-/** Over-the-shoulder follow — great for monitoring your floor run. */
-function ThirdPersonCam({ x, z }: { x: number; z: number }) {
-  const ref = useRef<ThreePerspectiveCamera>(null);
-  const smooth = useRef({ x, z });
-  usePointerLook(true);
-
-  useFrame((_, dt) => {
-    if (!ref.current) return;
-    const k = 1 - Math.exp(-10 * dt);
-    smooth.current.x = MathUtils.lerp(smooth.current.x, x, k);
-    smooth.current.z = MathUtils.lerp(smooth.current.z, z, k);
-    const { yaw, pitch } = getLook();
-    const dist = 4.4;
-    const height = 2.55 - Math.sin(pitch) * 0.9;
-    const camX = smooth.current.x - Math.sin(yaw) * dist;
-    const camZ = smooth.current.z + Math.cos(yaw) * dist;
-    ref.current.position.set(camX, Math.max(1.4, height), camZ);
-    ref.current.lookAt(smooth.current.x, 1.25, smooth.current.z);
-  });
-
-  return <PerspectiveCamera ref={ref} makeDefault fov={55} near={0.1} far={70} />;
+  return (
+    <>
+      <PerspectiveCamera ref={camRef} makeDefault position={[width / 2, 11, depth + 8]} fov={42} />
+      <OrbitControls
+        ref={controlsRef as never}
+        enabled={orbit}
+        enableDamping
+        dampingFactor={0.08}
+        maxPolarAngle={mode === "dollhouse" ? Math.PI / 2.4 : Math.PI / 2.15}
+        minPolarAngle={mode === "dollhouse" ? 0.15 : 0}
+        minDistance={mode === "dollhouse" ? 8 : 6}
+        maxDistance={mode === "dollhouse" ? 36 : 28}
+        target={[width / 2, 0.4, depth / 2]}
+      />
+    </>
+  );
 }
 
 function CafeRoom({

@@ -100,16 +100,16 @@ export function Game() {
         </CafeCanvasFallback>
         <ViewModeToggle mode={viewMode} onChange={onViewChange} />
         <PlayCrosshair snapshot={snapshot} mode={viewMode} />
-        {viewMode !== "first" && <WebXRHint onOpenTable={() => setTab("table")} />}
-        {viewMode !== "first" && <MiniMap snapshot={snapshot} />}
-        <TutorialTips snapshot={snapshot} />
+        {!immersive && <WebXRHint onOpenTable={() => setTab("table")} />}
+        {!immersive && <MiniMap snapshot={snapshot} />}
+        {!immersive && <TutorialTips snapshot={snapshot} />}
         <DirectorPanel snapshot={snapshot} />
         <PhotonCall snapshot={snapshot} />
-        {viewMode !== "first" && <RolePicker snapshot={snapshot} />}
+        {!immersive && <RolePicker snapshot={snapshot} />}
         <ServeToast snapshot={snapshot} />
         {snapshot.phase === "play" && (
           <>
-            {viewMode !== "first" && <OrderRail snapshot={snapshot} />}
+            {!immersive && <OrderRail snapshot={snapshot} />}
             <PlayControls snapshot={snapshot} />
           </>
         )}
