@@ -66,6 +66,7 @@ describe("café simulation", () => {
     const md = buildBlueprint(snap);
     expect(md).toContain("Business Launch Blueprint");
     expect(md).toContain(listing.name);
+    expect(md).toMatch(/Disclaimer|educational simulation/i);
   });
 
   it("nearestStation returns the closest in-range station", () => {

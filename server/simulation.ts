@@ -660,7 +660,7 @@ ${snapshot.eventLog
 3. Run a soft-open staffing plan from your PlayFirst roles.
 4. Confirm permits, health codes, and insurance for ${p.city}.
 
-> Illustrative education tool — not financial, legal, or investment advice.
+> **Disclaimer:** PlayFirst is an educational simulation. A real launch still needs professional validation — market research, permits, insurance, contractor bids, and real financial planning. This blueprint is a starting conversation, not advice.
 `;
 }
 

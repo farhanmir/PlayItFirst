@@ -41,7 +41,7 @@ export function Landing({ onStart, onJoin, onJudgeDemo, demoBusy }: Props) {
           <p className="brand brand-reveal">PlayFirst</p>
           <h1 className="rise">Play your business before you pay for it.</h1>
           <p className="lede rise-delay">
-            Build a café inside a real storefront, invite friends, and turn the session into a launch blueprint.
+            Practice ownership inside a real storefront — layout, queues, cash — then leave with a launch blueprint, not a burned lease.
           </p>
           <div className="landing-cta rise-delay-2">
             <input

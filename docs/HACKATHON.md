@@ -13,15 +13,18 @@ Play your business before you pay for it — a multiplayer café sim inside real
 | Amazon / Best Overall | Fun multiplayer + social-good entrepreneurship education |
 | SpaceXSI / Cursor | Built with agents; Gitzilla patterns reused |
 
-## Two-minute script
-0:00 Hook — “Millions dream of opening a business…” → land on PlayFirst brand  
-0:20 Judge demo (`/?demo=1`) → Midtown property → Matterport floor becomes playable café  
-0:40 Auto rush + director event seeded; take the highlighted station action  
-1:00 Photon ping from Jamie + optional call UI  
-1:20 Tabletop sync rearranges the café live  
-1:40 Rival score + blueprint export  
+## Two-minute script (aligned with ChatGPT share)
+0:00 Hook — “What if you could play your business before paying for it?” → PlayFirst brand  
+0:20 Reveal — Judge demo (`/?demo=1`) Midtown CoStar listing → Matterport floor becomes playable café  
+0:40 Judges play — QR join; highlighted station action / Space; phone + desktop co-op  
+1:00 Chaos — rush director + Jamie Photon ping/call  
+1:20 Wow — Tabletop tab: rearrange markers → layout updates live  
+1:40 Payoff — rival score + download launch blueprint  
 
 `/?demo=1` hosts a room, selects Midtown, opens doors, then sends `demo_boost` (queue + rush director + Photon ping).
+
+## Social good (say it once)
+Entrepreneurship is expensive and intimidating. PlayFirst lets people practice ownership — money, staffing, layout — before risking rent.
 
 ## Commands
 ```bash
