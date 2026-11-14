@@ -1,0 +1,58 @@
+{
+  "origin": "http://localhost:5195",
+  "property": "hou-midtown-1204",
+  "source": "costar-mock",
+  "canvas": {
+    "width": 1438,
+    "height": 898,
+    "webgl": true
+  },
+  "served": 1,
+  "sale": {
+    "id": "89268e9c-6022-44d7-a750-54f3adb5afee",
+    "label": "cappuccino · Ava",
+    "amount": 9,
+    "category": "sales",
+    "at": 1794695833786
+  },
+  "before": {
+    "milk": 24,
+    "cups": 40,
+    "beans": 30
+  },
+  "after": {
+    "milk": 23,
+    "cups": 39,
+    "beans": 29
+  },
+  "players": 2,
+  "furniture": 10,
+  "errors": [],
+  "consoleErrors": [],
+  "failed": [],
+  "sockets": [
+    "ws://localhost:5195/ws"
+  ],
+  "insecureRequests": [
+    "http://localhost:5195/?demo=1",
+    "http://localhost:5195/assets/index-hShH48EW.js",
+    "http://localhost:5195/assets/index-DEXZzBEi.css",
+    "http://localhost:5195/api/integrations",
+    "http://localhost:5195/api/properties",
+    "http://localhost:5195/api/rooms",
+    "http://localhost:5195/favicon.svg",
+    "http://localhost:5195/favicon.svg",
+    "http://localhost:5195/api/rooms/6819ae/qr",
+    "http://localhost:5195/api/integrations",
+    "http://localhost:5195/favicon.svg",
+    "http://localhost:5195/?room=6819ae",
+    "http://localhost:5195/assets/index-hShH48EW.js",
+    "http://localhost:5195/assets/index-DEXZzBEi.css",
+    "http://localhost:5195/api/integrations",
+    "http://localhost:5195/api/properties",
+    "http://localhost:5195/favicon.svg",
+    "http://localhost:5195/api/rooms/6819ae/qr",
+    "http://localhost:5195/api/integrations",
+    "http://localhost:5195/api/matterport/hou-midtown-1204"
+  ]
+}

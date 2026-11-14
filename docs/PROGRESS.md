@@ -2,6 +2,10 @@
 
 Tracking https://github.com/farhanmir/PlayItFirst/issues/2. Work directly on `main` under AGENTS.md.
 
+## Remaining working-tree changes published
+
+Owner authorized publishing all remaining changes: the previously preserved **Vitest5.1.0** package/lock upgrade and the local `overhaul-*` gameplay/build/first-person/phone-sized captures. These captures are historical mock-property evidence from the pre-merge character/control pass on port5195, not the latest public measured-floor build; the first-person capture predates the later foreground-cup correction. Its recorded cappuccino sale was $9 with exactly one milk/cup/bean consumed and a shared plant edit, with no browser errors. Latest combined validation is **132 tests across24 files**, typecheck/build passing. Private `.env`, sponsor data/responses and SSH credentials remain excluded.
+
 ## Deepagents status badge correction
 
 The Deepagents status chip was hard-coded `on:false`, so it could never turn green after a real successful run. It now subscribes to the current room manager and displays **configured**, **verified**, or **local**. Green requires `runtime:deepagents` plus current-run `providerVerified`; a configured key alone is not presented as a verified integration. Sponsor-context blocking has an explicit tooltip. The successful synthetic Gemini test does not silently authorize model calls in a different real-property room.
