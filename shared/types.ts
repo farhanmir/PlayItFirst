@@ -83,6 +83,8 @@ export interface Customer {
   targetZ: number;
   satisfaction: number;
   joinedAt: number;
+  /** Sim-seconds spent queueing, ordering, or waiting. Drives avgWaitSec. */
+  waitSec?: number;
 }
 
 export interface PlayerState {
