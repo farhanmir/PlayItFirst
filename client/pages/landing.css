@@ -220,6 +220,23 @@
   max-width: 340px;
 }
 
+.judge-demo-btn {
+  width: 100%;
+}
+
+.demo-hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.demo-hint code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  color: var(--crema);
+  font-size: 0.72rem;
+}
+
 .name-input {
   width: 100%;
   padding: 0.9rem 1rem;

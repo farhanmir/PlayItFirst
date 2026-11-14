@@ -107,21 +107,53 @@
     linear-gradient(150deg, color-mix(in srgb, var(--tone) 65%, #1a120c), #120e0b),
     radial-gradient(circle at 28% 35%, rgba(245, 239, 232, 0.16), transparent 52%);
   padding: 0.85rem;
+  display: grid;
+  align-content: space-between;
+  min-height: 150px;
 }
 
 .floorplan-ghost {
   position: absolute;
-  inset: 18% 12% 16% 12%;
+  left: 12%;
+  top: 22%;
+  width: var(--plan-w, 76%);
+  height: var(--plan-d, 58%);
   border: 1.5px solid rgba(245, 239, 232, 0.22);
   border-radius: 4px;
   clip-path: polygon(0 0, 100% 0, 100% 68%, 70% 68%, 70% 100%, 0 100%);
   opacity: 0.85;
+  background:
+    linear-gradient(90deg, transparent 48%, rgba(245, 239, 232, 0.08) 48% 52%, transparent 52%),
+    linear-gradient(transparent 48%, rgba(245, 239, 232, 0.06) 48% 52%, transparent 52%);
+}
+
+.media-chips {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
 }
 
 .property-media .tag {
+  background: rgba(18, 13, 10, 0.55);
+}
+
+.tag-soft {
+  background: rgba(201, 166, 107, 0.18) !important;
+  color: var(--crema);
+  border: 1px solid rgba(201, 166, 107, 0.28);
+}
+
+.media-dims {
   position: relative;
   z-index: 1;
-  background: rgba(18, 13, 10, 0.55);
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(245, 239, 232, 0.72);
+  font-weight: 600;
 }
 
 .property-body {
@@ -131,9 +163,28 @@
   align-content: start;
 }
 
+.property-title-row {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
 .property-body h2 {
   font-size: 1.28rem;
   line-height: 1.2;
+}
+
+.costar-id {
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  color: var(--crema);
+  background: rgba(201, 166, 107, 0.12);
+  border: 1px solid rgba(201, 166, 107, 0.22);
+  border-radius: 6px;
+  padding: 0.28rem 0.45rem;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
 }
 
 .addr {
@@ -150,8 +201,18 @@
 }
 
 .matterport {
-  opacity: 0.75;
+  opacity: 0.88;
   font-size: 0.8rem;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.mp-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  font-weight: 700;
 }
 
 .stats {
@@ -162,6 +223,11 @@
   padding: 0.65rem 0;
   border-top: 1px solid rgba(245, 239, 232, 0.07);
   border-bottom: 1px solid rgba(245, 239, 232, 0.07);
+}
+
+.tour-dd {
+  font-size: 0.88rem;
+  color: var(--crema);
 }
 
 .stats div {

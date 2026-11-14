@@ -4,13 +4,16 @@ import "./landing.css";
 interface Props {
   onStart: (name: string) => void | Promise<void>;
   onJoin: (code: string, name: string) => void;
+  onJudgeDemo: () => void | Promise<void>;
+  demoBusy?: boolean;
 }
 
-export function Landing({ onStart, onJoin }: Props) {
+export function Landing({ onStart, onJoin, onJudgeDemo, demoBusy }: Props) {
   const [name, setName] = useState(localStorage.getItem("playfirst.name") || "");
   const [joinCode, setJoinCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState<"host" | "join">("host");
+  const locked = busy || !!demoBusy;
 
   return (
     <main className="landing">
@@ -48,6 +51,7 @@ export function Landing({ onStart, onJoin }: Props) {
               onChange={(e) => setName(e.target.value)}
               maxLength={24}
               aria-label="Your name"
+              disabled={locked}
             />
             <div className="mode-toggle" role="tablist" aria-label="Host or join">
               <button
@@ -56,6 +60,7 @@ export function Landing({ onStart, onJoin }: Props) {
                 type="button"
                 role="tab"
                 aria-selected={mode === "host"}
+                disabled={locked}
               >
                 Host café
               </button>
@@ -65,6 +70,7 @@ export function Landing({ onStart, onJoin }: Props) {
                 type="button"
                 role="tab"
                 aria-selected={mode === "join"}
+                disabled={locked}
               >
                 Join room
               </button>
@@ -76,12 +82,13 @@ export function Landing({ onStart, onJoin }: Props) {
                 value={joinCode}
                 onChange={(e) => setJoinCode(e.target.value.trim())}
                 aria-label="Room code"
+                disabled={locked}
               />
             )}
             <button
               className="btn"
               type="button"
-              disabled={!name.trim() || busy || (mode === "join" && !joinCode)}
+              disabled={!name.trim() || locked || (mode === "join" && !joinCode)}
               onClick={async () => {
                 setBusy(true);
                 try {
@@ -94,6 +101,17 @@ export function Landing({ onStart, onJoin }: Props) {
             >
               {busy ? "Opening…" : mode === "host" ? "Choose a property" : "Enter café"}
             </button>
+            <button
+              className="btn btn-ghost judge-demo-btn"
+              type="button"
+              disabled={locked}
+              onClick={() => void onJudgeDemo()}
+            >
+              {demoBusy ? "Starting demo…" : "Judge demo"}
+            </button>
+            <p className="demo-hint">
+              One-click Midtown host — or open <code>/?demo=1</code>
+            </p>
           </div>
         </div>
       </div>

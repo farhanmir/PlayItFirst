@@ -667,6 +667,178 @@
   color: var(--danger);
 }
 
+.rival-lede {
+  margin: 0 0 0.35rem;
+}
+
+.rival-meta {
+  display: flex;
+  gap: 0.7rem;
+  align-items: center;
+  padding: 0.55rem 0.65rem;
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.rival-badge {
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 8px;
+  flex-shrink: 0;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--rival-tone, #6b4f3a) 70%, #1a120c), #120e0b),
+    radial-gradient(circle at 30% 30%, rgba(245, 239, 232, 0.2), transparent 60%);
+  border: 1px solid rgba(245, 239, 232, 0.12);
+}
+
+.rival-meta strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1rem;
+}
+
+.rival-meta span {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.rival-manager {
+  color: var(--crema) !important;
+  margin-top: 0.1rem;
+}
+
+.rival-wait,
+.rival-lead {
+  margin: 0.45rem 0 0.2rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.rival-lead.ahead {
+  color: var(--sage-bright);
+}
+
+.rival-lead.behind {
+  color: var(--ember);
+}
+
+.rival-bars {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0.35rem 0 0.55rem;
+}
+
+.race-bar-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  margin-bottom: 0.25rem;
+}
+
+.race-bar-head span {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.race-track {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  border: 1px solid rgba(245, 239, 232, 0.08);
+}
+
+.race-fill {
+  height: 100%;
+  border-radius: inherit;
+  transition: width 0.45s ease;
+}
+
+.race-you .race-fill {
+  background: linear-gradient(90deg, var(--sage), var(--sage-bright));
+}
+
+.race-rival .race-fill {
+  background: linear-gradient(90deg, var(--ember-deep), var(--ember));
+}
+
+.rival-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
+}
+
+.rival-grid > div {
+  padding: 0.65rem;
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.03);
+  display: grid;
+  gap: 0.4rem;
+}
+
+.rival-grid .rival-col {
+  border-color: rgba(201, 106, 58, 0.35);
+  background: rgba(154, 74, 34, 0.1);
+}
+
+.rival-grid h4 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  line-height: 1.25;
+}
+
+.demo-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  background: rgba(12, 9, 7, 0.55);
+  backdrop-filter: blur(6px);
+  animation: fade-in 0.35s ease both;
+}
+
+.demo-card {
+  width: min(420px, 100%);
+  padding: 1.4rem 1.5rem 1.55rem;
+  text-align: center;
+  display: grid;
+  gap: 0.35rem;
+  justify-items: center;
+}
+
+.demo-kicker {
+  margin: 0;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--crema);
+  font-weight: 700;
+}
+
+.demo-card h2 {
+  margin: 0.15rem 0 0.55rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--foam);
+  line-height: 1.35;
+}
+
+.demo-pulse {
+  width: 2.5rem;
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, var(--ember), transparent);
+  background-size: 200% 100%;
+  animation: ambient-drift 1.4s linear infinite;
+}
+
 .timeline-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

@@ -15,12 +15,16 @@ Open http://localhost:5173
 
 ## Demo path (2 minutes)
 
+**Fastest for judges:** click **Judge demo** on the landing page, or open `http://localhost:5173/?demo=1` — auto-hosts Midtown, enters the floor, and opens the café.
+
+Manual path:
+
 1. Enter your name → **Host café**
 2. Pick a Houston or LA storefront (rent/size/traffic become the rules)
 3. **Build** furniture or drag the **Table** markers → Sync layout
 4. **Open for business** → WASD + Take order / Make coffee / Serve (`E` / `F` / `R`)
 5. Answer the AI director + message Jamie in **Ops** / Photon
-6. Check **Future** for alternate timelines, then **Plan** → generate blueprint
+6. Check **Future** for the rival café race + alternate timelines, then **Plan** → generate blueprint
 7. Friends scan the HUD QR to join as baristas
 
 ## What works
@@ -39,10 +43,12 @@ Open http://localhost:5173
 | Nessie finance ledger | ✅ Local + optional `NESSIE_KEY` |
 | Photon manager chat | ✅ Natural-language actions |
 | Business time machine | ✅ Alternate future compare |
+| Rival café race | ✅ Simulated competitor score on Future |
+| Judge demo (`/?demo=1`) | ✅ One-click Midtown auto-host |
 | Launch blueprint | ✅ From gameplay session |
 | WebAudio café SFX | ✅ Unlock on first gesture |
 
-Stretch: live CoStar/Matterport APIs, Photon voice, Vision Pro, competitive dual-café, hosted Deepagents.
+Stretch: live CoStar/Matterport APIs, Photon voice, Vision Pro, hosted Deepagents.
 
 ## Architecture
 

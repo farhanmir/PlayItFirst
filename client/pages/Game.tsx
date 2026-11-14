@@ -12,6 +12,7 @@ import { BlueprintPanel } from "../components/BlueprintPanel";
 import { OrderRail } from "../components/OrderRail";
 import { TutorialTips } from "../components/TutorialTips";
 import { TimelineCompare } from "../components/TimelineCompare";
+import { RivalCafePanel } from "../components/RivalCafePanel";
 import { play } from "../lib/audio";
 import "./game.css";
 
@@ -92,7 +93,12 @@ export function Game() {
             </>
           )}
           {tab === "table" && <Tabletop snapshot={snapshot} />}
-          {tab === "future" && <TimelineCompare snapshot={snapshot} />}
+          {tab === "future" && (
+            <>
+              <RivalCafePanel snapshot={snapshot} />
+              <TimelineCompare snapshot={snapshot} />
+            </>
+          )}
           {tab === "plan" && <BlueprintPanel markdown={blueprint} />}
         </div>
       </div>

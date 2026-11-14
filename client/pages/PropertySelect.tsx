@@ -36,50 +36,82 @@ export function PropertySelect() {
       </header>
 
       <section className="property-grid rise-delay">
-        {properties.map((p) => (
-          <article key={p.id} className="property-card" style={{ ["--tone" as string]: p.imageTone }}>
-            <div className="property-media">
-              <div className="floorplan-ghost" aria-hidden />
-              <span className="tag">{p.city}</span>
-            </div>
-            <div className="property-body">
-              <h2>{p.name}</h2>
-              <p className="addr">
-                {p.neighborhood} · {p.address}
-              </p>
-              <p className="desc">{p.description}</p>
-              <dl className="stats">
-                <div>
-                  <dt>Rent</dt>
-                  <dd>${p.monthlyRent.toLocaleString()}/mo</dd>
+        {properties.map((p) => {
+          const rentPsf = p.monthlyRent / p.sqft;
+          return (
+            <article key={p.id} className="property-card" style={{ ["--tone" as string]: p.imageTone }}>
+              <div className="property-media">
+                <div
+                  className="floorplan-ghost"
+                  aria-hidden
+                  style={{
+                    ["--plan-w" as string]: `${Math.min(100, (p.width / 22) * 100)}%`,
+                    ["--plan-d" as string]: `${Math.min(100, (p.depth / 14) * 100)}%`,
+                  }}
+                />
+                <div className="media-chips">
+                  <span className="tag">{p.city}</span>
+                  <span className="tag tag-soft">Matterport twin</span>
                 </div>
-                <div>
-                  <dt>Size</dt>
-                  <dd>{p.sqft} sqft</dd>
+                <p className="media-dims">
+                  {p.width}m × {p.depth}m plate
+                </p>
+              </div>
+              <div className="property-body">
+                <div className="property-title-row">
+                  <h2>{p.name}</h2>
+                  <code className="costar-id" title="CoStar listing id">
+                    {p.costarId}
+                  </code>
                 </div>
-                <div>
-                  <dt>Capacity</dt>
-                  <dd>{p.capacity}</dd>
-                </div>
-                <div>
-                  <dt>Traffic</dt>
-                  <dd>{Math.round(p.footTraffic * 100)}%</dd>
-                </div>
-              </dl>
-              <p className="matterport">{p.matterportHint}</p>
-              <button
-                className="btn"
-                type="button"
-                onClick={() => {
-                  conn?.send({ t: "select_property", propertyId: p.id });
-                  set({ screen: "game" });
-                }}
-              >
-                Open this property
-              </button>
-            </div>
-          </article>
-        ))}
+                <p className="addr">
+                  {p.neighborhood} · {p.address}
+                </p>
+                <p className="desc">{p.description}</p>
+                <dl className="stats">
+                  <div>
+                    <dt>Rent</dt>
+                    <dd>${p.monthlyRent.toLocaleString()}/mo</dd>
+                  </div>
+                  <div>
+                    <dt>$ / sqft</dt>
+                    <dd>${rentPsf.toFixed(2)}</dd>
+                  </div>
+                  <div>
+                    <dt>Size</dt>
+                    <dd>{p.sqft.toLocaleString()} sqft</dd>
+                  </div>
+                  <div>
+                    <dt>Capacity</dt>
+                    <dd>{p.capacity}</dd>
+                  </div>
+                  <div>
+                    <dt>Traffic</dt>
+                    <dd>{Math.round(p.footTraffic * 100)}%</dd>
+                  </div>
+                  <div>
+                    <dt>Tour</dt>
+                    <dd className="tour-dd">3D walk</dd>
+                  </div>
+                </dl>
+                <p className="matterport">
+                  <span className="mp-label">Floorplate</span>
+                  {p.matterportHint}
+                </p>
+                <button
+                  className="btn"
+                  type="button"
+                  onClick={() => {
+                    conn?.send({ t: "select_property", propertyId: p.id });
+                    set({ screen: "game" });
+                  }}
+                >
+                  Open this property
+                </button>
+              </div>
+            </article>
+          );
+        })}
       </section>
     </main>
   );
