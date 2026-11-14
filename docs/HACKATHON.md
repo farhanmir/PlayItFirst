@@ -1,10 +1,10 @@
-# SoftOpen — HackPrinceton pitch kit
+# Play It First — HackPrinceton pitch kit
 
 ## One-liner
 Play your business before you pay for it — a multiplayer café soft opening inside real commercial properties.
 
 ## Closing line
-Your grand opening starts with a SoftOpen.
+Your grand opening starts when you play it first.
 
 ## Tracks / sponsors to hit in the demo
 | Sponsor | Show this |
@@ -19,7 +19,7 @@ Your grand opening starts with a SoftOpen.
 | SpaceXSI / Cursor | Built with agents; Gitzilla patterns reused |
 
 ## Two-minute script
-0:00 Hook — “Before every grand opening, there's a soft opening. We built one you can play.” → SoftOpen  
+0:00 Hook — “Before every grand opening, there's a soft opening. We built one you can play.” → Play It First  
 0:20 Reveal — Judge demo (`/?demo=1`) Midtown CoStar listing → Matterport floor becomes playable café  
 0:40 Judges play — QR join; highlighted station action / Space; phone + desktop co-op  
 1:00 Chaos — rush director + Jamie ping/call  
@@ -29,7 +29,7 @@ Your grand opening starts with a SoftOpen.
 `/?demo=1` hosts a room, selects Midtown, opens doors, then sends `demo_boost` (queue + rush director + Jamie ping).
 
 ## Social good (say it once)
-Entrepreneurship is expensive and intimidating. SoftOpen lets people practice ownership — money, staffing, layout — before risking rent.
+Entrepreneurship is expensive and intimidating. Play It First lets people practice ownership — money, staffing, layout — before risking rent.
 
 ## Commands
 ```bash

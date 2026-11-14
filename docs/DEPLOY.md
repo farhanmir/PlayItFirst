@@ -1,10 +1,10 @@
-# SoftOpen public deploy
+# Play It First public deploy
 
 Use the free **single-service Render Blueprint** first. It serves the built Vite game, API and authoritative WebSocket rooms together. No Vercel project or cross-origin configuration is required.
 
 ## Render (preferred, free)
 
-1. In Render, create a Blueprint from `farhanmir/SoftOpen`, branch `main`, using the existing `render.yaml`. Confirm the service plan is **Free**.
+1. In Render, create a Blueprint from `farhanmir/PlayItFirst`, branch `main`, using the existing `render.yaml`. Confirm the service plan is **Free**.
 2. The blueprint sets Node 22, `npm ci --include=dev && npm run build`, `npm start`, and health check `/api/health`. Keep development dependencies during build/runtime because `tsx` runs the server.
 3. Leave `VITE_API_BASE_URL`, `VITE_WS_URL`, `VITE_PUBLIC_ORIGIN`, `FRONTEND_ORIGIN` and `CORS_ORIGINS` unset for this same-origin deployment. Put optional sponsor secrets only in the service dashboard.
 4. Open the assigned `https://<service>.onrender.com/?demo=1`. Verify `/api/health`, a human take/brew/serve, then scan the invite QR on a real phone. Both clients must use the same HTTPS origin and WSS `/ws`; move furniture while both remain connected.

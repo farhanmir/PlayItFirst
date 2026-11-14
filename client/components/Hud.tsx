@@ -33,7 +33,7 @@ export function Hud({
   return (
     <header className={`hud-top panel ${live ? "hud-live" : ""} ${compact ? "hud-compact" : ""}`}>
       <div className="hud-brand">
-        <strong>SoftOpen</strong>
+        <strong>Play It First</strong>
         {snapshot.open ? <span className="live-dot" title="Doors open">Open</span> : <span className="tag">Build</span>}
         <span className={`conn ${status}`} title={`Connection: ${status}`}>
           {status}

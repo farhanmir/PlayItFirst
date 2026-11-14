@@ -1,6 +1,6 @@
-# SoftOpen — Implementation Alignment Report
+# Play It First — Implementation Alignment Report
 
-Living audit against the HackPrinceton product vision. Former name: **PlayFirst** (storage keys still migrate).
+Living audit against the HackPrinceton product vision. Former names: **SoftOpen** / **PlayFirst** (storage keys still migrate).
 
 ---
 
@@ -17,13 +17,13 @@ Living audit against the HackPrinceton product vision. Former name: **PlayFirst*
 | Cameras | `client/components/CafeScene.tsx`, `client/lib/look.ts` | First / third / monitor / dollhouse |
 
 ### User journey
-1. **Landing** — SoftOpen brand · Open Your Business / Join a Business / Judge demo  
+1. **Landing** — Play It First brand · Open Your Business / Join a Business / Judge demo  
 2. **Property** — CoStar-shaped listings; rent/size/traffic shown  
 3. **Game** — Build + Play + Ops/Table/Future/Plan  
 4. **Demo** `/?demo=1` — Midtown, open doors, rush boost  
 
 ### Branding
-Product: **SoftOpen**. Tagline: *Play your business before you pay for it.*  
+Product: **Play It First**. Tagline: *Play your business before you pay for it.*  
 Compat: `softopen.*` localStorage + legacy `playfirst.*` dual-write.
 
 ---
@@ -64,4 +64,4 @@ Compat: `softopen.*` localStorage + legacy `playfirst.*` dual-write.
 
 See **GitHub issue #2** and `docs/PROGRESS.md` for the P0 vertical-slice plan (real property pairing, causal director, Photon/Deepagents honesty).
 
-Rebrand complete on branch `cursor/softopen-rebrand-078f`. Gameplay architecture unchanged.
+Current product name: **Play It First**, implemented directly on `main`. Repository: `farhanmir/PlayItFirst`. Legacy storage keys and hosting identifiers remain compatible.

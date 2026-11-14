@@ -1,4 +1,4 @@
-/** SoftOpen localStorage helpers with PlayFirst key migration. */
+/** Play It First storage; retain SoftOpen/PlayFirst keys for existing players. */
 
 const NAME_KEY = "softopen.name";
 const NAME_LEGACY = "playfirst.name";

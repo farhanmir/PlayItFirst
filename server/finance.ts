@@ -92,7 +92,7 @@ export async function provisionNessieAccount(customerName: string): Promise<stri
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         type: "Checking",
-        nickname: "SoftOpen Café",
+        nickname: "Play It First Café",
         balance: 20000,
         rewards: 0,
       }),

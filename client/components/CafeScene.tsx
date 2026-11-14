@@ -414,7 +414,7 @@ function CafeRoom({
         </mesh>
       ))}
       <group position={[0.17, 2, 5.3]} rotation={[0, Math.PI / 2, 0]}>
-        <Text fontSize={0.35} color="#49644d" anchorX="center">SoftOpen</Text>
+        <Text fontSize={0.35} color="#49644d" anchorX="center">Play It First</Text>
         <Text position={[0, -0.32, 0]} fontSize={0.105} letterSpacing={0.12} color="#77654e">SLOW MORNINGS · GOOD COFFEE</Text>
       </group>
       <mesh position={[w / 2, 2.35, d - 0.12]}>

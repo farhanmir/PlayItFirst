@@ -1,4 +1,4 @@
-/** Shared contracts for SoftOpen client + authoritative server. */
+/** Shared contracts for Play It First client + authoritative server. */
 import type { ManagerView } from "./manager";
 
 export type BusinessType = "cafe" | "restaurant" | "gaming_cafe" | "bookstore" | "retail" | "gym";

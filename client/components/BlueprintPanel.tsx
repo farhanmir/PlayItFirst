@@ -27,7 +27,7 @@ export function BlueprintPanel({ markdown }: { markdown: string | null }) {
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a");
                 a.href = url;
-                a.download = "softopen-launch-blueprint.md";
+                a.download = "playitfirst-launch-blueprint.md";
                 a.click();
                 URL.revokeObjectURL(url);
               }}

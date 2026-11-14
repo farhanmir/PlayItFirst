@@ -13,7 +13,7 @@ export function PropertySelect() {
     <main className="property-page">
       <header className="property-head rise">
         <div className="property-intro">
-          <p className="brand-inline">SoftOpen</p>
+          <p className="brand-inline">Play It First</p>
           <h1>Choose your dream café</h1>
           <p className="property-lede">
             Real commercial listings in Houston and Los Angeles. Rent, size, and foot traffic set the rules.

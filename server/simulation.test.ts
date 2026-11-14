@@ -77,7 +77,7 @@ describe("café simulation", () => {
   it("builds a blueprint markdown", () => {
     const snap = selectProperty(createRoomSnapshot("demo"), listing);
     const md = buildBlueprint(snap);
-    expect(md).toContain("SoftOpen Business Launch Blueprint");
+    expect(md).toContain("Play It First Business Launch Blueprint");
     expect(md).toContain(listing.name);
     expect(md).toMatch(/Disclaimer|educational simulation/i);
     expect(md).toMatch(/Data provenance|Gameplay assumptions/i);

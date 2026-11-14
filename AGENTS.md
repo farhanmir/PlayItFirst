@@ -1,4 +1,4 @@
-# SoftOpen — instructions for coding agents
+# Play It First — instructions for coding agents
 
 ## Workflow
 - Owner requests local Codex work directly on `main`, with small focused commits and pushes. Do not create new branches or PRs for routine tasks. Fetch and inspect remote main before editing; never force-push, reset, discard uncommitted work, or overwrite teammates' changes. Coordinate with the owner before concurrent edits to shared files. Run targeted tests and typecheck before pushing; run build for UI/deployment changes.
@@ -6,7 +6,7 @@
 - Read issue #2 and latest docs/PROGRESS.md. Preserve working architecture and integrations; update progress with actual evidence, screenshots when available, and blockers. No new stretch features until the core game is enjoyable.
 
 ## Product priority: GAME FIRST, not dashboard
-SoftOpen is a playable business, not a dashboard with a 3D preview. The owner's current playtest finds it dashboard-like. Make an immediately enjoyable playable café before adding more features. Keep the shared authoritative Node/WebSocket simulation and existing R3F renderer. One polished café and one complete human-played shift are better than many panels. Reference art direction: cozy first-person café simulator, Sims-style build mode, Overcooked-like service and feedback. These are inspiration, not assets; use original procedural meshes or appropriately licensed assets with attribution, no ripped game assets.
+Play It First is a playable business, not a dashboard with a 3D preview. The owner's current playtest finds it dashboard-like. Make an immediately enjoyable playable café before adding more features. Keep the shared authoritative Node/WebSocket simulation and existing R3F renderer. One polished café and one complete human-played shift are better than many panels. Reference art direction: cozy first-person café simulator, Sims-style build mode, Overcooked-like service and feedback. These are inspiration, not assets; use original procedural meshes or appropriately licensed assets with attribution, no ripped game assets.
 
 ### P0: player-facing experience
 1. Make the 3D scene the dominant full-viewport experience on desktop and phone. Default to directly playable view with minimal game HUD. Hide finance/integration/analytics/crew/log panels behind an optional pause/management drawer. Keep QR invite and sound/controls accessible. Don't let phase, previous camera selection or a fallback hide the playable scene. Verify actual WebGL rendering (including errors, dimensions, camera, lighting), not just compile.

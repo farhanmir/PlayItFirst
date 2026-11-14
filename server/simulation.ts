@@ -1,6 +1,6 @@
 /**
  * Authoritative café simulation — customers, queues, orders, layout throughput.
- * Pattern inspired by Gitzilla's authoritative 30 Hz sim, specialized for SoftOpen.
+ * Pattern inspired by Gitzilla's authoritative 30 Hz sim, specialized for Play It First.
  */
 import { randomUUID } from "node:crypto";
 import type {
@@ -918,7 +918,7 @@ export function buildBlueprint(snapshot: RoomSnapshot): string {
         ? "Local fixture listing"
         : "CoStar-shaped mock listing (set COSTAR_API_URL for live)";
 
-  return `# SoftOpen Business Launch Blueprint
+  return `# Play It First Business Launch Blueprint
 
 Generated from your gameplay at **${p.name}**
 
@@ -966,10 +966,10 @@ ${snapshot.eventLog
 ## Next steps for a real launch
 1. Validate this CoStar listing with a broker and tour the Matterport / in-person space.
 2. Get contractor bids against the equipment list above.
-3. Run a soft-open staffing plan from your SoftOpen roles.
+3. Run a soft-open staffing plan from your Play It First roles.
 4. Confirm permits, health codes, and insurance for ${p.city}.
 
-> **Disclaimer:** SoftOpen is an educational simulation. A real launch still needs professional validation — market research, permits, insurance, contractor bids, and real financial planning. This blueprint is a starting conversation, not advice.
+> **Disclaimer:** Play It First is an educational simulation. A real launch still needs professional validation — market research, permits, insurance, contractor bids, and real financial planning. This blueprint is a starting conversation, not advice.
 `;
 }
 

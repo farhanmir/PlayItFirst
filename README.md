@@ -1,12 +1,12 @@
-# SoftOpen
+# Play It First
 
 > Play your business before you pay for it.
 
-SoftOpen is a multiplayer business simulation that turns real commercial properties into playable businesses. Players design their storefront, operate it together, serve customers, manage finances, and experiment with different business decisions inside a living simulation.
+Play It First is a multiplayer business simulation that turns real commercial properties into playable businesses. Players design their storefront, operate it together, serve customers, manage finances, and experiment with different business decisions inside a living simulation.
 
 Before every grand opening, there's a soft opening. We built one you can play.
 
-**Repo:** https://github.com/farhanmir/SoftOpen
+**Repo:** https://github.com/farhanmir/PlayItFirst
 
 ## Run
 
@@ -95,4 +95,4 @@ Integration status is exposed at `/api/integrations` and on the landing/game bad
 
 ## Compatibility
 
-Former product name: **PlayFirst**. Resume tokens and localStorage name keys under `playfirst.*` are still read/written alongside `softopen.*` so mid-hackathon clients keep working.
+Former product names: **SoftOpen** and **PlayFirst**. Resume tokens and localStorage name keys under `playfirst.*` are still read/written alongside `softopen.*` so mid-hackathon clients keep working.

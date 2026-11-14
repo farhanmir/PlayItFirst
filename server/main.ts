@@ -212,7 +212,7 @@ server.on("request", (req, res) => {
     }
 
     if (url.pathname === "/api/health") {
-      json(res, 200, { ok: true, service: "softopen", legacy: "playfirst" });
+      json(res, 200, { ok: true, service: "softopen", product: "Play It First", legacy: "playfirst" });
       return;
     }
 
@@ -231,6 +231,6 @@ server.on("request", (req, res) => {
 });
 
 server.listen(port, () => {
-  console.log(`\n  SoftOpen running at http://localhost:${port}`);
+  console.log(`\n  Play It First running at http://localhost:${port}`);
   console.log(`  WebSocket: ws://localhost:${port}/ws\n`);
 });

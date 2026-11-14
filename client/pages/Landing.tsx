@@ -40,13 +40,13 @@ export function Landing({ onStart, onJoin, onJudgeDemo, demoBusy }: Props) {
 
       <div className="landing-content">
         <div className="landing-copy">
-          <p className="brand brand-reveal">SoftOpen</p>
+          <p className="brand brand-reveal">Play It First</p>
           <h1 className="rise">Play your business before you pay for it.</h1>
           <p className="lede rise-delay">
             Turn real commercial properties into playable businesses. Build your dream café, invite your friends, serve
             customers, and discover what it takes to make your business work before opening its doors.
           </p>
-          <p className="brand-line rise-delay">Your grand opening starts with a SoftOpen.</p>
+          <p className="brand-line rise-delay">Your grand opening starts when you play it first.</p>
           <div className="biz-types" aria-label="Business types">
             <span className="biz-type active">Café</span>
             <span className="biz-type muted" title="Coming after the café MVP">

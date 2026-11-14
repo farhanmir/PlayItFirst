@@ -1,6 +1,10 @@
-# SoftOpen — Progress (Issue #2)
+# Play It First — Progress (Issue #2)
 
-Tracking https://github.com/farhanmir/SoftOpen/issues/2. Work directly on `main` under AGENTS.md.
+Tracking https://github.com/farhanmir/PlayItFirst/issues/2. Work directly on `main` under AGENTS.md.
+
+## Play It First rename
+
+Renamed the visible product, HTML metadata, café sign, blueprint export, package name and active project links. Git remote now points to `https://github.com/farhanmir/PlayItFirst.git`. Existing Render service identifier, API compatibility headers and save/resume keys are retained. Verified the production build in Edge, including the manager approval flow on two clients. Screenshots: [landing](screenshots/playitfirst-landing.png), [gameplay](screenshots/playitfirst-gameplay.png), [build](screenshots/playitfirst-build.png). All 70 tests, typecheck and build pass. Model credentials remain absent, so provider acceptance is still pending.
 
 ## Shared business manager — issue #8
 
