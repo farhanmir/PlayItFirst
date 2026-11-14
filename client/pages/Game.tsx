@@ -15,6 +15,9 @@ import { TimelineCompare } from "../components/TimelineCompare";
 import { RivalCafePanel } from "../components/RivalCafePanel";
 import { RolePicker } from "../components/RolePicker";
 import { HelpOverlay } from "../components/HelpOverlay";
+import { PhotonCall } from "../components/PhotonCall";
+import { DollhouseToggle } from "../components/DollhouseToggle";
+import type { CafeViewMode } from "../components/CafeScene";
 import { play } from "../lib/audio";
 import "./game.css";
 
@@ -23,7 +26,11 @@ export function Game() {
   const blueprint = useApp((s) => s.blueprint);
   const mobile = useApp((s) => s.mobile);
   const [tab, setTab] = useState<"build" | "ops" | "table" | "future" | "plan">("ops");
-  const firstPerson = useMemo(() => mobile && snapshot?.phase === "play", [mobile, snapshot?.phase]);
+  const [viewMode, setViewMode] = useState<CafeViewMode>("orbit");
+  const firstPerson = useMemo(
+    () => (mobile && snapshot?.phase === "play") || viewMode === "play",
+    [mobile, snapshot?.phase, viewMode],
+  );
 
   useEffect(() => {
     if (!snapshot) return;
@@ -50,9 +57,15 @@ export function Game() {
       <Hud snapshot={snapshot} />
       <HelpOverlay />
       <div className="game-stage">
-        <CafeScene snapshot={snapshot} firstPerson={!!firstPerson && snapshot.phase !== "build"} />
+        <CafeScene
+          snapshot={snapshot}
+          firstPerson={!!firstPerson && snapshot.phase !== "build"}
+          viewMode={viewMode}
+        />
+        {!mobile && <DollhouseToggle mode={viewMode} onChange={setViewMode} />}
         <TutorialTips snapshot={snapshot} />
         <DirectorPanel snapshot={snapshot} />
+        <PhotonCall snapshot={snapshot} />
         <RolePicker snapshot={snapshot} />
         {snapshot.phase === "play" && (
           <>

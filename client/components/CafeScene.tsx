@@ -33,21 +33,25 @@ const PALETTE = {
   angry: "#c45c4a",
 } as const;
 
+export type CafeViewMode = "orbit" | "dollhouse" | "play";
+
 interface Props {
   snapshot: RoomSnapshot;
   firstPerson: boolean;
+  viewMode?: CafeViewMode;
 }
 
-export function CafeScene({ snapshot, firstPerson }: Props) {
+export function CafeScene({ snapshot, firstPerson, viewMode = "orbit" }: Props) {
   const property = snapshot.property!;
   const you = useApp((s) => s.you);
   const me = snapshot.players.find((p) => p.id === you);
+  const mode = firstPerson ? "play" : viewMode;
 
   return (
     <div className="cafe-canvas">
       <Canvas shadows dpr={[1, 1.6]} gl={{ antialias: true, powerPreference: "high-performance" }}>
         <color attach="background" args={[PALETTE.bg]} />
-        <fog attach="fog" args={[PALETTE.fog, 14, 32]} />
+        <fog attach="fog" args={[PALETTE.fog, mode === "dollhouse" ? 18 : 14, mode === "dollhouse" ? 40 : 32]} />
 
         {/* Warm key + cool fill */}
         <ambientLight intensity={0.22} color="#f3ebe2" />
@@ -70,8 +74,23 @@ export function CafeScene({ snapshot, firstPerson }: Props) {
         <pointLight position={[property.width * 0.35, 2.4, property.depth * 0.4]} intensity={0.55} color="#d9773f" distance={10} decay={2} />
         <pointLight position={[property.width * 0.7, 2.4, property.depth * 0.55]} intensity={0.4} color="#c4a574" distance={9} decay={2} />
 
-        {firstPerson && me ? (
+        {mode === "play" && me ? (
           <FollowCam x={me.x} z={me.z} />
+        ) : mode === "dollhouse" ? (
+          <>
+            <PerspectiveCamera
+              makeDefault
+              position={[property.width / 2 + 2, 16, property.depth / 2 + 10]}
+              fov={38}
+            />
+            <OrbitControls
+              target={[property.width / 2, 0.2, property.depth / 2]}
+              maxPolarAngle={Math.PI / 2.4}
+              minPolarAngle={0.15}
+              minDistance={8}
+              maxDistance={36}
+            />
+          </>
         ) : (
           <>
             <PerspectiveCamera makeDefault position={[property.width / 2, 11, property.depth + 8]} fov={42} />
@@ -84,12 +103,12 @@ export function CafeScene({ snapshot, firstPerson }: Props) {
           </>
         )}
 
-        <CafeRoom property={property} furniture={snapshot.layout?.furniture ?? []} />
+        <CafeRoom property={property} furniture={snapshot.layout?.furniture ?? []} cutaway={mode === "dollhouse"} />
         {snapshot.customers.map((c) => (
           <CustomerMesh key={c.id} customer={c} />
         ))}
         {snapshot.players.map((p) => (
-          <PlayerMesh key={p.id} player={p} isYou={p.id === you} hideBody={firstPerson && p.id === you} />
+          <PlayerMesh key={p.id} player={p} isYou={p.id === you} hideBody={mode === "play" && p.id === you} />
         ))}
       </Canvas>
     </div>
@@ -111,9 +130,11 @@ function FollowCam({ x, z }: { x: number; z: number }) {
 function CafeRoom({
   property,
   furniture,
+  cutaway = false,
 }: {
   property: PropertyListing;
   furniture: FurnitureItem[];
+  cutaway?: boolean;
 }) {
   const w = property.width;
   const d = property.depth;
@@ -153,8 +174,8 @@ function CafeRoom({
         <meshStandardMaterial color="#3f5240" roughness={0.95} />
       </mesh>
 
-      {/* Walls — tinted by property listing tone */}
-      <Wall length={w} position={[w / 2, 1.45, 0]} color={property.imageTone} />
+      {/* Walls — tinted by property listing tone; dollhouse drops the front wall */}
+      {!cutaway && <Wall length={w} position={[w / 2, 1.45, 0]} color={property.imageTone} />}
       <Wall length={w} position={[w / 2, 1.45, d]} color={property.imageTone} />
       <Wall length={d} position={[0, 1.45, d / 2]} rotation={Math.PI / 2} color={property.imageTone} />
       <Wall length={d} position={[w, 1.45, d / 2]} rotation={Math.PI / 2} color={property.imageTone} />
