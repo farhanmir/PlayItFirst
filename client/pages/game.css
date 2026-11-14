@@ -72,17 +72,9 @@
   white-space: nowrap;
 }
 
-.help-fab {
-  position: absolute;
-  top: 4.6rem;
-  right: calc(minmax(280px, 340px) + 1.1rem);
-  z-index: 6;
-  right: 0.85rem;
-}
-
 .game .help-fab {
   position: fixed;
-  top: auto;
+  z-index: 6;
   bottom: 1rem;
   right: 1rem;
 }
