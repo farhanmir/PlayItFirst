@@ -16,16 +16,16 @@ const STATION_KIND: Record<string, FurnitureItem["kind"]> = {
 };
 
 const PALETTE = {
-  bg: "#1a1511",
-  fog: "#1c1410",
-  floor: "#5c4030",
-  plank: "#4a3428",
-  plankAlt: "#6b4f3a",
-  wall: "#3d2a20",
-  wallTrim: "#2a1c14",
+  bg: "#c8b7a0",
+  fog: "#d9cbb8",
+  floor: "#7a563c",
+  plank: "#6b4a32",
+  plankAlt: "#8a6344",
+  wall: "#f0e4d4",
+  wallTrim: "#5c4030",
   wood: "#8b5a3c",
   woodDark: "#5c4030",
-  woodTop: "#a67c52",
+  woodTop: "#c49a6c",
   crema: "#c4a574",
   foam: "#f3ebe2",
   espresso: "#3b2418",
@@ -35,10 +35,10 @@ const PALETTE = {
   metal: "#3a3a3c",
   metalLite: "#6a6a6e",
   fridge: "#9aa4ae",
-  glass: "#d8c2a4",
-  night: "#1a2233",
-  cityWarm: "#e8a05a",
-  cityCool: "#6b8cae",
+  glass: "#d8e8f4",
+  sky: "#8ec5e8",
+  cityWarm: "#f2c48a",
+  cityCool: "#9ec0de",
   rug: "#4a5c48",
   angry: "#c45c4a",
 } as const;
@@ -48,9 +48,11 @@ export type CafeViewMode = "first" | "third" | "monitor" | "dollhouse";
 interface Props {
   snapshot: RoomSnapshot;
   viewMode?: CafeViewMode;
+  /** Local Sims-style editor — does not force the room into build phase. */
+  buildMode?: boolean;
 }
 
-export function CafeScene({ snapshot, viewMode = "monitor" }: Props) {
+export function CafeScene({ snapshot, viewMode = "monitor", buildMode = false }: Props) {
   const property = snapshot.property!;
   const you = useApp((s) => s.you);
   const conn = useApp((s) => s.conn);
@@ -58,7 +60,9 @@ export function CafeScene({ snapshot, viewMode = "monitor" }: Props) {
   const me = snapshot.players.find((p) => p.id === you);
   const mode = viewMode;
   const canFloorPlace =
-    snapshot.phase === "build" && !!buildKind && (mode === "monitor" || mode === "dollhouse");
+    !!buildKind &&
+    (mode === "monitor" || mode === "dollhouse") &&
+    (buildMode || snapshot.phase === "build");
 
   const placeOnFloor = (x: number, z: number) => {
     if (!canFloorPlace || !buildKind || !conn || !property) return;
@@ -78,26 +82,26 @@ export function CafeScene({ snapshot, viewMode = "monitor" }: Props) {
         <color attach="background" args={[PALETTE.bg]} />
         <fog attach="fog" args={[PALETTE.fog, mode === "dollhouse" ? 18 : 12, mode === "dollhouse" ? 42 : 34]} />
 
-        {/* Warm key + cool fill */}
-        <ambientLight intensity={0.22} color="#f3ebe2" />
+        {/* Warm daylight café — soft sun through the windows */}
+        <ambientLight intensity={0.38} color="#fff4e8" />
         <directionalLight
           castShadow
-          position={[7, 11, 5]}
-          intensity={1.05}
-          color="#f0c9a0"
+          position={[8, 14, -2]}
+          intensity={1.35}
+          color="#ffe2b8"
           shadow-mapSize={[1024, 1024]}
           shadow-bias={-0.0004}
           shadow-camera-near={1}
           shadow-camera-far={40}
-          shadow-camera-left={-12}
-          shadow-camera-right={12}
-          shadow-camera-top={12}
-          shadow-camera-bottom={-12}
+          shadow-camera-left={-14}
+          shadow-camera-right={14}
+          shadow-camera-top={14}
+          shadow-camera-bottom={-14}
         />
-        <directionalLight position={[-6, 6, -4]} intensity={0.35} color="#8aa4c0" />
-        <hemisphereLight args={["#f3ebe2", "#3b2418", 0.42]} />
-        <pointLight position={[property.width * 0.35, 2.4, property.depth * 0.4]} intensity={0.55} color="#d9773f" distance={10} decay={2} />
-        <pointLight position={[property.width * 0.7, 2.4, property.depth * 0.55]} intensity={0.4} color="#c4a574" distance={9} decay={2} />
+        <directionalLight position={[-5, 7, 4]} intensity={0.28} color="#a8c4e0" />
+        <hemisphereLight args={["#fff7ee", "#6b4f3a", 0.55]} />
+        <pointLight position={[property.width * 0.35, 2.4, property.depth * 0.4]} intensity={0.45} color="#f0b878" distance={10} decay={2} />
+        <pointLight position={[property.width * 0.7, 2.4, property.depth * 0.55]} intensity={0.35} color="#c4a574" distance={9} decay={2} />
 
         <CameraRig
           mode={mode}
@@ -447,15 +451,15 @@ function WindowBank({ width, centerX, z }: { width: number; centerX: number; z: 
                 metalness={0.05}
               />
             </mesh>
-            {/* Exterior night city glow */}
+            {/* Exterior daylight + soft sky */}
             <mesh position={[0, 0, -0.12]}>
               <planeGeometry args={[paneW * 0.92, 1.05]} />
               <meshStandardMaterial
-                color={PALETTE.night}
+                color={PALETTE.sky}
                 emissive={i % 2 === 0 ? PALETTE.cityWarm : PALETTE.cityCool}
-                emissiveIntensity={0.55}
+                emissiveIntensity={0.42}
                 transparent
-                opacity={0.9}
+                opacity={0.92}
               />
             </mesh>
             {/* Soft city speckles */}
@@ -850,9 +854,12 @@ function personaColor(persona: Customer["persona"]): string {
 function CustomerMesh({ customer }: { customer: Customer }) {
   const angry = customer.state === "angry" || customer.patience < 20;
   const waiting = customer.state === "waiting" || customer.state === "ordering" || customer.state === "queue";
+  const moving = customer.state === "entering" || customer.state === "leaving" || customer.state === "queue";
   const body = angry ? PALETTE.angry : personaColor(customer.persona);
   const root = useRef<Group>(null);
   const bob = useRef<Group>(null);
+  const leftLeg = useRef<Group>(null);
+  const rightLeg = useRef<Group>(null);
   const orderLabel = customer.order ?? customer.preference;
   const target = useRef({ x: customer.x, z: customer.z });
   target.current = { x: customer.x, z: customer.z };
@@ -860,70 +867,78 @@ function CustomerMesh({ customer }: { customer: Customer }) {
   useFrame(({ clock }, dt) => {
     if (root.current) {
       const k = 1 - Math.exp(-9 * dt);
-      root.current.position.x = MathUtils.lerp(root.current.position.x, target.current.x, k);
-      root.current.position.z = MathUtils.lerp(root.current.position.z, target.current.z, k);
+      const nx = MathUtils.lerp(root.current.position.x, target.current.x, k);
+      const nz = MathUtils.lerp(root.current.position.z, target.current.z, k);
+      const dx = target.current.x - root.current.position.x;
+      const dz = target.current.z - root.current.position.z;
+      if (Math.hypot(dx, dz) > 0.02) root.current.rotation.y = Math.atan2(dx, dz);
+      root.current.position.x = nx;
+      root.current.position.z = nz;
     }
-    if (!bob.current) return;
     const t = clock.elapsedTime;
     const phase = customer.x * 2.3 + customer.z;
-    if (customer.state === "entering" || customer.state === "leaving") {
-      bob.current.position.y = Math.abs(Math.sin(t * 6 + phase)) * 0.04;
-    } else {
-      bob.current.position.y = Math.sin(t * 1.35 + phase) * 0.018;
+    if (bob.current) {
+      bob.current.position.y = moving ? Math.abs(Math.sin(t * 7 + phase)) * 0.05 : Math.sin(t * 1.35 + phase) * 0.018;
     }
+    const swing = moving ? Math.sin(t * 8 + phase) * 0.45 : 0;
+    if (leftLeg.current) leftLeg.current.rotation.x = swing;
+    if (rightLeg.current) rightLeg.current.rotation.x = -swing;
   });
 
   return (
     <group ref={root} position={[customer.x, 0, customer.z]}>
       <group ref={bob}>
-        <mesh position={[0, 0.82, 0]} castShadow>
-          <capsuleGeometry args={[0.2, 0.72, 4, 10]} />
-          <meshStandardMaterial color={body} roughness={0.65} />
+        <mesh position={[0, 0.95, 0]} castShadow>
+          <capsuleGeometry args={[0.22, 0.55, 4, 10]} />
+          <meshStandardMaterial color={body} roughness={0.62} />
         </mesh>
-        <mesh position={[0, 1.15, 0]} castShadow>
-          <capsuleGeometry args={[0.24, 0.08, 3, 8]} />
-          <meshStandardMaterial color={body} roughness={0.65} />
+        <mesh position={[0, 1.42, 0]} castShadow>
+          <sphereGeometry args={[0.18, 12, 12]} />
+          <meshStandardMaterial color="#f0dcc8" roughness={0.68} />
         </mesh>
-        <mesh position={[0, 1.48, 0]} castShadow>
-          <sphereGeometry args={[0.17, 12, 12]} />
-          <meshStandardMaterial color="#e8d5c4" roughness={0.7} />
-        </mesh>
-        <mesh position={[0, 1.58, -0.02]}>
-          <sphereGeometry args={[0.15, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
+        <mesh position={[0, 1.52, -0.02]}>
+          <sphereGeometry args={[0.16, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
           <meshStandardMaterial
             color={customer.persona === "office" ? "#2a2430" : customer.persona === "student" ? "#4a3428" : "#5c4030"}
             roughness={0.85}
           />
         </mesh>
+        <group ref={leftLeg} position={[-0.1, 0.55, 0]}>
+          <mesh position={[0, -0.22, 0]} castShadow>
+            <capsuleGeometry args={[0.07, 0.28, 3, 8]} />
+            <meshStandardMaterial color={PALETTE.espresso} roughness={0.75} />
+          </mesh>
+        </group>
+        <group ref={rightLeg} position={[0.1, 0.55, 0]}>
+          <mesh position={[0, -0.22, 0]} castShadow>
+            <capsuleGeometry args={[0.07, 0.28, 3, 8]} />
+            <meshStandardMaterial color={PALETTE.espresso} roughness={0.75} />
+          </mesh>
+        </group>
       </group>
 
       {waiting && (
-        <group position={[0, 1.95, 0]}>
+        <group position={[0, 2.05, 0]}>
           <mesh>
-            <boxGeometry args={[0.28, 0.22, 0.02]} />
-            <meshStandardMaterial color={PALETTE.espresso} emissive={PALETTE.ember} emissiveIntensity={0.25} />
+            <boxGeometry args={[Math.max(0.7, orderLabel.length * 0.11), 0.34, 0.04]} />
+            <meshStandardMaterial color="#fff8ef" emissive="#f5e6d2" emissiveIntensity={0.35} />
           </mesh>
-          <mesh position={[0, 0.02, 0.02]}>
-            <cylinderGeometry args={[0.05, 0.04, 0.08, 8]} />
-            <meshStandardMaterial color={PALETTE.crema} />
+          <mesh position={[0, -0.2, 0]} rotation={[Math.PI / 2, 0, 0]}>
+            <coneGeometry args={[0.08, 0.12, 4]} />
+            <meshStandardMaterial color="#fff8ef" />
           </mesh>
-          {orderLabel ? (
-            <Text
-              position={[0, 0.32, 0]}
-              fontSize={0.11}
-              color={PALETTE.foam}
-              anchorX="center"
-              anchorY="middle"
-              maxWidth={1.4}
-              outlineWidth={0.014}
-              outlineColor={PALETTE.espresso}
-            >
-              {orderLabel}
-            </Text>
-          ) : null}
+          <Text
+            position={[0, 0.02, 0.03]}
+            fontSize={0.14}
+            color={PALETTE.espresso}
+            anchorX="center"
+            anchorY="middle"
+            maxWidth={1.6}
+          >
+            {orderLabel}
+          </Text>
         </group>
       )}
-      {/* Patience ring — fills red as they wait */}
       {waiting && (
         <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <ringGeometry args={[0.32, 0.4, 24, 1, 0, Math.PI * 2 * Math.min(1, customer.patience / 100)]} />
@@ -953,27 +968,45 @@ function PlayerMesh({
   followLook?: boolean;
 }) {
   const root = useRef<Group>(null);
+  const leftLeg = useRef<Group>(null);
+  const rightLeg = useRef<Group>(null);
   const target = useRef({ x: player.x, z: player.z });
+  const last = useRef({ x: player.x, z: player.z });
   target.current = { x: player.x, z: player.z };
+  const drink = player.holding?.startsWith("drink:");
+  const brewing = player.holding?.startsWith("brewing:");
 
-  useFrame((_, dt) => {
+  useFrame(({ clock }, dt) => {
     if (!root.current) return;
     const k = 1 - Math.exp(-14 * dt);
-    root.current.position.x = MathUtils.lerp(root.current.position.x, target.current.x, k);
-    root.current.position.z = MathUtils.lerp(root.current.position.z, target.current.z, k);
+    const nx = MathUtils.lerp(root.current.position.x, target.current.x, k);
+    const nz = MathUtils.lerp(root.current.position.z, target.current.z, k);
+    const speed = Math.hypot(nx - last.current.x, nz - last.current.z) / Math.max(dt, 0.001);
+    last.current = { x: nx, z: nz };
+    root.current.position.x = nx;
+    root.current.position.z = nz;
     if (followLook) root.current.rotation.y = getLook().yaw;
+    const swing = speed > 0.4 ? Math.sin(clock.elapsedTime * 9) * 0.5 : 0;
+    if (leftLeg.current) leftLeg.current.rotation.x = swing;
+    if (rightLeg.current) rightLeg.current.rotation.x = -swing;
   });
 
-  if (hideBody) return null;
+  if (hideBody) {
+    return drink || brewing ? (
+      <group ref={root} position={[player.x, 0, player.z]}>
+        <HeldCup drink={!!drink} brewing={!!brewing} firstPerson />
+      </group>
+    ) : null;
+  }
 
   return (
     <group ref={root} position={[player.x, 0, player.z]}>
-      <mesh position={[0, 0.95, 0]} castShadow>
-        <capsuleGeometry args={[0.24, 0.85, 4, 10]} />
+      <mesh position={[0, 1.05, 0]} castShadow>
+        <capsuleGeometry args={[0.24, 0.7, 4, 10]} />
         <meshStandardMaterial
           color={player.color}
           emissive={isYou ? player.color : "#000000"}
-          emissiveIntensity={isYou ? 0.22 : 0}
+          emissiveIntensity={isYou ? 0.18 : 0}
           roughness={0.55}
         />
       </mesh>
@@ -985,6 +1018,18 @@ function PlayerMesh({
         <torusGeometry args={[0.2, 0.035, 6, 16]} />
         <meshStandardMaterial color={PALETTE.foam} roughness={0.6} />
       </mesh>
+      <group ref={leftLeg} position={[-0.12, 0.55, 0]}>
+        <mesh position={[0, -0.24, 0]} castShadow>
+          <capsuleGeometry args={[0.08, 0.32, 3, 8]} />
+          <meshStandardMaterial color="#2f241c" roughness={0.8} />
+        </mesh>
+      </group>
+      <group ref={rightLeg} position={[0.12, 0.55, 0]}>
+        <mesh position={[0, -0.24, 0]} castShadow>
+          <capsuleGeometry args={[0.08, 0.32, 3, 8]} />
+          <meshStandardMaterial color="#2f241c" roughness={0.8} />
+        </mesh>
+      </group>
       <mesh position={[0, 2.12, 0]}>
         <boxGeometry args={[Math.max(0.7, player.name.length * 0.09), 0.22, 0.02]} />
         <meshStandardMaterial color={PALETTE.espresso} transparent opacity={0.85} />
@@ -992,14 +1037,27 @@ function PlayerMesh({
       <Text position={[0, 2.12, 0.02]} fontSize={0.14} color={PALETTE.foam} anchorX="center" anchorY="middle">
         {isYou ? "You" : player.name}
       </Text>
-      {player.holding && (
-        <mesh position={[0.38, 1.15, 0.22]} castShadow>
-          <cylinderGeometry args={[0.07, 0.06, 0.14, 10]} />
-          <meshStandardMaterial
-            color={player.holding === "coffee" || player.holding.startsWith("drink:") ? "#6b3f24" : PALETTE.foam}
-            roughness={0.55}
-          />
-        </mesh>
+      {(player.holding || drink || brewing) && <HeldCup drink={!!drink} brewing={!!brewing} />}
+    </group>
+  );
+}
+
+function HeldCup({ drink, brewing, firstPerson = false }: { drink: boolean; brewing: boolean; firstPerson?: boolean }) {
+  const steam = useRef<Group>(null);
+  useFrame(({ clock }) => {
+    if (!steam.current) return;
+    steam.current.position.y = (firstPerson ? 1.2 : 1.28) + Math.sin(clock.elapsedTime * 3) * 0.03;
+  });
+  return (
+    <group position={firstPerson ? [0.35, 1.15, -0.45] : [0.38, 1.15, 0.22]}>
+      <mesh castShadow>
+        <cylinderGeometry args={[0.07, 0.06, 0.14, 10]} />
+        <meshStandardMaterial color={drink ? "#6b3f24" : brewing ? "#c4a574" : PALETTE.foam} roughness={0.5} />
+      </mesh>
+      {(drink || brewing) && (
+        <group ref={steam}>
+          <Sparkles count={8} scale={[0.16, 0.28, 0.16]} size={1.5} speed={0.5} opacity={0.45} color="#f8f1e8" />
+        </group>
       )}
     </group>
   );

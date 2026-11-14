@@ -22,8 +22,8 @@ export { nearestStation };
 export type { StationHint } from "../shared/stations.ts";
 
 const AI_PLAYER_ID = "__jamie_ai__";
-/** Help when no human interact for this many sim-seconds. */
-const AI_IDLE_SEC = 5;
+/** Help when no human interact for this many sim-seconds. Leave room for the player to act. */
+const AI_IDLE_SEC = 12;
 /** Act every N ticks so players still matter (~2s at 20 Hz). */
 const AI_PERIOD_TICKS = 40;
 
