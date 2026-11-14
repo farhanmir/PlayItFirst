@@ -402,7 +402,9 @@ function EspressoMachine({ item }: { item: FurnitureItem }) {
   const steamRef = useRef<Group>(null);
   useFrame(({ clock }) => {
     if (!steamRef.current) return;
-    steamRef.current.position.y = 1.15 + Math.sin(clock.elapsedTime * 1.8) * 0.03;
+    const t = clock.elapsedTime;
+    steamRef.current.position.y = 0.72 + Math.sin(t * 1.6) * 0.04;
+    steamRef.current.scale.setScalar(0.92 + Math.sin(t * 2.1) * 0.08);
   });
 
   return (
@@ -449,10 +451,19 @@ function EspressoMachine({ item }: { item: FurnitureItem }) {
       </mesh>
       <pointLight position={[0.15, 0.85, 0.25]} intensity={0.35} color={PALETTE.ember} distance={2.5} decay={2} />
 
-      {/* Steam particles */}
-      <group ref={steamRef} position={[0.18, 1.15, 0.15]}>
-        <Sparkles count={14} scale={[0.25, 0.45, 0.25]} size={2.2} speed={0.6} opacity={0.45} color="#f3ebe2" />
+      {/* Subtle steam near wand + cup (low particle count) */}
+      <group ref={steamRef} position={[0.18, 0.72, 0.22]}>
+        <Sparkles count={10} scale={[0.22, 0.4, 0.18]} size={1.8} speed={0.45} opacity={0.4} color="#f3ebe2" />
       </group>
+      <Sparkles
+        count={6}
+        scale={[0.14, 0.28, 0.14]}
+        size={1.4}
+        speed={0.35}
+        opacity={0.28}
+        color="#e8dcc8"
+        position={[0, 0.38, 0.28]}
+      />
     </group>
   );
 }
@@ -607,13 +618,17 @@ function CustomerMesh({ customer }: { customer: Customer }) {
   const waiting = customer.state === "waiting" || customer.state === "ordering" || customer.state === "queue";
   const body = angry ? PALETTE.angry : personaColor(customer.persona);
   const bob = useRef<Group>(null);
+  const orderLabel = customer.order ?? customer.preference;
 
   useFrame(({ clock }) => {
     if (!bob.current) return;
+    const t = clock.elapsedTime;
+    const phase = customer.x * 2.3 + customer.z;
     if (customer.state === "entering" || customer.state === "leaving") {
-      bob.current.position.y = Math.abs(Math.sin(clock.elapsedTime * 6 + customer.x)) * 0.04;
+      bob.current.position.y = Math.abs(Math.sin(t * 6 + phase)) * 0.04;
     } else {
-      bob.current.position.y = 0;
+      // Slight idle bob — staggered per customer, cheap sin only
+      bob.current.position.y = Math.sin(t * 1.35 + phase) * 0.018;
     }
   });
 
@@ -655,6 +670,20 @@ function CustomerMesh({ customer }: { customer: Customer }) {
             <cylinderGeometry args={[0.05, 0.04, 0.08, 8]} />
             <meshStandardMaterial color={PALETTE.crema} />
           </mesh>
+          {orderLabel ? (
+            <Text
+              position={[0, 0.32, 0]}
+              fontSize={0.11}
+              color={PALETTE.foam}
+              anchorX="center"
+              anchorY="middle"
+              maxWidth={1.4}
+              outlineWidth={0.014}
+              outlineColor={PALETTE.espresso}
+            >
+              {orderLabel}
+            </Text>
+          ) : null}
         </group>
       )}
     </group>
