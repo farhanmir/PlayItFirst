@@ -1,5 +1,7 @@
+import { useState } from "react";
 import type { RoomSnapshot } from "../../shared/types";
 import { useApp } from "../lib/store";
+import { setMuted, play } from "../lib/audio";
 
 export function Hud({ snapshot }: { snapshot: RoomSnapshot }) {
   const f = snapshot.finance;
@@ -7,6 +9,7 @@ export function Hud({ snapshot }: { snapshot: RoomSnapshot }) {
   const qrSvg = useApp((s) => s.qrSvg);
   const roomCode = useApp((s) => s.roomCode);
   const status = useApp((s) => s.status);
+  const [mute, setMute] = useState(false);
 
   return (
     <header className="hud-top panel">
@@ -16,6 +19,19 @@ export function Hud({ snapshot }: { snapshot: RoomSnapshot }) {
         <span className={`conn ${status}`} title={`Connection: ${status}`}>
           {status}
         </span>
+        <button
+          type="button"
+          className="btn-ghost btn-small hud-mute"
+          aria-pressed={mute}
+          onClick={() => {
+            const next = !mute;
+            setMute(next);
+            setMuted(next);
+            if (!next) play("ui", 0.2);
+          }}
+        >
+          {mute ? "Sound off" : "Sound on"}
+        </button>
       </div>
 
       <div className="hud-vitals" aria-label="Café vitals">
