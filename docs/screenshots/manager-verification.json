@@ -1,0 +1,106 @@
+{
+  "mode": "local",
+  "providerVerified": false,
+  "clients": 2,
+  "inventoryBefore": {
+    "milk": 24,
+    "cups": 40,
+    "beans": 30
+  },
+  "inventoryAfter": {
+    "milk": 36,
+    "cups": 60,
+    "beans": 45
+  },
+  "proposals": [
+    {
+      "id": "09022f64-4697-4a98-bdcd-ff2086a05cdd",
+      "action": "reorder_supplies",
+      "reason": "Stock is milk 24, beans 30, cups 40; delivery costs $35.",
+      "cost": 35,
+      "requestedBy": "582070dd-c383-486a-a571-6630232d6044",
+      "expiresAt": 1794690649566,
+      "status": "executed",
+      "result": "Supplies delivered; $35 recorded in the game ledger.",
+      "transactionId": "700f7247-a348-46da-b708-37bb2f72bb17"
+    },
+    {
+      "id": "7d32cfe0-8bda-447b-b6d7-e6054aff47ec",
+      "action": "simplify_menu",
+      "reason": "A reduced menu changes future orders; no wait-time improvement has been measured yet.",
+      "cost": 0,
+      "requestedBy": "582070dd-c383-486a-a571-6630232d6044",
+      "expiresAt": 1794690649567,
+      "status": "executed",
+      "result": "Menu simplified; future orders use the reduced menu."
+    }
+  ],
+  "trace": [
+    {
+      "tool": "get_cafe_state",
+      "detail": "Read tick 58: $11690, 5 in line",
+      "at": 1794690529565
+    },
+    {
+      "tool": "propose_action",
+      "detail": "reorder_supplies: $35; awaiting owner approval",
+      "at": 1794690529567
+    },
+    {
+      "tool": "propose_action",
+      "detail": "simplify_menu: $0; awaiting owner approval",
+      "at": 1794690529567
+    },
+    {
+      "tool": "get_cafe_state",
+      "detail": "Read tick 58: $11690, 5 in line",
+      "at": 1794690529567
+    },
+    {
+      "tool": "read_outcome",
+      "detail": "Observed tick 58; 0 action receipts. No causal improvement inferred.",
+      "at": 1794690529568
+    },
+    {
+      "tool": "get_cafe_state",
+      "detail": "Read tick 96: $11690, 6 in line",
+      "at": 1794690531857
+    },
+    {
+      "tool": "execute_approved_action",
+      "detail": "reorder_supplies: Supplies delivered; $35 recorded in the game ledger.",
+      "at": 1794690531858
+    },
+    {
+      "tool": "get_cafe_state",
+      "detail": "Read tick 96: $11655, 6 in line",
+      "at": 1794690531858
+    },
+    {
+      "tool": "read_outcome",
+      "detail": "Observed tick 96; 1 action receipts. No causal improvement inferred.",
+      "at": 1794690531858
+    },
+    {
+      "tool": "get_cafe_state",
+      "detail": "Read tick 137: $11655, 6 in line",
+      "at": 1794690533925
+    },
+    {
+      "tool": "execute_approved_action",
+      "detail": "simplify_menu: Menu simplified; future orders use the reduced menu.",
+      "at": 1794690533925
+    },
+    {
+      "tool": "get_cafe_state",
+      "detail": "Read tick 137: $11655, 6 in line",
+      "at": 1794690533925
+    },
+    {
+      "tool": "read_outcome",
+      "detail": "Observed tick 137; 2 action receipts. No causal improvement inferred.",
+      "at": 1794690533925
+    }
+  ],
+  "errors": []
+}

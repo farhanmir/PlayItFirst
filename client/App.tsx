@@ -202,6 +202,7 @@ function wireConnection(room: string, name: string, role: PlayerRole) {
         .catch(() => undefined);
     }
     if (m.t === "snapshot") set({ snapshot: m.snapshot });
+    if (m.t === "manager_error") set({ managerError: m.message });
     if (m.t === "blueprint") set({ blueprint: m.markdown, screen: "game" });
     if (m.t === "error") console.warn(m.message);
   });

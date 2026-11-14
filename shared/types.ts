@@ -1,4 +1,5 @@
 /** Shared contracts for SoftOpen client + authoritative server. */
+import type { ManagerView } from "./manager";
 
 export type BusinessType = "cafe" | "restaurant" | "gaming_cafe" | "bookstore" | "retail" | "gym";
 export type PlayerRole = "owner" | "barista" | "cashier" | "manager" | "customer" | "builder";
@@ -156,6 +157,7 @@ export interface CafeLayout {
 }
 
 export interface RoomSnapshot {
+  manager?: ManagerView;
   code: string;
   phase: GamePhase;
   businessType: BusinessType;
@@ -183,6 +185,9 @@ export interface RoomSnapshot {
 }
 
 export type ClientMsg =
+  | { t: "manager_request"; prompt: string }
+  | { t: "manager_approve"; proposalId: string }
+  | { t: "manager_decline"; proposalId: string }
   | { t: "hello"; room: string; name: string; role?: PlayerRole; resume?: string }
   | { t: "select_property"; propertyId: string }
   | { t: "set_phase"; phase: GamePhase }
@@ -202,6 +207,7 @@ export type ClientMsg =
   | { t: "voice_signal"; to?: string; kind: "offer" | "answer" | "ice" | "hangup"; sdp?: string; candidate?: string };
 
 export type ServerMsg =
+  | { t: "manager_error"; message: string }
   | { t: "welcome"; token: string; you: string; snapshot: RoomSnapshot }
   | { t: "snapshot"; snapshot: RoomSnapshot }
   | { t: "qr"; svg: string; url: string }

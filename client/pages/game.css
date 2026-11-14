@@ -2246,3 +2246,13 @@
   .game-immersive .order-rail.compact { top: 10.5rem; }
   .game-immersive.build-open .build-catalog { top: 10.5rem; }
 }
+
+.manager-panel > p { margin: 0.55rem 0; font-size: 0.85rem; line-height: 1.5; }
+.manager-runtime { color: var(--crema); }
+.manager-proposals { display: grid; gap: 0.7rem; }
+.manager-proposal { border: 1px solid var(--glass-border); padding: 0.8rem; border-radius: 8px; background: #ffffff06; }
+.manager-proposal p, .manager-panel details { font-size: 0.8rem; line-height: 1.5; }
+.manager-proposal small { color: var(--crema); }
+.manager-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.manager-panel details { margin-top: 0.75rem; }
+.manager-panel details ol { padding-left: 1.25rem; }

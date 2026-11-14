@@ -29,8 +29,8 @@ export function IntegrationsBadge() {
     { label: "Nessie", on: info.nessie, tip: info.nessie ? "Sandbox key" : "Local ledger" },
     {
       label: "Deepagents",
-      on: info.deepagents,
-      tip: info.deepagents ? "Hosted LLM (tool runtime still partial)" : "Local director rules",
+      on: false,
+      tip: info.deepagents ? "Deepagents model configured; inspect the manager for per-room run verification" : "Local manager rules; model key missing",
     },
     { label: "Crew voice", on: true, tip: `${info.photonVoice} — not Photon 2.0 messaging` },
     { label: "WebXR", on: true, tip: info.webxr },

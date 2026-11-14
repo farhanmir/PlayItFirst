@@ -3,7 +3,8 @@
  * Architecture pattern adapted from Gitzilla's server/main.ts (single-port Vite + WS).
  */
 import http, { type IncomingMessage, type ServerResponse } from "node:http";
-import { createReadStream } from "node:fs";
+import { createReadStream, existsSync } from "node:fs";
+import { loadEnvFile } from "node:process";
 import { stat } from "node:fs/promises";
 import { dirname, extname, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -14,6 +15,8 @@ import { loadProperties, getCachedProperties } from "./costar.ts";
 import { resolveMatterport } from "./matterport.ts";
 import { deepagentsConfigured } from "./deepagents.ts";
 
+// Node 22's loader preserves values already supplied by Render's environment.
+if (existsSync(".env")) loadEnvFile(".env");
 await loadProperties();
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");

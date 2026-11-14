@@ -18,7 +18,7 @@ import { applyDirectorChoice, forceDemoRushEvent, maybeSpawnDirectorEvent } from
 import { provisionNessieAccount } from "./finance.ts";
 import { getCachedProperties, loadProperties } from "./costar.ts";
 import { withMatterportDefaults } from "./matterport.ts";
-import { deepagentsConfigured, planDirectorEvent } from "./deepagents.ts";
+import { CafeManager } from "./manager.ts";
 import {
   addPlayer,
   buildBlueprint,
@@ -44,6 +44,7 @@ interface Member {
 }
 
 interface Room {
+  manager?: CafeManager;
   code: string;
   snapshot: RoomSnapshot;
   members: Map<string, Member>;
@@ -151,6 +152,21 @@ export class CafeRoomServer {
     const { room, member } = session;
 
     switch (msg.t) {
+      case "manager_request":
+      case "manager_approve":
+      case "manager_decline":
+      case "photon_reply": {
+        const manager = this.managerFor(room);
+        const actor = { roomCode: room.code, memberId: member.id };
+        try {
+          if (msg.t === "manager_request" || msg.t === "photon_reply") await manager.request(actor, msg.t === "photon_reply" ? msg.body : msg.prompt);
+          else if (msg.t === "manager_approve") await manager.approve(actor, msg.proposalId);
+          else manager.decline(actor, msg.proposalId);
+        } catch (error) {
+          send(socket, { t: "manager_error", message: error instanceof Error ? error.message : "Manager request refused" });
+        }
+        break;
+      }
       case "select_property": {
         const property = listings().find((p) => p.id === msg.propertyId);
         if (!property) {
@@ -259,47 +275,6 @@ export class CafeRoomServer {
         this.broadcast(room);
         break;
       }
-      case "photon_reply": {
-        const lower = msg.body.toLowerCase();
-        let reply =
-          "got it. i'll keep an eye on the floor and ping you if anything breaks.";
-        if (lower.includes("milk") || lower.includes("restock")) {
-          room.snapshot = interact(room.snapshot, member.id, "restock");
-          reply = "done — milk order placed in the simulated inventory. alex is covering drinks.";
-        } else if (lower.includes("alex") || lower.includes("drinks")) {
-          reply = "done, alex is on drinks. want me to temporarily stop taking large orders?";
-        } else if (lower.includes("stop") || lower.includes("large")) {
-          reply = "paused large orders — simplified the menu so tickets clear faster.";
-          room.snapshot = {
-            ...room.snapshot,
-            menuReduced: true,
-            rushBoost: Math.max(0, (room.snapshot.rushBoost ?? 0) - 0.25),
-          };
-        }
-        room.snapshot = {
-          ...room.snapshot,
-          photon: [
-            {
-              id: randomUUID(),
-              from: member.name,
-              role: "Owner",
-              body: msg.body,
-              at: Date.now(),
-            },
-            {
-              id: randomUUID(),
-              from: "Jamie",
-              role: "Café Manager",
-              body: reply,
-              at: Date.now() + 1,
-              actionable: true,
-            },
-            ...room.snapshot.photon,
-          ].slice(0, 20),
-        };
-        this.broadcast(room);
-        break;
-      }
       case "request_blueprint":
         room.snapshot = { ...room.snapshot, phase: "blueprint" };
         send(socket, { t: "blueprint", markdown: buildBlueprint(room.snapshot) });
@@ -372,7 +347,8 @@ export class CafeRoomServer {
     }
 
     if (!member) {
-      const role: PlayerRole = msg.role ?? (room.members.size === 0 ? "owner" : "barista");
+      // Claiming "owner" in a hello packet cannot grant purchase authorization.
+      const role: PlayerRole = room.members.size === 0 ? "owner" : msg.role === "owner" ? "barista" : msg.role ?? "barista";
       member = {
         id: randomUUID(),
         token: createHash("sha256").update(randomBytes(16)).digest("hex").slice(0, 24),
@@ -404,6 +380,17 @@ export class CafeRoomServer {
     for (const member of room.members.values()) send(member.socket, message);
   }
 
+  private managerFor(room: Room): CafeManager {
+    return room.manager ??= new CafeManager({
+      read: () => room.snapshot,
+      update: (reducer) => { room.snapshot = reducer(room.snapshot); },
+      publish: (manager) => {
+        room.snapshot = { ...room.snapshot, manager };
+        this.broadcast(room);
+      },
+    });
+  }
+
   private startLoops(room: Room) {
     if (room.stepTimer) return;
     room.stepTimer = setInterval(() => {
@@ -421,10 +408,8 @@ export class CafeRoomServer {
         if (room.snapshot.phase !== "play") return;
         if (room.snapshot.director && !room.snapshot.director.resolved) return;
         const now = Date.now();
-        let event = deepagentsConfigured() ? await planDirectorEvent(room.snapshot, now) : null;
-        if (!event) event = maybeSpawnDirectorEvent(room.snapshot, now);
+        const event = maybeSpawnDirectorEvent(room.snapshot, now);
         if (!event || event.id === room.snapshot.director?.id) return;
-        const hosted = deepagentsConfigured();
         room.snapshot = {
           ...room.snapshot,
           director: event,
@@ -433,9 +418,7 @@ export class CafeRoomServer {
               id: randomUUID(),
               from: "Jamie",
               role: "Café Manager",
-              body: hosted
-                ? `deepagents ping — ${event.title.toLowerCase()}. director panel has your options.`
-                : `hey — ${event.title.toLowerCase()}. check the director panel.`,
+              body: `hey — ${event.title.toLowerCase()}. check the director panel.`,
               at: Date.now(),
               actionable: true,
             },

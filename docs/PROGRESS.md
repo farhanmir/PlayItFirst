@@ -2,6 +2,20 @@
 
 Tracking https://github.com/farhanmir/SoftOpen/issues/2. Work directly on `main` under AGENTS.md.
 
+## Shared business manager — issue #8
+
+Implemented official JS `deepagents` **1.16.5**, LangChain and OpenAI/Anthropic adapters. `server/manager-runtime.ts` invokes the actual graph with only four business tools; middleware blocks filesystem/delegation tools, limits model turns to four, and the room service enforces a 20-second deadline. No background LLM polling or automatic retry. The former direct-JSON director is removed; local director events remain.
+
+`server/manager.ts` exports `CafeManager.request/approve/decline` with an authenticated `ManagerActor { roomCode, memberId }`. Future Photon messaging and voice must supply a verified paired owner identity, never identity parsed from message text. `ManagerRoom` supplies fresh state/reducer/publish callbacks; tools never write a pre-await snapshot. Owner-bound proposals expire after two minutes, approval uses the exact ID, duplicate approval reuses the receipt, and budget is checked at execution. Restock uses existing `reorderSupplies` → `applyRestock` → `applyTransaction`; the receipt includes the stable local transaction ID for Nessie reconciliation. Property tools include source IDs, dimensions, rent, area and explicit mock/unverified geometry caveats for #7.
+
+The existing optional management menu now contains the shared manager, with approve/decline, receipts, status and concise tool trace. Legacy `photon_reply` routes to the same approval service; it no longer invents completed purchases or staffing assignments. New joiners cannot self-assign the owner role. Existing resume tokens still restore the original member.
+
+**Evidence:** 70 tests pass, typecheck/build pass. `server/manager.test.ts` exercises the actual Deepagents graph with a scripted model, plus denied/cross-room/expired/duplicate/timeout/late-tool cases. `server/manager-ws.test.ts` verifies two-client purchase visibility and owner-role spoof rejection. This framework test is **not** a live provider call. Real Edge browser testing of the local fallback approved one $35 delivery (milk 24→36, cups 40→60, beans 30→45) and a free menu change; both appeared on a second browser. No JavaScript errors. [Plan screenshot](screenshots/manager-plan.png), [approved actions](screenshots/manager-approved.png), [actual local trace](screenshots/manager-verification.json).
+
+**Credentials and demo:** set one capped `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` server-side, optional `DEEPAGENTS_MODEL`; local ignored `.env` now loads on Node 22 while Render environment values take precedence. Open Menu → ask Jamie to inspect milk/budget/queue → review proposal → approve exact cost → inspect receipt and updated inventory on both clients. No key is configured yet; **live provider acceptance remains blocked**, so #8 is not closed. External Photon/Nessie calls, real property matching and public Render verification remain owned by #7/#9/#10/#6. Coordination notes were posted to those issues.
+
+ChatOverflow CLI confirms Codex connected as `@farhanmir` with one published field note. HackPrinceton leaderboard membership and SpaceXSI eligibility/Grok Bot access are not verified; official challenge/leaderboard pages could not be retrieved by the browser tool. No contest entry or public repository visibility change has been made.
+
 ## November 14, 2026 — Codex implementation and browser verification
 
 Safely fast-forwarded `799a904` → `17e7f97` before editing. Preserved the owner's uncommitted Vitest 5 upgrade in `package.json` and `package-lock.json`; those edits are excluded from these commits.
