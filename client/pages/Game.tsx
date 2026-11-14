@@ -13,6 +13,7 @@ import { OrderRail } from "../components/OrderRail";
 import { TutorialTips } from "../components/TutorialTips";
 import { TimelineCompare } from "../components/TimelineCompare";
 import { RivalCafePanel } from "../components/RivalCafePanel";
+import { RolePicker } from "../components/RolePicker";
 import { play } from "../lib/audio";
 import "./game.css";
 
@@ -50,6 +51,7 @@ export function Game() {
         <CafeScene snapshot={snapshot} firstPerson={!!firstPerson && snapshot.phase !== "build"} />
         <TutorialTips snapshot={snapshot} />
         <DirectorPanel snapshot={snapshot} />
+        <RolePicker snapshot={snapshot} />
         {snapshot.phase === "play" && (
           <>
             <OrderRail snapshot={snapshot} />
