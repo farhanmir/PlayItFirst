@@ -244,3 +244,9 @@ Actual keyboard service on the revised controls completed an americano: served0�
 Physical iOS/Android installation, real-device multitouch/QR/performance and final human visual approval remain open. The PWA supplies installation and browser-gesture containment; it is not evidence that every phone/browser combination has been tested. Existing sponsor, measured-property publication and submission gates remain as previously recorded.
 
 Final menu review also found and repaired a real mobile layout defect: the drawer's grid compressed an active floor-call event to29px and hid its text. Rows now size to content; browser inspection confirms a333px event with full text and all four touch-sized choices, using the drawer's single scrollbar. Typecheck/build passed again after this fix. Implementation commits: `21e0dee` PWA, `8c7e20b` animated crew/controls, `3fd88f8` menus/HUD.
+
+### Public deployment confirmation
+
+At2026-11-14 23:32:46UTC Render health reported `6989531e0cc65f6470c3ca40d4f634ba782390be`. Public deployment smoke passed HTTPS/assets, two WebSocket clients, shared move/rotation and resume. Manifest and both GLBs returned200 with valid contents. Actual desktop1440×900 and phone-emulated390×664 canvases match their viewports, with zero page errors, zero page scroll and no horizontal overflow. New animated characters render in the measured property. The title preview was checked after the image finished loading; an earlier DOMContentLoaded capture was premature, not a failed image.
+
+Sanitized evidence: [public-visual-pwa-verification.json](screenshots/public-visual-pwa-verification.json). Measured-property screenshots remain private in /tmp. This verifies deployment/rendering and existing multiplayer smoke, not a new physical-phone test, public counter-routing measurement or successful external provider action. GitHub issues#2 and#6 were updated with this pass and remaining gates.

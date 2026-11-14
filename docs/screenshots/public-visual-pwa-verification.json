@@ -1,0 +1,104 @@
+{
+  "time": "2026-11-14T23:32:46.695Z",
+  "origin": "https://playitfirst.onrender.com",
+  "physicalPhone": false,
+  "health": {
+    "ok": true,
+    "service": "softopen",
+    "product": "Play It First",
+    "legacy": "playfirst",
+    "commit": "6989531e0cc65f6470c3ca40d4f634ba782390be"
+  },
+  "assets": [
+    {
+      "path": "/manifest.webmanifest",
+      "status": 200,
+      "mime": "application/manifest+json; charset=utf-8",
+      "bytes": 588,
+      "valid": true
+    },
+    {
+      "path": "/models/crew/humanFemaleA.glb",
+      "status": 200,
+      "mime": "application/octet-stream",
+      "bytes": 225580,
+      "valid": true
+    },
+    {
+      "path": "/models/crew/humanMaleA.glb",
+      "status": 200,
+      "mime": "application/octet-stream",
+      "bytes": 227448,
+      "valid": true
+    }
+  ],
+  "views": [
+    {
+      "name": "desktop",
+      "title": "Play It First \u2014 Play your business before you pay for it",
+      "errors": [],
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "canvas": {
+        "width": 1440,
+        "height": 900
+      },
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "width": 1440
+      }
+    },
+    {
+      "name": "mobile",
+      "title": "Play It First \u2014 Play your business before you pay for it",
+      "errors": [],
+      "viewport": {
+        "width": 390,
+        "height": 664
+      },
+      "canvas": {
+        "width": 390,
+        "height": 664
+      },
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "width": 390
+      }
+    }
+  ],
+  "finalHealth": {
+    "ok": true,
+    "service": "softopen",
+    "product": "Play It First",
+    "legacy": "playfirst",
+    "commit": "6989531e0cc65f6470c3ca40d4f634ba782390be"
+  },
+  "deploymentSmoke": {
+    "passed": true,
+    "checks": [
+      "HTTPS health and assets",
+      "measured property listing",
+      "invite origin",
+      "two WSS clients",
+      "shared furniture move and rotation",
+      "host resume"
+    ]
+  },
+  "titlePreview": {
+    "complete": true,
+    "naturalWidth": 1440,
+    "naturalHeight": 900,
+    "inspected": "/tmp/pif-public-final-desktop-title-loaded.png"
+  },
+  "limitations": [
+    "Physical phone not tested",
+    "PWA physical installation not tested",
+    "No provider calls",
+    "No paid service test in this final pass",
+    "Measured screenshots remain private in /tmp"
+  ]
+}
