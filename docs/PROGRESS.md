@@ -77,6 +77,15 @@ The existing `render.yaml` remains the preferred **free, single-service** deploy
 
 `/api/integrations` confirms bundled **costar-mock**, no Matterport/Nessie/Deepagents credentials, and explicitly labeled non-Photon messaging/crew voice. Still need one authorized matching CoStar listing + Matterport scan, hosted Deepagents credentials/runtime access, and a provisioned Photon provider/channel. Existing optional integration functionality is preserved.
 
+## November 14 deployment follow-up (issue #6)
+
+- Updated this Windows checkout's remote to `farhanmir/PlayItFirst` and fast-forwarded clean `main` to `3e76ffa`, including the manager and product rename. GitHub CLI authentication was used for the fetch after the default Git credential prompt stalled.
+- Added `scripts/check-deployment.mjs` and documented its local/public usage in DEPLOY.md. It checks the built demo page and JavaScript asset, health/listings, HTTP invite origin, two WebSocket clients opening the same room, live plant movement/rotation, and host resume without duplicating players. It creates a disposable room and does not invoke manager tools.
+- Ran `npm ci --include=dev`, `npm.cmd test` (**70 passing across 15 files**), `npm.cmd run typecheck` (clean), and `npm.cmd run build` (successful; existing large-bundle warning). Node on this Windows machine is v26.13.0; Render's configured Node 22 runtime is not locally verified by this run.
+- Integrated teammate commits through `852f730` before publishing this follow-up, then repeated verification: **72 tests across 16 files**, typecheck and build passed, and the deployment check passed against a restarted production server with the rebuilt assets. The lockfile was unchanged by these two commits.
+- Ran the new check successfully against the built production server at `http://127.0.0.1:5184`. Listings reported `costar-mock`. An unreachable target correctly exited with status 1. This is HTTP/WS transport evidence, not public TLS, browser/WebGL, a physical phone scan, a human sale, or restart-recovery evidence. Existing browser evidence above belongs to the earlier run.
+- Render integration was offered but is not connected in this session. No public service URL, service plan, deployed commit, or public two-device result is verified. Issue #6 remains open; connect the team Render account or provide the existing service URL, then run the same check and the manual checklist. No hosting service was created.
+
 ## Current limitations
 
 - Browser automation is not a physical human/phone playtest. Public HTTPS/WSS and real-phone QR scanning remain unverified until Render is connected.

@@ -12,6 +12,31 @@ Use the free **single-service Render Blueprint** first. It serves the built Vite
 
 Local production verification: build, then run the server with `NODE_ENV=production` and a separate `PORT` (the npm start shell syntax works on Render/Linux; in PowerShell set those environment variables and run `node --import tsx server/main.ts`). The November 14 Codex run exercised the built game on port 5174; see PROGRESS.md. **No public Render deploy has been verified yet: account connection/public service URL is missing.**
 
+## Repeatable deployment check (issue #6)
+
+After deployment, run this once from a checkout with dependencies installed, replacing the example origin with the actual service URL:
+
+```sh
+node scripts/check-deployment.mjs https://YOUR-SERVICE.onrender.com
+```
+
+The check loads the built demo page and its JavaScript asset, validates health/listings and the server-generated invite origin, then connects two WebSocket clients to a new disposable room. It selects a property, opens service, moves and rotates a plant, checks both clients agree, and reconnects the host with its resume token. A failed assertion exits nonzero. Public URLs require HTTPS/WSS; loopback HTTP is accepted for local production checks. The script does not call manager tools or send sponsor messages.
+
+Each run creates one in-memory room, which remains until the process restarts. This is a manual release check, not an uptime monitor. Run it against the team's service only. The initial HTTP request allows 90 seconds for a free-service cold start; wait for Render to finish starting if it returns a loading page.
+
+For local verification in PowerShell, use a spare port:
+
+```powershell
+npm.cmd run build
+$env:NODE_ENV = 'production'
+$env:PORT = '5184'
+node --import tsx server/main.ts
+```
+
+In a second terminal run `node scripts/check-deployment.mjs http://127.0.0.1:5184`. These environment variables affect only the first terminal; use a fresh terminal for `npm.cmd run dev`. The `.cmd` launcher works when PowerShell blocks `npm.ps1`; no execution-policy change is needed.
+
+Passing this check does **not** verify WebGL, a physical phone scanning the QR, a human paid order, customer rerouting, or recovery after process restart. Complete the manual checklist below and record the actual Render URL, deployed commit, Free plan, devices and results in issue #6. Keep the issue open until public verification is complete.
+
 The split deployment below is optional.
 
 ## Architecture
