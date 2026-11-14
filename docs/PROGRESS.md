@@ -2,6 +2,12 @@
 
 Tracking https://github.com/farhanmir/PlayItFirst/issues/2. Work directly on `main` under AGENTS.md.
 
+## Deepagents status badge correction
+
+The Deepagents status chip was hard-coded `on:false`, so it could never turn green after a real successful run. It now subscribes to the current room manager and displays **configured**, **verified**, or **local**. Green requires `runtime:deepagents` plus current-run `providerVerified`; a configured key alone is not presented as a verified integration. Sponsor-context blocking has an explicit tooltip. The successful synthetic Gemini test does not silently authorize model calls in a different real-property room.
+
+Validation: **121 tests**, typecheck and build pass. Actual Edge UI fixture check verified configured stays unverified and a verified room snapshot turns the badge green. This browser fixture checks rendering only; actual provider proof remains the recorded live Gemini trace below. Public health still reported `6c9999d` during inspection, so the new badge requires Render deployment of this commit and a page reload.
+
 ## Live Gemini approval verified; safe failure diagnostics
 
 Public Render **`07e55e52720f5bff8a95ff48c6c64aab4b3d3fff`** completed an actual two-client synthetic-room provider test. The completed runs identify **Google / `gemini-3.6-flash`**. No property was selected, so no sponsor listing or geometry was sent. Gemini inspected state and proposed exactly one $35 restock without spending; guest approval was denied. Authenticated owner approval invoked `execute_approved_action`, then `read_outcome`. Actual balance **$20,000 → $19,965**, inventory **milk24→36, cups40→60, beans30→45**, one stable transaction receipt; second client agreed and duplicate approval did not charge again. [Recorded receipt and trace](screenshots/gemini-public-approved-verification.json).
