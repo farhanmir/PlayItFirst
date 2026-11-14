@@ -551,6 +551,35 @@ export function stepSimulation(snapshot: RoomSnapshot, dt: number): RoomSnapshot
   return next;
 }
 
+/** Seed a visible queue for judge demo — deterministic enough for live pitches. */
+export function seedDemoCrowd(snapshot: RoomSnapshot): RoomSnapshot {
+  if (!snapshot.property || !snapshot.layout) return snapshot;
+  const counter = snapshot.layout.furniture.find((f) => f.kind === "counter") ?? { x: 2, z: 3 };
+  const extras: Customer[] = [];
+  const states: Customer["state"][] = ["ordering", "queue", "queue", "entering", "entering"];
+  for (let i = 0; i < states.length; i++) {
+    const c = spawnCustomer(snapshot.property, counter.x, counter.z);
+    c.state = states[i];
+    c.patience = 160;
+    c.x = counter.x + 0.2;
+    c.z = Math.max(0.8, counter.z - 1.2 - i * 0.7);
+    c.targetX = c.x;
+    c.targetZ = c.z;
+    if (states[i] === "ordering" || states[i] === "queue") {
+      c.progress = states[i] === "ordering" ? 0.15 : 0;
+    }
+    extras.push(c);
+  }
+  return {
+    ...snapshot,
+    customers: [...snapshot.customers, ...extras].slice(0, 12),
+    metrics: {
+      ...snapshot.metrics,
+      queueLength: snapshot.metrics.queueLength + 3,
+    },
+  };
+}
+
 function spawnCustomer(property: PropertyListing, qx: number, qz: number): Customer {
   const personas: CustomerPersona[] = ["student", "office", "regular"];
   const persona = personas[Math.floor(Math.random() * personas.length)];

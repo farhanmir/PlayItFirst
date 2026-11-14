@@ -15,7 +15,7 @@ import type {
 import properties from "../data/properties.json";
 import type { PropertyListing } from "../shared/types.ts";
 import { qrSvg } from "./qr.ts";
-import { applyDirectorChoice, maybeSpawnDirectorEvent } from "./director.ts";
+import { applyDirectorChoice, forceDemoRushEvent, maybeSpawnDirectorEvent } from "./director.ts";
 import { provisionNessieAccount } from "./finance.ts";
 import {
   addPlayer,
@@ -28,6 +28,7 @@ import {
   placeFurniture,
   removeFurniture,
   selectProperty,
+  seedDemoCrowd,
   stepSimulation,
   syncTabletop,
 } from "./simulation.ts";
@@ -271,6 +272,29 @@ export class CafeRoomServer {
         send(socket, { t: "blueprint", markdown: buildBlueprint(room.snapshot) });
         this.broadcast(room);
         break;
+      case "demo_boost": {
+        if (!room.snapshot.open) room.snapshot = openCafe(room.snapshot);
+        room.snapshot = seedDemoCrowd(room.snapshot);
+        const rush = forceDemoRushEvent(Date.now());
+        const ping = {
+          id: randomUUID(),
+          from: "Jamie",
+          role: "Café Manager",
+          body: "judge demo boost — office rush hitting the door. pick a director call.",
+          at: Date.now(),
+          actionable: true,
+        };
+        room.snapshot = {
+          ...room.snapshot,
+          director: rush,
+          rushBoost: Math.max(room.snapshot.rushBoost ?? 0, 0.85),
+          photon: [ping, ...room.snapshot.photon].slice(0, 20),
+          eventLog: ["Judge demo: rush seeded", ...room.snapshot.eventLog].slice(0, 30),
+        };
+        for (const m of room.members.values()) send(m.socket, { t: "photon_ping", message: ping });
+        this.broadcast(room);
+        break;
+      }
     }
   }
 

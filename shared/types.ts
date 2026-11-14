@@ -185,7 +185,9 @@ export type ClientMsg =
   | { t: "open_cafe" }
   | { t: "director_choice"; eventId: string; choiceId: string }
   | { t: "photon_reply"; body: string }
-  | { t: "request_blueprint" };
+  | { t: "request_blueprint" }
+  /** Judge-demo: seed rush customers + director event + Photon ping */
+  | { t: "demo_boost" };
 
 export type ServerMsg =
   | { t: "welcome"; token: string; you: string; snapshot: RoomSnapshot }

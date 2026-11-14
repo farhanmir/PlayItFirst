@@ -12,6 +12,7 @@ import {
   buildBlueprint,
   interact,
   runAiBaristaAssist,
+  seedDemoCrowd,
 } from "./simulation.ts";
 
 const listing = (properties as PropertyListing[])[0];
@@ -145,5 +146,14 @@ describe("café simulation", () => {
     };
     snap = interact(snap, "p1", "take_order");
     expect(snap.lastHumanInteractAt).toBe(12);
+  });
+
+  it("seedDemoCrowd adds a visible queue for judge demo", () => {
+    let snap = openCafe(selectProperty(createRoomSnapshot("demo"), listing));
+    const before = snap.customers.length;
+    snap = seedDemoCrowd(snap);
+    expect(snap.customers.length).toBeGreaterThan(before);
+    expect(snap.customers.some((c) => c.state === "ordering")).toBe(true);
+    expect(snap.metrics.queueLength).toBeGreaterThanOrEqual(3);
   });
 });

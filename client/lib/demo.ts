@@ -28,7 +28,7 @@ export function demoStatusFor(phase: DemoPhase): DemoStatus {
     case "opening":
       return { phase, message: "Unlocking the doors for service…" };
     case "ready":
-      return { phase, message: "You're live — beat the rival café." };
+      return { phase, message: "Live floor — rush + director ready. Beat the rival." };
     case "error":
       return { phase, message: "Demo hitch — try Host café instead." };
     default:

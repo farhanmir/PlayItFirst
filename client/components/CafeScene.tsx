@@ -1,9 +1,17 @@
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, PerspectiveCamera, Sparkles, Text } from "@react-three/drei";
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, type ReactNode } from "react";
 import { DoubleSide, type Group, type PerspectiveCamera as ThreePerspectiveCamera } from "three";
 import type { Customer, FurnitureItem, PlayerState, PropertyListing, RoomSnapshot } from "../../shared/types";
+import { nearestStation } from "../../shared/stations";
 import { useApp } from "../lib/store";
+
+const STATION_KIND: Record<string, FurnitureItem["kind"]> = {
+  counter: "counter",
+  machine: "coffee_machine",
+  pickup: "pickup",
+  fridge: "fridge",
+};
 
 const PALETTE = {
   bg: "#1a1511",
@@ -103,7 +111,19 @@ export function CafeScene({ snapshot, firstPerson, viewMode = "orbit" }: Props) 
           </>
         )}
 
-        <CafeRoom property={property} furniture={snapshot.layout?.furniture ?? []} cutaway={mode === "dollhouse"} />
+        <CafeRoom
+          property={property}
+          furniture={snapshot.layout?.furniture ?? []}
+          cutaway={mode === "dollhouse"}
+          highlightKind={
+            you
+              ? (() => {
+                  const station = nearestStation(snapshot, you);
+                  return station ? STATION_KIND[station] : null;
+                })()
+              : null
+          }
+        />
         {snapshot.customers.map((c) => (
           <CustomerMesh key={c.id} customer={c} />
         ))}
@@ -131,10 +151,12 @@ function CafeRoom({
   property,
   furniture,
   cutaway = false,
+  highlightKind,
 }: {
   property: PropertyListing;
   furniture: FurnitureItem[];
   cutaway?: boolean;
+  highlightKind?: FurnitureItem["kind"] | null;
 }) {
   const w = property.width;
   const d = property.depth;
@@ -217,7 +239,7 @@ function CafeRoom({
       <PropertySign name={property.name} width={w} />
 
       {furniture.map((f) => (
-        <FurnitureMesh key={f.id} item={f} />
+        <FurnitureMesh key={f.id} item={f} highlight={highlightKind === f.kind} />
       ))}
     </group>
   );
@@ -374,25 +396,50 @@ function PropertySign({ name, width }: { name: string; width: number }) {
   );
 }
 
-function FurnitureMesh({ item }: { item: FurnitureItem }) {
+function FurnitureMesh({ item, highlight = false }: { item: FurnitureItem; highlight?: boolean }) {
+  let prop: ReactNode = null;
   switch (item.kind) {
     case "counter":
-      return <CounterProp item={item} />;
+      prop = <CounterProp item={item} />;
+      break;
     case "coffee_machine":
-      return <EspressoMachine item={item} />;
+      prop = <EspressoMachine item={item} />;
+      break;
     case "table":
-      return <RoundTable item={item} />;
+      prop = <RoundTable item={item} />;
+      break;
     case "chair":
-      return <CafeChair item={item} />;
+      prop = <CafeChair item={item} />;
+      break;
     case "fridge":
-      return <FridgeProp item={item} />;
+      prop = <FridgeProp item={item} />;
+      break;
     case "pickup":
-      return <PickupStation item={item} />;
+      prop = <PickupStation item={item} />;
+      break;
     case "decoration":
-      return <PlantProp item={item} />;
+      prop = <PlantProp item={item} />;
+      break;
     default:
       return null;
   }
+  if (!highlight) return prop;
+  return (
+    <group>
+      {prop}
+      <mesh position={[item.x, 0.04, item.z]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.55, 0.78, 32]} />
+        <meshStandardMaterial
+          color={PALETTE.ember}
+          emissive={PALETTE.ember}
+          emissiveIntensity={0.85}
+          transparent
+          opacity={0.7}
+          side={DoubleSide}
+        />
+      </mesh>
+    </group>
+  );
 }
 
 function CounterProp({ item }: { item: FurnitureItem }) {

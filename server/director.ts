@@ -92,6 +92,22 @@ function event(
   };
 }
 
+/** Guaranteed rush event for `/?demo=1` — no RNG. */
+export function forceDemoRushEvent(now = Date.now()): DirectorEvent {
+  return event(
+    "Unexpected rush",
+    "A nearby office just finished a meeting. Twelve customers are arriving within minutes. Your current staffing and equipment may not keep up.",
+    [
+      { id: "temp_help", label: "Hire temporary help (−$120)" },
+      { id: "open_station", label: "Open another service station" },
+      { id: "reduce_menu", label: "Reduce the menu temporarily" },
+      { id: "tough_it", label: "Handle it with existing staff" },
+    ],
+    "critical",
+    now,
+  );
+}
+
 export function applyDirectorChoice(
   snapshot: RoomSnapshot,
   choiceId: string,

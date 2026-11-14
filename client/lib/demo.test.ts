@@ -15,5 +15,6 @@ describe("judge demo helpers", () => {
   it("returns messaging for each phase", () => {
     expect(demoStatusFor("selecting").message).toMatch(/Midtown/i);
     expect(demoStatusFor("opening").message.length).toBeGreaterThan(4);
+    expect(demoStatusFor("ready").message).toMatch(/rush|rival/i);
   });
 });

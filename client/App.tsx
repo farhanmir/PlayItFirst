@@ -111,28 +111,54 @@ async function runJudgeDemo(setPhase: (p: DemoPhase) => void) {
     play("ui");
     const code = await startHost(DEMO_PLAYER_NAME);
     setPhase("selecting");
-    await sleep(700);
+    await sleep(500);
 
-    // Wait briefly for WS welcome so select_property lands
-    for (let i = 0; i < 40; i++) {
+    // Wait for WS welcome so select_property lands
+    for (let i = 0; i < 60; i++) {
       const { conn, status } = useApp.getState();
       if (conn && status === "open") break;
       await sleep(50);
     }
 
     const conn = useApp.getState().conn;
-    conn?.send({ t: "select_property", propertyId: DEMO_PROPERTY_ID });
+    if (!conn) throw new Error("No connection for judge demo");
+    conn.send({ t: "select_property", propertyId: DEMO_PROPERTY_ID });
     useApp.getState().set({ screen: "game" });
     setPhase("entering");
-    await sleep(1100);
+
+    for (let i = 0; i < 50; i++) {
+      if (useApp.getState().snapshot?.property?.id === DEMO_PROPERTY_ID) break;
+      await sleep(80);
+    }
+    if (useApp.getState().snapshot?.property?.id !== DEMO_PROPERTY_ID) {
+      throw new Error("Property select timed out");
+    }
+    await sleep(600);
 
     setPhase("opening");
-    await sleep(900);
-    useApp.getState().conn?.send({ t: "open_cafe" });
+    conn.send({ t: "open_cafe" });
     play("open", 0.45);
+
+    for (let i = 0; i < 40; i++) {
+      if (useApp.getState().snapshot?.open) break;
+      await sleep(50);
+    }
+
+    // Seed rush + director so the pitch always has something to click
+    conn.send({ t: "demo_boost" });
+    await sleep(700);
+
+    // Park the host at the counter and take the first order
+    const snap = useApp.getState().snapshot;
+    const counter = snap?.layout?.furniture.find((f) => f.kind === "counter");
+    if (counter) conn.send({ t: "player_move", x: counter.x, z: counter.z });
+    await sleep(200);
+    conn.send({ t: "interact", action: "take_order" });
+    play("order");
+
     setPhase("ready");
     history.replaceState({}, "", `/?room=${code}&demo=1`);
-    await sleep(1600);
+    await sleep(1800);
     setPhase("idle");
   } catch (err) {
     console.warn(err);
