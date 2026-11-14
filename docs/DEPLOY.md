@@ -99,3 +99,11 @@ Reconciliation retrieves provider account, transaction and bill records. The fin
 5. Record the deployed commit and actual redacted provider receipts in PROGRESS.md/issue #10. Mocked tests do not satisfy live sandbox acceptance.
 
 Rooms and reconciliation queues remain in memory. Reconnecting to a surviving room retains its synchronization state. Restart/redeploy loses the room and its pending queue; a new room creates a separate sandbox session and does not automatically relink or replay the old account. Inspect old provider records manually before any recovery action. This is not durable banking recovery.
+
+## Phone home-screen installation
+
+The same Render origin serves `manifest.webmanifest`, app icons and `sw.js`; no additional host is needed. Open the game in Safari on iPhone, choose Share → Add to Home Screen, and enable Open as Web App if offered. On Android, use the game's Install game button when available or the browser's Install app menu. Installation is optional; room links and room-code joining remain available in the browser.
+
+The standalone game uses the phone viewport and safe areas. Movement and camera touch surfaces prevent browser panning; management panels retain their own vertical scrolling. The service worker caches only the public offline explanation, never rooms, API responses or gameplay pages. Internet is required. An update waits for old app tabs to close instead of reloading an active multiplayer shift.
+
+Verify physical iOS and Android installation, QR join, simultaneous joystick/look/action touches, release/cancel, rotation and safe areas before claiming real-phone acceptance. Chromium installability and device emulation are useful checks but do not replace this gate.

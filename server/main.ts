@@ -55,6 +55,7 @@ const vite = production
     });
 
 const mime: Record<string, string> = {
+  ".webmanifest": "application/manifest+json; charset=utf-8",
   ".html": "text/html; charset=utf-8",
   ".js": "application/javascript; charset=utf-8",
   ".css": "text/css; charset=utf-8",
@@ -134,6 +135,8 @@ async function serveDist(pathname: string, req: IncomingMessage, res: ServerResp
   res.writeHead(200, {
     "Content-Type": mime[extname(path)] ?? "application/octet-stream",
     "Content-Length": file.size,
+    ...(pathname === "/sw.js" || pathname === "/manifest.webmanifest"
+      ? { "Cache-Control": "no-cache" } : {}),
   });
   if (req.method === "HEAD") res.end();
   else createReadStream(path).on("error", () => res.destroy()).pipe(res);
