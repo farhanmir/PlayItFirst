@@ -143,3 +143,50 @@ The existing `render.yaml` remains the preferred **free, single-service** deploy
 - Vite reports the existing large bundle warning (about 1.35 MB uncompressed / 389 KB gzip). Tests/build pass; this is not a phone performance benchmark.
 - No durable room saves. Bundled fallback data is mock; the authorized matched suite requires its private normalized file. Public deployment and the remaining provider integrations are not complete.
 
+
+
+## November 14 — master-plan reconciliation and current finishing pass
+
+Safely fast-forwarded main from `02219b7` to `03497a4`, preserving all uncommitted visual/control work. Read the canonical plan and related handoff documents. The documentation audit baseline is superseded by these fresh public observations at 2026-11-14 22:57 UTC:
+
+- Public `/api/health.commit` reports `03497a43337b517e1c8988dece1d1175eb81b5c6`. Public properties now report `costar-extract` with the measured suite: 12 rooms, 66 walls, 11 doorways, four windows and the documented asking rent. No private source records were added to Git.
+- Matching `/api/matterport` returns `matterport-live`. The matching panorama renders in a test iframe under the Render origin. This proves viewer origin access, not the complete property-picker flow or publication permission.
+- `node scripts/check-deployment.mjs https://playitfirst.onrender.com` passed HTTPS/assets, two WSS clients, shared plant move/rotation and resume. This does not prove counter rerouting or physical-phone service.
+- Chromium software-WebGL desktop and iPhone 13 emulation render the public measured suite without page errors. Restricted-property screenshots remain local pending publication clearance. The deployed HUD/art still predates the current local improvements.
+- Actual public Deepagents execution succeeded in a synthetic room with no property selected. Owner-approved restock changed cash from $20,000 to $19,965 and added 12 milk, 20 cups and 15 beans on two clients. Guest approval failed; duplicate approval did not charge again. Sanitized trace: [provider-public-synthetic-verification.json](screenshots/provider-public-synthetic-verification.json). Provider/model attribution is not exposed by that deployment, so this is actual provider evidence, not yet Gemini-specific evidence. No sponsor context was sent.
+
+Current local finishing work fixes reversed camera-relative movement, menu/orbit keyboard leakage, misleading out-of-range action prompts, and furniture collision. Visual work improves original character silhouettes, equipment, foliage, oak floor, window scenery and compact mobile HUD. These uncommitted changes are under integrated verification; public acceptance does not yet cover them.
+
+Remaining external gates: physical-phone QR/touch/real-device performance, public shared counter routing evidence, sponsor publication/external-processing permission, Render Free-plan and restart confirmation, Gemini attribution, provisioned Photon identities/voice/callback authentication, actual Nessie credentials and remote receipts. Preserve the existing manager, Render service and measured reconstruction. No Vercel or ChatOverflow work.
+
+### Local integration verification
+
+Current combined run: `npm test` **106 passing across 22 files**, `npm run typecheck` passed, `npm run build` passed (existing large-bundle warning), `python -m unittest discover -s scripts -p 'test_*.py'` **3 passing**. An earlier run during concurrent provider edits failed imports/typecheck; integration repaired those failures before this successful run.
+
+Chromium software WebGL actual keyboard service on the revised collision path: take cappuccino, walk around counter, brew, serve; authoritative state recorded one $10 sale, one milk/cup/bean consumed, empty hands. No injected gameplay state. iPhone 13 touch emulation on a stable production server verified held joystick movement, simultaneous second-touch look changing movement direction, release stopping movement, and no page errors. These are browser tests, not a physical-phone playtest.
+
+Nessie migration now uses the documented v2 HTTPS/bearer/cents contract, opening balance, queued receipts during provisioning, bounded synchronization, read-only reconciliation, and explicit ambiguous/failure states without automatic replay. Six mocked-network tests pass; no sandbox key or real bank receipt was available. Photon has tested signature/text-transport primitives only; no inbound route, owner pairing or actual telephone provider is activated. See PHOTON_SETUP.md. Local crew voice and ledger no longer claim Photon/Nessie success.
+
+Blueprint export now includes actual provenance, cents, measured geometry, equipment/rotation, retained costs/receipts, executed manager decisions, inventory, shift results, and explicit assumptions. Provider identity metadata is exposed only after a successful actual model run; failed/local/blocked runs clear stale provider proof.
+
+### Final local service, route and export evidence
+
+Safe mock-property browser screenshot and assertions: [polish-service.png](screenshots/polish-service.png), [polish-service.json](screenshots/polish-service.json). The two-client WebSocket test now compares the same seeded queued guest through the actual movement reducer before/after accepted counter relocation. Remaining walking distance changes from 0 to 4.006638 world units and the destination changes; both paths arrive. This proves the edit changes routing, not that the new layout is better. Public measured-floor counter rerouting remains a separate gate.
+
+Actual Chromium UI export passed on an isolated production server: Judge demo → Menu → Plan → Generate → Download. Downloaded Markdown includes the selected property, current cash, rent/equipment receipts, decisions and honest zero-service limitation. No state injection or page errors.
+
+Commits: ac35283 controls/collision/service and export; da73860 café art/HUD; 7da959e provider proof; f668b7e Nessie reconciliation; ddce01f Photon transport/status. Main push completed through b2ff7ee. Public deployment must still be checked independently for these changes.
+
+### Latest public provider recheck
+
+Render reported `b2ff7ee82b60d829277a810c712176cab658652d` at 23:05 UTC. One bounded synthetic-room provider attempt on that build failed after `get_cafe_state`, with no proposal or purchase. The run correctly returned `providerVerified: false`; provider identity was unavailable because the run did not complete. Evidence: [provider-public-b2ff7ee-verification.json](screenshots/provider-public-b2ff7ee-verification.json). No automatic retry. Historical successful execution on `03497a4` remains recorded, but does not establish current successful execution or Gemini attribution. Keep the live-provider release gate open.
+
+### Updated public game acceptance
+
+The new public build reported `b2ff7ee` and passed the deployment smoke on costar-extract: HTTPS/assets, two WSS clients, shared edit/rotation and resume. Updated measured-floor art and HUD rendered on desktop and iPhone 13 emulation with zero page errors.
+
+At 23:07:49 UTC, actual keyboard service on the public measured floor passed: take mocha → brew → keyboard walking along collision-aware waypoints → serve. Observed authoritative state: served 0→1, revenue $0→$7, milk 24→23, cups 40→39, beans 30→29, holding null; zero page errors. No state injection. An earlier greedy direct-line approach hit furniture; that failed automation was not treated as proof of an unreachable station. Successful private screenshot/assertions remain in /tmp/pif-public-routed-* pending sponsor publication clearance.
+
+Physical-phone QR/touch/performance, public measured counter-rerouting, current successful Gemini attribution, actual Photon/Nessie receipts, sponsor permissions and final human visual-quality acceptance remain open. No complete release claim.
+
+Public SHA clarification: health immediately after the successful 23:07:49 service run reported `0b6dcd7d0fc9ffb3e4b56352335929d17c43f5f8`. The service script did not record its starting SHA. `b2ff7ee` belongs to the earlier smoke/render check; do not assign it to the later service run. These intervening commits changed tests/evidence only.

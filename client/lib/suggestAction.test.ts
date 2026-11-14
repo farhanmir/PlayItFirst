@@ -58,11 +58,15 @@ describe("suggestedAction", () => {
     expect(actionPrompt(far, "u")).toMatch(/Carry your drink to pickup/);
   });
 
-  it("suggests brew when holding a ticket", () => {
+  it("guides a ticket holder to the machine without offering an out-of-range action", () => {
     const s = snap({
       players: [{ id: "u", name: "U", role: "barista", x: 0, z: 0, holding: "ticket:latte", score: 0, color: "#fff" }],
     });
+    expect(suggestedAction(s, "u")).toBeNull();
+    expect(actionPrompt(s, "u")).toBe("Walk to the espresso machine");
+    s.layout!.furniture.push({ id: "m", kind: "coffee_machine", label: "Machine", x: 1, z: 0, rotation: 0, cost: 0 });
     expect(suggestedAction(s, "u")).toBe("make_coffee");
+    expect(actionPrompt(s, "u")).toBe("E · Brew latte");
   });
 
   it("suggests take_order near counter with empty hands", () => {

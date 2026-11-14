@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { Customer, RoomSnapshot } from "../../shared/types";
 
 const PERSONA: Record<Customer["persona"], { label: string; hint: string }> = {
@@ -13,19 +14,22 @@ export function OrderRail({
   snapshot: RoomSnapshot;
   compact?: boolean;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const active = snapshot.customers.filter((c) =>
     ["queue", "ordering", "waiting"].includes(c.state),
   );
 
   return (
-    <div className={`order-rail ${compact ? "compact" : ""}`}>
+    <div className={`order-rail ${compact ? "compact" : ""} ${expanded ? "expanded" : ""}`}>
       <div className="order-rail-head">
-        <span className="tag">Orders</span>
-        <strong>{active.length}</strong>
+        <span className="tag">{compact ? "Next guest" : "Orders"}</span>
+        {compact ? <button type="button" className="order-expand" aria-expanded={expanded}
+          aria-label={expanded ? "Collapse order queue" : `Show ${active.length} orders`}
+          onClick={() => setExpanded(!expanded)}>{expanded ? "Close" : `${active.length} in line`}</button> : <strong>{active.length}</strong>}
       </div>
       <div className="order-rail-scroll">
         {active.length === 0 && <p className="order-empty">Waiting for the next guest…</p>}
-        {active.slice(0, compact ? 3 : 8).map((c) => (
+        {active.slice(0, compact && !expanded ? 1 : 8).map((c) => (
           <article key={c.id} className={`ticket persona-${c.persona} state-${c.state}`}>
             <header>
               <strong>{c.name}</strong>

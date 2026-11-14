@@ -2256,3 +2256,74 @@
 .manager-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 .manager-panel details { margin-top: 0.75rem; }
 .manager-panel details ol { padding-left: 1.25rem; }
+
+/* Service HUD: the world stays central; only the next guest is expanded by default. */
+.game-immersive .hud-top {
+  top: max(12px, env(safe-area-inset-top));
+  background: #233b35ed;
+  border-color: #b6c7af55;
+  border-radius: 16px;
+  box-shadow: 0 4px 0 #162a2566, 0 8px 24px #152b2520;
+}
+.game-immersive .hud-brand > strong { color: #fff9e9; }
+.game-immersive .hud-vitals .vital > span { color: #c3d2c7; }
+.game-immersive .hud-vitals .vital > strong { color: #fff9e9; font-variant-numeric: tabular-nums; }
+.game-immersive .order-rail.compact { width: 190px; background: transparent; border: 0; box-shadow: none; gap: 0; }
+.game-immersive .order-rail-head { border-radius: 10px 10px 0 0; background: #233b35f5; padding: 0.1rem 0.55rem; }
+.game-immersive .order-rail-head .tag { border: 0; padding: 0; text-transform: none; color: #e9eee3; }
+.order-expand { pointer-events: auto; min-height: 44px; border: 0; background: transparent; color: #f8e2ab; font-size: 0.72rem; cursor: pointer; padding: 0 0.2rem; }
+.game-immersive .order-rail.compact .ticket { background: #faf1dcf5; color: #263b32; border: 0; border-radius: 0 0 10px 10px; padding: 0.55rem 0.7rem; box-shadow: 0 4px 0 #263b3226; animation: none; }
+.game-immersive .order-rail .ticket header strong,
+.game-immersive .order-rail .ticket .order-line { color: #263b32; }
+.game-immersive .order-rail .ticket header span { color: #626b57; font-size: 0.6rem; }
+.game-immersive .order-rail .ticket-bar { background: #d9d3bd; }
+.game-immersive .order-rail .ticket-bar i { background: #628a67; }
+.game-immersive .order-rail-scroll { max-height: 30dvh; }
+.game-immersive .play-controls.immersive { background: #233b35ed; border-color: #c3d2b84d; border-radius: 16px; box-shadow: 0 4px 0 #162a2566; }
+.game-immersive .context-act { background: #f3df9d; color: #263b32; border: 1px solid #fff1bd; border-bottom: 4px solid #b39a55; box-shadow: none; font-family: var(--font-body); font-size: 0.95rem; }
+.game-immersive .context-act:disabled { background: #344e45; color: #e3e9dc; border-color: #63786b; opacity: 1; }
+.game-immersive button:focus-visible { outline: 3px solid #f5da87; outline-offset: 3px; }
+@media (max-width: 600px) {
+  .game-immersive .hud-top { left: 8px; right: 8px; padding: 5px 10px; gap: 0; }
+  .game-immersive .hud-brand > strong { font-size: 1rem; }
+  .game-immersive .hud-brand { flex-wrap: nowrap; }
+  .game-immersive .hud-mute { min-height: 36px; font-size: 0.7rem; padding: 4px 7px; }
+  .game-immersive .hud-vitals { gap: 14px; }
+  .game-immersive .hud-vitals .vital { display: flex; gap: 5px; align-items: baseline; border: 0; padding: 3px 0; }
+  .game-immersive .hud-vitals .vital > span { font-size: 0.62rem; }
+  .game-immersive .game-chrome { top: 90px; right: 8px; gap: 4px; }
+  .game-immersive .game-chrome .view-toggle { background: #233b35ed; }
+  .game-immersive .chrome-btn { background: #233b35ed; }
+  .game-immersive .order-rail.compact { top: 146px; left: 8px; width: 155px; max-height: 25dvh; }
+  .game-immersive .order-rail.compact .ticket { padding: 6px 9px; }
+  .game-immersive .order-rail .ticket header { margin: 0; }
+  .game-immersive .order-rail .ticket .order-line { margin: 3px 0 6px; }
+  .game-immersive .order-expand { min-height: 36px; }
+  .game-immersive .play-controls.immersive.mobile {
+    left: auto; right: 10px; bottom: max(16px, env(safe-area-inset-bottom));
+    transform: none; width: calc(100% - 138px); padding: 8px; overflow: visible;
+  }
+  .game-immersive .play-controls.mobile .play-controls-top { display: block; }
+  .game-immersive .play-controls.mobile .holding-chip { font-size: 0.7rem; flex-wrap: wrap; }
+  .game-immersive .play-controls.mobile .holding-chip .tag { display: none; }
+  .game-immersive .play-controls.mobile .station-hint { font-size: 0.66rem; margin: 4px 0; }
+  .game-immersive .play-controls.mobile .context-act { min-height: 52px; padding: 8px; font-size: 0.85rem; }
+  .game-immersive .play-controls.mobile .mobile-pad {
+    position: absolute; right: calc(100% + 18px); bottom: 0;
+    width: 104px; height: 104px; min-height: 104px; margin: 0;
+    border-radius: 50%; border: 2px solid #f6edd1a8;
+    background: radial-gradient(circle, #f6edd144 0 24%, #233b357d 25% 68%, #f6edd144 69% 71%, #233b3580 72%);
+    box-shadow: 0 3px 14px #152b252b; color: #fff9e9; font-size: 0.75rem;
+  }
+  .game-immersive .play-controls.mobile .action-grid { display: none; }
+  .game-immersive.build-open .build-catalog { top: 146px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .game-immersive .vital, .game-immersive .vital-pulse, .game-immersive .ticket { animation: none; transition: none; }
+}
+@media (pointer: coarse) {
+  .game-immersive .hud-mute, .game-immersive .order-expand { min-height: 44px; min-width: 44px; }
+}
+@media (max-width: 600px) {
+  .game-immersive .help-fab { top: 150px; right: 8px; bottom: auto; min-height: 44px; background: #233b35ed; }
+}

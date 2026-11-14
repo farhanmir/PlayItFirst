@@ -1,0 +1,51 @@
+{
+  "scope": "Local mock-property verification; not production or physical-phone acceptance",
+  "property": "hou-midtown-1204",
+  "source": "costar-mock",
+  "browser": "Headless Chromium, software WebGL, 1200x800",
+  "service": {
+    "method": "Keyboard E take order, WASD around counter, E brew, wait 2.2 seconds, E serve. WebSocket snapshots observed only; no state injection.",
+    "order": "cappuccino",
+    "served": 1,
+    "revenue": 10,
+    "inventoryBefore": {
+      "milk": 24,
+      "cups": 40,
+      "beans": 30
+    },
+    "inventoryAfter": {
+      "milk": 23,
+      "cups": 39,
+      "beans": 29
+    },
+    "holdingAfter": null,
+    "finalPlayerPosition": {
+      "x": 2.304380249453411,
+      "z": 5.090094405924055
+    }
+  },
+  "sharedLayoutRoute": {
+    "method": "Two actual WebSocket clients; owner moves pickup then counter, guest receives accepted layout. Replay same seeded customer from identical position through stepSimulation for both layouts; sum movement segments.",
+    "command": "npm test -- server/vertical-slice.test.ts",
+    "guestStart": {
+      "x": 2.2,
+      "z": 2.8
+    },
+    "before": {
+      "remainingWalkDistance": 0,
+      "target": {
+        "x": 2.2,
+        "z": 2.8
+      }
+    },
+    "after": {
+      "remainingWalkDistance": 4.006638096792695,
+      "target": {
+        "x": 6.2,
+        "z": 3.8
+      }
+    },
+    "interpretation": "Moving the counter required the already queued guest to walk approximately 4.01 additional world units. Demonstrates causal rerouting, not improved efficiency or measured business gains.",
+    "tests": "20 passed"
+  }
+}

@@ -15,7 +15,7 @@ import type {
 import type { PropertyListing } from "../shared/types.ts";
 import { qrSvg } from "./qr.ts";
 import { applyDirectorChoice, forceDemoRushEvent, maybeSpawnDirectorEvent } from "./director.ts";
-import { provisionNessieAccount } from "./finance.ts";
+import { attachNessieAccount, refreshNessie } from "./finance.ts";
 import { getCachedProperties, loadProperties } from "./costar.ts";
 import { withMatterportDefaults } from "./matterport.ts";
 import { CafeManager } from "./manager.ts";
@@ -174,15 +174,7 @@ export class CafeRoomServer {
           return;
         }
         room.snapshot = selectProperty(room.snapshot, property);
-        void provisionNessieAccount(`${member.name} Café`).then((id) => {
-          if (id) {
-            room.snapshot = {
-              ...room.snapshot,
-              finance: { ...room.snapshot.finance, nessieAccountId: id },
-            };
-            this.broadcast(room);
-          }
-        });
+        attachNessieAccount(room.snapshot.finance, () => this.broadcast(room));
         this.broadcast(room);
         break;
       }
@@ -395,6 +387,7 @@ export class CafeRoomServer {
     if (room.stepTimer) return;
     room.stepTimer = setInterval(() => {
       room.snapshot = stepSimulation(room.snapshot, 1 / TICK_HZ);
+      refreshNessie(room.snapshot.finance);
     }, 1000 / TICK_HZ);
 
     room.snapshotTimer = setInterval(() => {

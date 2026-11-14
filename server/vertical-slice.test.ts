@@ -422,7 +422,11 @@ describe("paid order, inventory, and exactly-once revenue", () => {
       const order = ticket.slice("ticket:".length);
       const milkUsed = order === "latte" || order === "cappuccino" || order === "mocha" ? 1 : 0;
 
-      host.ws.send(JSON.stringify({ t: "player_move", x: machine.x, z: machine.z }));
+      // Walk around the counter, then stand beside (not inside) the machine.
+      const hostPosition = taken.players.find((player: { name: string }) => player.name === "Host");
+      host.ws.send(JSON.stringify({ t: "player_move", x: machine.x + 3, z: hostPosition.z }));
+      host.ws.send(JSON.stringify({ t: "player_move", x: machine.x + 3, z: machine.z }));
+      host.ws.send(JSON.stringify({ t: "player_move", x: machine.x + 1, z: machine.z }));
       host.ws.send(JSON.stringify({ t: "interact", action: "make_coffee" }));
       const brewed = await waitForSnapshot(guest.ws, (snapshot) => {
         const hostPlayer = snapshot.players.find((player: { name: string }) => player.name === "Host");
@@ -561,6 +565,31 @@ describe("counter and pickup move during active service", () => {
       const hostView = rooms.getRoom(created.code)?.snapshot;
       expect(hostView?.layout?.furniture.find((item) => item.kind === "counter")).toMatchObject(counterAt);
       expect(hostView?.layout?.furniture.find((item) => item.kind === "pickup")).toMatchObject(pickupAt);
+      // Replay the SAME seeded guest from the SAME position against each accepted
+      // shared layout. Sum real reducer movement, rather than a fabricated KPI.
+      const tracked = live.customers.find((guest: Customer) => guest.state === "queue" || guest.state === "ordering")!;
+      const trace = (source: RoomSnapshot) => {
+        let state = quietFloor({ ...source, customers: [{ ...tracked }] });
+        let distance = 0;
+        const points = [{ x: tracked.x, z: tracked.z }];
+        for (let step = 0; step < 160; step++) {
+          const previous = state.customers[0];
+          state = stepSimulation(state, 0.1);
+          const current = state.customers[0];
+          distance += Math.hypot(current.x - previous.x, current.z - previous.z);
+          points.push({ x: current.x, z: current.z });
+          if (Math.hypot(current.x - current.targetX, current.z - current.targetZ) < 0.15) break;
+        }
+        const last = state.customers[0];
+        expect(Math.hypot(last.x - last.targetX, last.z - last.targetZ)).toBeLessThan(0.15);
+        return { distance, target: { x: last.targetX, z: last.targetZ }, points };
+      };
+      const before = trace(live), after = trace(moved);
+      expect(after.target).not.toEqual(before.target);
+      expect(Math.abs(after.distance - before.distance)).toBeGreaterThan(0.5);
+      expect(after.points).not.toEqual(before.points);
+      console.info("LAYOUT_ROUTE_EVIDENCE", JSON.stringify({ property: live.property.id, guestStart: { x: tracked.x, z: tracked.z }, before: { distance: before.distance, target: before.target }, after: { distance: after.distance, target: after.target } }));
+
     } finally {
       freeze(rooms, created.code);
       for (const socket of sockets) socket.close();

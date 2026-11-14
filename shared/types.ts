@@ -116,12 +116,25 @@ export interface Transaction {
   at: number;
 }
 
+export interface NessieSync {
+  status: "provisioning" | "ready" | "unknown";
+  openingCents: number;
+  accountId?: string;
+  error?: string;
+  overflow?: boolean;
+  remoteBalanceCents?: number;
+  differenceCents?: number;
+  checkedAt?: number;
+  records: { localId: string; amountCents: number; status: "queued" | "pending" | "confirmed" | "failed" | "unknown"; remoteId?: string }[];
+}
+
 export interface FinanceState {
   balance: number;
   revenue: number;
   expenses: number;
   transactions: Transaction[];
   nessieAccountId: string;
+  nessieSync?: NessieSync;
 }
 
 export interface DirectorEvent {

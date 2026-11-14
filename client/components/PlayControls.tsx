@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import type { RoomSnapshot } from "../../shared/types";
 import { BREW_SECONDS, nearestStation } from "../../shared/stations";
+import { furnitureMoveClear } from "../../shared/movement";
 import { floorMoveClear } from "../../shared/floorplan";
 import { useApp } from "../lib/store";
 import { play } from "../lib/audio";
@@ -11,7 +12,11 @@ import { interactionSounds } from "../lib/interactionFeedback";
 function patchMyPosition(x: number, z: number) {
   const { snapshot, you, set } = useApp.getState();
   if (!snapshot || !you) return false;
+  if (!snapshot.property) return false;
+  x = Math.max(0.3, Math.min(snapshot.property.width - 0.3, x));
+  z = Math.max(0.3, Math.min(snapshot.property.depth - 0.3, z));
   const current = snapshot.players.find((p) => p.id === you);
+  if (!current || !furnitureMoveClear(snapshot.layout?.furniture ?? [], current, { x, z })) return false;
   const plan = snapshot.property?.floorPlan;
   if (plan && current && !floorMoveClear(plan, current, { x, z })) return false;
   set({
@@ -26,16 +31,16 @@ function patchMyPosition(x: number, z: number) {
 export function PlayControls({
   snapshot,
   immersive = false,
+  enabled = true,
 }: {
   snapshot: RoomSnapshot;
   immersive?: boolean;
+  enabled?: boolean;
 }) {
   const conn = useApp((s) => s.conn);
   const you = useApp((s) => s.you);
   const me = snapshot.players.find((p) => p.id === you);
   const mobile = useApp((s) => s.mobile);
-  const meRef = useRef(me);
-  meRef.current = me;
   const feedback = useRef({ snapshot, you });
 
   useEffect(() => {
@@ -53,15 +58,16 @@ export function PlayControls({
   const jamieHelping = !!snapshot.aiBarista?.holding;
 
   useEffect(() => {
-    if (!conn) return;
+    if (!conn || !enabled) return;
     const keys = new Set<string>();
     const onDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.target instanceof HTMLElement && e.target.closest("input, textarea, select, [contenteditable=true], [role=dialog]")) return;
       const k = e.key.toLowerCase();
       if (e.repeat && ["e", " ", "enter", "f", "r", "q"].includes(k)) return;
+      if (["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(k)) e.preventDefault();
       keys.add(k);
       // One contextual key: E or Space runs the suggested station action.
-      if (k === "e" || k === " " || k === "enter") {
+      if (k === "e" || ((k === " " || k === "enter") && !(e.target instanceof HTMLElement && e.target.closest("button, a")))) {
         e.preventDefault();
         const next = suggestedAction(useApp.getState().snapshot ?? snapshot, useApp.getState().you);
         if (next) act(next);
@@ -77,7 +83,8 @@ export function PlayControls({
     window.addEventListener("keyup", onUp);
 
     const id = setInterval(() => {
-      const current = meRef.current;
+      const state = useApp.getState();
+      const current = state.snapshot?.players.find((p) => p.id === state.you);
       if (!current) return;
       const { dx, dz } = moveFromKeys(keys, 0.22);
       if (!dx && !dz) return;
@@ -92,7 +99,7 @@ export function PlayControls({
       window.removeEventListener("keyup", onUp);
       window.removeEventListener("blur", clearKeys);
     };
-  }, [conn]);
+  }, [conn, enabled]);
 
   const act = (action: PlayAction) => {
     conn?.send({ t: "interact", action });
@@ -139,7 +146,7 @@ export function PlayControls({
         onClick={() => {
           if (suggest) act(suggest);
         }}
-        disabled={!suggest}
+        disabled={!suggest || !enabled}
       >
         {prompt}
       </button>
@@ -169,7 +176,7 @@ export function PlayControls({
         <p className="hint">WASD move · click to look · E / Space interact</p>
       )}
 
-      {mobile && me && (
+      {mobile && me && enabled && (
         <MobilePad
           onMove={(dx, dz) => {
             const state = useApp.getState();

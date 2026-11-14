@@ -34,6 +34,30 @@ describe("room-scoped manager consent and transactions", () => {
     await manager.approve(owner, plan.proposals[0].id);
     expect(read().inventory.milk).toBe(36);
   });
+  it("clears previous provider proof on a failed or sponsor-blocked run", async () => {
+    let fail = false;
+    const { manager, change } = setup({ configured: () => true, runner: async ({ tools }) => {
+      if (fail) throw new Error("provider unavailable");
+      tools.inspect();
+      return { summary: "Inspected", providerIdentity: { provider: "google", model: "test-model" } };
+    } });
+    const first = await manager.request(owner, "Inspect");
+    expect(first.providerVerified).toBe(true);
+    expect(first.providerIdentity).toEqual({ provider: "google", model: "test-model" });
+    fail = true;
+    const failed = await manager.request(owner, "Inspect again");
+    expect(failed.providerVerified).toBe(false);
+    expect(failed.providerIdentity).toBeUndefined();
+    fail = false;
+    expect((await manager.request(owner, "Inspect")).providerVerified).toBe(true);
+    vi.stubEnv("ALLOW_SPONSOR_MODEL_CONTEXT", "false");
+    change((s) => ({ ...s, property: { ...s.property!, source: "costar-extract" } }));
+    const blocked = await manager.request(owner, "Inspect");
+    expect(blocked.runtime).toBe("local");
+    expect(blocked.providerVerified).toBe(false);
+    expect(blocked.providerIdentity).toBeUndefined();
+  });
+
   it("plans without spending, then executes owner approval exactly once on fresh state", async () => {
     const { manager, read, change } = setup();
     const initial = read();

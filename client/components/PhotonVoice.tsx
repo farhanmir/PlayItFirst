@@ -1,7 +1,4 @@
-/**
- * Real Photon Voice path — WebRTC audio between room members via WS signaling.
- * Falls back to Jamie AI call UI when alone; starts a live mic session when peers exist.
- */
+/** Browser-to-browser crew audio. This is not a Photon telephone integration. */
 import { useEffect, useRef, useState } from "react";
 import type { RoomSnapshot } from "../../shared/types";
 import { useApp } from "../lib/store";
@@ -38,12 +35,12 @@ export function PhotonVoice({ snapshot }: { snapshot: RoomSnapshot }) {
 
   return (
     <aside className="side-panel panel photon-voice">
-      <p className="tag">Photon Voice</p>
+      <p className="tag">Crew voice</p>
       <h3>Live crew channel</h3>
       <p>
         {peers.length
           ? `${peers.length} peer${peers.length === 1 ? "" : "s"} in room — WebRTC crew voice over Play It First signaling (not Photon 2.0).`
-          : "Solo session — invite via QR, then start a live call. Jamie AI call still rings on rushes."}
+          : "Invite a friend via QR to use browser voice chat. Telephone calls are not connected."}
       </p>
       <p className="voice-status" aria-live="polite">
         Status: <strong>{status}</strong>

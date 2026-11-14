@@ -2,97 +2,59 @@
 
 > Play your business before you pay for it.
 
-Play It First is a multiplayer business simulation that turns real commercial properties into playable businesses. Players design their storefront, operate it together, serve customers, manage finances, and experiment with different business decisions inside a living simulation.
+A multiplayer business simulation that transforms a real commercial property into a playable café. Design the space, work together, serve customers, manage finances and test business decisions before committing actual capital. Before every grand opening, there's a soft opening. We built one you can play.
 
-Before every grand opening, there's a soft opening. We built one you can play.
-
+**Play:** https://playitfirst.onrender.com/ · [Judge demo](https://playitfirst.onrender.com/?demo=1)  
 **Repo:** https://github.com/farhanmir/PlayItFirst
 
-## Run
+## Start here
+
+- [Master product plan and complete implementation audit](docs/MASTER_PLAN.md)
+- [Agent instructions](AGENTS.md) · [Current alignment](docs/ALIGNMENT.md) · [Progress/evidence](docs/PROGRESS.md)
+- [Render deployment and credentials](docs/DEPLOY.md) · [Judging and pitch](docs/HACKATHON.md)
+
+## Run locally (Node 22)
 
 ```sh
-npm install
+npm ci --include=dev
 npm run dev
 ```
 
-Open http://localhost:5173
+Open http://localhost:5173. Copy .env.example to ignored .env only if configuring sponsor credentials. Never commit actual keys or private .sponsor data.
 
-## Demo path (2 minutes)
+## Play
 
-**Fastest for judges:** click **Judge demo** on the landing page, or open `http://localhost:5173/?demo=1` — auto-hosts Midtown, enters the floor, and opens the café.
+Host or join a business, select a property, view its walkthrough, open the café. Move with WASD or touch; E/Space performs contextual service action. Take an order, brew, carry and serve. Tab/build lets the owner edit the shared floor while others play. Menu contains finance, Jamie manager, crew, comparison and blueprint. Friends join by QR. Judge demo creates a fresh playable shift and prefers the authorized property extract when configured; otherwise clearly labeled mock fallback. No real money.
 
-Manual path:
-
-1. Enter your name → **Open Your Business**
-2. Pick a Houston or LA storefront (rent/size/traffic become the rules)
-3. **Build** — select furniture → click the café floor (or drag **Table** markers)
-4. Open **Matterport** walkthrough on Build; crew voice on Ops; **WebXR** on Table
-5. **Open for business** → WASD + Take order / Brew / Serve (`E` / `F` / `R` / Space)
-6. Answer the AI director + message Jamie in **Ops**
-7. Check **Future** for the rival café race + alternate timelines, then **Plan** → generate blueprint
-8. Friends scan the HUD QR to join as baristas
-
-## What works
+## Current implementation status (Nov 14)
 
 | Area | Status |
 | --- | --- |
-| CoStar property selection | ✅ Live when `COSTAR_API_URL` set · else clearly labeled mock |
-| Matterport twin | ✅ Showcase embed + Model API when `MATTERPORT_TOKEN` set · playable plate reconstructed from listing dims |
-| Playable 3D café (Three.js / R3F) | ✅ Warm procedural interior |
-| 1st / 3rd / Monitor / Dollhouse cameras | ✅ |
-| Station-gated jobs + brew timer | ✅ |
-| Click-to-place build | ✅ |
-| Real-time multiplayer + QR join | ✅ |
-| Customers, tickets, inventory | ✅ |
-| Live tabletop marker sync | ✅ |
-| AI game director | ✅ Local rules · hosted LLM when keyed (Deepagents runtime still P0) |
-| Nessie finance ledger | ✅ Local + optional `NESSIE_KEY` |
-| In-app manager chat + crew WebRTC | ✅ Labeled honestly — not Photon 2.0 yet |
-| Vision Pro / WebXR | ✅ Immersive VR/AR entry + dollhouse fallback |
-| Rival café + time machine | ✅ Heuristic / illustrative — labeled as such |
-| Judge demo (`/?demo=1`) | ✅ |
-| Launch blueprint | ✅ With data provenance |
-| WebAudio café SFX | ✅ iOS-safe unlock |
+| 3D café, manual service, customers, inventory, cash | Implemented; browser-tested |
+| Multiplayer, QR/resume, shared build | Prior public browser test passed; physical phone/latest deploy pending |
+| CoStar and Matterport | Authorized matched measured suite implemented locally; public extract/permissions/viewer not yet verified |
+| Deepagents and Gemini | Actual framework + Google adapter, tests; live provider acceptance pending |
+| Nessie | Local ledger, incomplete external sandbox integration |
+| Photon | In-app manager/crew WebRTC, not real Photon messaging or telephone |
+| Timeline/rival | Illustrative heuristics, not measured counterfactuals |
+| Blueprint | Markdown export; real-session verification remaining |
+| WebXR | Optional entry/dollhouse fallback; headset unverified |
 
-## Architecture
+See MASTER_PLAN and PROGRESS for current evidence, not just configuration. Last recorded public property was costar-mock. The active production commit may differ from main.
 
-Reuses battle-tested ideas from [Gitzilla](https://github.com/gfhdhytghd/Gitzilla) without becoming Gitzilla:
+## Architecture and deployment
 
-- Single-port Node + Vite middleware + `/ws`
-- Authoritative sim tick + snapshot broadcast
-- QR join + resume tokens (`softopen.*` keys; `playfirst.*` still accepted)
-
-```
-shared/   contracts
-server/   rooms, simulation, director, costar, matterport, deepagents, finance, QR
-client/   React UI + R3F café + WebRTC voice + WebXR
-data/     property listings
-docs/     HACKATHON, ALIGNMENT, PROGRESS
-```
-
-## Scripts
+React/Vite/R3F client + shared TypeScript contracts + persistent Node/WebSocket authoritative simulation. server/main.ts serves SPA/API/ws on a single port. Render is the only production host; see render.yaml and DEPLOY.md. No separate frontend hosting. In-memory rooms reset on process restart; no durable saves. Former names SoftOpen/PlayFirst remain only for compatible resume/storage and service identifiers.
 
 ```sh
-npm run dev        # game server + client
-npm test           # sim + multiplayer smoke + integrations
+npm test
 npm run typecheck
 npm run build
+node scripts/check-deployment.mjs https://playitfirst.onrender.com
 ```
 
-## Env (optional)
+Optional geometry checks: python -m unittest discover -s scripts -p 'test_*.py'. Live Gemini check: node --import tsx scripts/check-gemini-manager.ts (requires real key, synthetic data only). Do not count scripted/mock model tests as real provider proof.
 
-Copy `.env.example`. Demo runs fully without keys.
+## Environment
 
-| Var | Purpose |
-| --- | --- |
-| `NESSIE_KEY` | Capital One Nessie sandbox |
-| `COSTAR_API_URL` / `COSTAR_API_KEY` | Live CoStar listings JSON |
-| `MATTERPORT_TOKEN` | Matterport Model API |
-| `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `DEEPAGENTS_*` | Hosted director |
-| `PORT` | Default `5173` |
-
-Integration status is exposed at `/api/integrations` and on the landing/game badges.
-
-## Compatibility
-
-Former product names: **SoftOpen** and **PlayFirst**. Resume tokens and localStorage name keys under `playfirst.*` are still read/written alongside `softopen.*` so mid-hackathon clients keep working.
+Use .env.example and docs/DEPLOY.md. Render server secrets: COSTAR_DATA_FILE (authorized secret file property.json), MATTERPORT_API_KEY + MATTERPORT_TOKEN, GOOGLE_API_KEY (or GEMINI_API_KEY; OpenAI/Anthropic supported), optional DEEPAGENTS_MODEL and NESSIE_KEY. Keep ALLOW_SPONSOR_MODEL_CONTEXT=false until sponsor authorizes external processing. Photon credentials pending provider integration. No secrets in VITE_* or client code. Check /api/health, /api/integrations and /api/properties; keys alone do not verify actual integration.
