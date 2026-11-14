@@ -1,5 +1,7 @@
 import type { FurnitureKind, RoomSnapshot } from "./types.ts";
 
+export const BREW_SECONDS = 1.6;
+
 export type StationHint = "counter" | "machine" | "pickup" | "fridge";
 
 const STATION_MAP: { kind: FurnitureKind; station: StationHint }[] = [

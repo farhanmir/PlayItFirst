@@ -461,8 +461,9 @@ describe("counter and pickup move during active service", () => {
       const counterAt = { x: counter.x + 4, z: counter.z + 1 };
       const pickupAt = { x: pickup.x + 2, z: Math.max(0.6, pickup.z - 1.5) };
 
-      host.ws.send(JSON.stringify({ t: "move_furniture", id: counter.id, x: counterAt.x, z: counterAt.z }));
+      // Vacate pickup first: the counter destination overlaps its old clearance.
       host.ws.send(JSON.stringify({ t: "move_furniture", id: pickup.id, x: pickupAt.x, z: pickupAt.z }));
+      host.ws.send(JSON.stringify({ t: "move_furniture", id: counter.id, x: counterAt.x, z: counterAt.z }));
       const moved = await waitForSnapshot(guest.ws, (snapshot) => {
         const nextCounter = snapshot.layout.furniture.find((item: { kind: string }) => item.kind === "counter");
         const nextPickup = snapshot.layout.furniture.find((item: { kind: string }) => item.kind === "pickup");

@@ -15,7 +15,8 @@ import type {
   RoomSnapshot,
 } from "../shared/types.ts";
 import { FURNITURE_CATALOG } from "../shared/types.ts";
-import { nearestStation } from "../shared/stations.ts";
+import { BREW_SECONDS, nearestStation } from "../shared/stations.ts";
+import { placementIssue } from "../shared/placement.ts";
 import { applyTransaction, createFinance } from "./finance.ts";
 
 export { nearestStation };
@@ -136,6 +137,8 @@ export function placeFurniture(
   const catalog = FURNITURE_CATALOG.find((c) => c.kind === kind);
   if (!catalog) return snapshot;
   if (snapshot.finance.balance < catalog.cost) return snapshot;
+  const issue = placementIssue(snapshot.property, snapshot.layout.furniture, kind, x, z);
+  if (issue) return { ...snapshot, eventLog: [issue, ...snapshot.eventLog].slice(0, 30) };
 
   const item: FurnitureItem = {
     id: randomUUID(),
@@ -297,6 +300,10 @@ export function applyRestock(snapshot: RoomSnapshot, label = "Milk & cups restoc
 
 export function moveFurniture(snapshot: RoomSnapshot, id: string, x: number, z: number, rotation?: number): RoomSnapshot {
   if (!snapshot.layout || !snapshot.property) return snapshot;
+  const item = snapshot.layout.furniture.find((f) => f.id === id);
+  if (!item) return snapshot;
+  const issue = placementIssue(snapshot.property, snapshot.layout.furniture, item.kind, x, z, id);
+  if (issue) return { ...snapshot, eventLog: [issue, ...snapshot.eventLog].slice(0, 30) };
   const furniture = snapshot.layout.furniture.map((f) =>
     f.id === id
       ? {
@@ -381,7 +388,7 @@ export function openCafe(snapshot: RoomSnapshot): RoomSnapshot {
 }
 
 /** Brew time (sim seconds) before a drink becomes holdable. */
-const BREW_SEC = 1.6;
+const BREW_SEC = BREW_SECONDS;
 
 function parseBrewing(holding?: string | null): { order: string; started: number } | null {
   if (!holding?.startsWith("brewing:")) return null;
@@ -829,7 +836,9 @@ export function stepSimulation(snapshot: RoomSnapshot, dt: number): RoomSnapshot
 
   // Jamie (AI) barista: help on long queues or when humans go idle — paced so players still matter
   const humanIdle = next.simTime - (next.lastHumanInteractAt ?? 0) >= AI_IDLE_SEC;
-  const needsHelp = queueLength >= 5 || humanIdle;
+  // The first completed sale belongs to a human, even during the seeded judge rush.
+  // Afterwards Jamie only starts work when people have actually stopped interacting.
+  const needsHelp = next.metrics.customersServed > 0 && humanIdle;
   const period = queueLength >= 7 || rush > 0.5 ? Math.floor(AI_PERIOD_TICKS / 2) : AI_PERIOD_TICKS;
   if (needsHelp && next.tick % period === 0) {
     next = runAiBaristaAssist(next);

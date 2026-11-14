@@ -39,6 +39,16 @@ function seedCustomer(partial: Partial<Customer> & Pick<Customer, "state">): Cus
 }
 
 describe("café simulation", () => {
+  it("reserves the first sale for humans through an idle judge rush", () => {
+    let snap = seedDemoCrowd(openCafe(selectProperty(createRoomSnapshot("judge"), listing)));
+    snap = addPlayer(snap, "p1", "Judge", "barista");
+    const inventory = { ...snap.inventory };
+    for (let i = 0; i < 400; i++) snap = stepSimulation(snap, 0.05);
+    expect(snap.metrics.customersServed).toBe(0);
+    expect(snap.aiBarista?.holding).toBeNull();
+    expect(snap.inventory).toEqual(inventory);
+    expect(snap.eventLog.some((line) => line.includes("Jamie (AI)"))).toBe(false);
+  });
   it("selects a property and spends starter budget", () => {
     let snap = createRoomSnapshot("demo");
     snap = selectProperty(snap, listing);
@@ -91,7 +101,7 @@ describe("café simulation", () => {
     expect(nearestStation(snap, "p1")).toBe("machine");
   });
 
-  it("AI helper Jamie eventually serves someone when open with a queue", () => {
+  it("AI helper Jamie assists idle humans after their first completed sale", () => {
     let snap = selectProperty(createRoomSnapshot("demo"), listing);
     snap = openCafe(snap);
     // Force a backed-up queue + idle humans so Jamie steps in reliably
@@ -106,7 +116,7 @@ describe("café simulation", () => {
         seedCustomer({ id: "c4", name: "Dana", state: "queue", patience: 500 }),
         seedCustomer({ id: "c5", name: "Eli", state: "queue", patience: 500 }),
       ],
-      metrics: { ...snap.metrics, queueLength: 5 },
+      metrics: { ...snap.metrics, queueLength: 5, customersServed: 1 },
     };
 
     for (let i = 0; i < 600; i++) {
@@ -115,7 +125,7 @@ describe("café simulation", () => {
 
     const jamieLogs = snap.eventLog.filter((e) => e.includes("Jamie (AI)"));
     expect(jamieLogs.length).toBeGreaterThan(0);
-    expect(snap.metrics.customersServed).toBeGreaterThan(0);
+    expect(snap.metrics.customersServed).toBeGreaterThan(1);
     expect(jamieLogs.some((e) => /served|brewed|took a/.test(e))).toBe(true);
   });
 
