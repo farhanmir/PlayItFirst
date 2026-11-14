@@ -36,6 +36,11 @@ function snap(partial: Partial<RoomSnapshot> & { players: RoomSnapshot["players"
 }
 
 describe("suggestedAction", () => {
+  it("waits for the accepted brew to finish before another action", () => {
+    const s = snap({ players: [{ id: "u", name: "U", role: "barista", x: 0, z: 0, holding: "brewing:latte@1", score: 0, color: "#fff" }] });
+    expect(suggestedAction(s, "u")).toBeNull();
+    expect(actionPrompt(s, "u")).toBe("Pulling your shot…");
+  });
   it("suggests serve when holding a drink", () => {
     const s = snap({
       players: [{ id: "u", name: "U", role: "barista", x: 0, z: 0, holding: "drink:latte", score: 0, color: "#fff" }],

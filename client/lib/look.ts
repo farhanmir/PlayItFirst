@@ -1,6 +1,6 @@
 /** Shared look angles for first/third person cameras + relative WASD. */
-/** Default faces into the café (+Z) so cameras look past the entrance into the room. */
-let yaw = Math.PI;
+/** Start diagonally across the service counter so the line and equipment are visible. */
+let yaw = -0.9;
 let pitch = -0.22;
 const listeners = new Set<() => void>();
 

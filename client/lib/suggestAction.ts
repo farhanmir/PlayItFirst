@@ -15,7 +15,8 @@ export function suggestedAction(snapshot: RoomSnapshot, playerId: string | null)
   const lowStock = inv.beans < 4 || inv.cups < 4 || inv.milk < 2;
 
   if (holding?.startsWith("drink:")) return "serve";
-  if (holding?.startsWith("brewing:") || holding?.startsWith("ticket:")) return "make_coffee";
+  if (holding?.startsWith("brewing:")) return null;
+  if (holding?.startsWith("ticket:")) return "make_coffee";
   if (lowStock && (station === "fridge" || !station)) return "restock";
   if (station === "counter") return "take_order";
   if (station === "machine") return "make_coffee";
@@ -45,6 +46,7 @@ export function stationLabel(station: StationHint | null): string | null {
 export function actionPrompt(snapshot: RoomSnapshot, playerId: string | null): string {
   const action = suggestedAction(snapshot, playerId);
   const me = playerId ? snapshot.players.find((p) => p.id === playerId) : null;
+  if (me?.holding?.startsWith("brewing:")) return "Pulling your shot…";
   const drink = me?.holding?.startsWith("drink:")
     ? me.holding.slice("drink:".length)
     : me?.holding?.startsWith("ticket:")
@@ -53,6 +55,10 @@ export function actionPrompt(snapshot: RoomSnapshot, playerId: string | null): s
         ? me.holding.slice("brewing:".length).split("@")[0]
         : null;
   const waiting = snapshot.customers.find((c) => c.state === "ordering" || c.state === "queue");
+  const station = playerId ? nearestStation(snapshot, playerId) : null;
+  if (action === "make_coffee" && station !== "machine") return "Walk to the espresso machine";
+  if (action === "serve" && station !== "pickup") return "Carry your drink to pickup";
+  if (action === "take_order" && station !== "counter") return "Walk to the service counter";
   switch (action) {
     case "take_order":
       return waiting ? `E · Take ${waiting.preference} order` : "E · Take order";

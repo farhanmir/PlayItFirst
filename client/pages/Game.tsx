@@ -160,8 +160,7 @@ export function Game() {
         <Hud snapshot={snapshot} live compact />
         <PlayCrosshair snapshot={snapshot} mode={viewMode} />
         <ServeToast snapshot={snapshot} />
-        <DirectorPanel snapshot={snapshot} />
-        <PhotonCall snapshot={snapshot} />
+        {drawerOpen ? <PhotonCall snapshot={snapshot} /> : null}
         <HelpOverlay />
 
         {!buildMode && playView ? <OrderRail snapshot={snapshot} compact /> : null}
@@ -201,7 +200,7 @@ export function Game() {
         ) : null}
       </div>
 
-      <aside className="game-drawer" aria-hidden={!drawerOpen}>
+      <aside className="game-drawer" aria-hidden={!drawerOpen} inert={!drawerOpen}>
         <div className="drawer-tabs">
           {(
             [
@@ -233,6 +232,7 @@ export function Game() {
         <div className="drawer-body">
           {drawerTab === "manage" && (
             <>
+              <DirectorPanel snapshot={snapshot} />
               <IntegrationsBadge />
               <PhotonChat snapshot={snapshot} />
               <PhotonVoice snapshot={snapshot} />

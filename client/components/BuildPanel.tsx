@@ -11,12 +11,14 @@ export function BuildPanel({
 }) {
   const conn = useApp((s) => s.conn);
   const buildKind = useApp((s) => s.buildKind);
+  const buildRotation = useApp((s) => s.buildRotation);
+  const buildMovingId = useApp((s) => s.buildMovingId);
   const set = useApp((s) => s.set);
   const property = snapshot.property;
 
   const select = (kind: FurnitureKind) => {
     play("ui", 0.2);
-    set({ buildKind: buildKind === kind ? null : kind });
+    set({ buildKind: buildKind === kind ? null : kind, buildMovingId: null });
   };
 
   const quickDrop = (kind: FurnitureKind) => {
@@ -29,15 +31,18 @@ export function BuildPanel({
 
   return (
     <aside className="side-panel panel build-panel">
-      <h3>{liveEdit ? "Sims build catalog" : "Build mode"}</h3>
+      <h3>Make yourself at home</h3>
       <p>
         Select an item, then <strong>click the café floor</strong> to place it.
         {liveEdit ? " Service keeps running for everyone else." : " Layout changes hit everyone in the room live."}
       </p>
       {buildKind ? (
         <p className="build-place-hint" aria-live="polite">
-          Placing <strong>{FURNITURE_CATALOG.find((c) => c.kind === buildKind)?.label ?? buildKind}</strong> — click the floor
-          <button type="button" className="btn-ghost btn-small" onClick={() => set({ buildKind: null })}>
+          {buildMovingId ? "Moving" : "Placing"} <strong>{FURNITURE_CATALOG.find((c) => c.kind === buildKind)?.label ?? buildKind}</strong> · ½ m snap
+          <button type="button" className="btn-ghost btn-small" onClick={() => set({ buildRotation: (buildRotation + Math.PI / 2) % (Math.PI * 2) })}>
+            Rotate 90°
+          </button>
+          <button type="button" className="btn-ghost btn-small" onClick={() => set({ buildKind: null, buildMovingId: null })}>
             Cancel
           </button>
         </p>
@@ -94,6 +99,7 @@ export function BuildPanel({
           </button>
         ) : null}
       </div>
+      <p className="build-feedback" role="status">{snapshot.eventLog[0]}</p>
       {snapshot.layout && (
         <ul className="placed-list">
           {snapshot.layout.furniture.map((f) => (
@@ -101,6 +107,9 @@ export function BuildPanel({
               <span>
                 {f.label} ({f.x.toFixed(1)}, {f.z.toFixed(1)})
               </span>
+              <button type="button" className="btn-ghost btn-small" onClick={() => set({ buildKind: f.kind, buildMovingId: f.id, buildRotation: f.rotation })}>
+                Move
+              </button>
               <button type="button" className="btn-ghost btn-small" onClick={() => conn?.send({ t: "remove_furniture", id: f.id })}>
                 Remove
               </button>

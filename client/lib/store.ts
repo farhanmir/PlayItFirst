@@ -19,6 +19,8 @@ interface AppState {
   device: DeviceKind | null;
   /** Catalog selection for click-to-place on the café floor (build mode). */
   buildKind: FurnitureKind | null;
+  buildRotation: number;
+  buildMovingId: string | null;
   set: (partial: Partial<AppState>) => void;
 }
 
@@ -40,6 +42,8 @@ export const useApp = create<AppState>((set) => ({
   mobile: uaMobile,
   device: null,
   buildKind: null,
+  buildRotation: 0,
+  buildMovingId: null,
   set: (partial) => set(partial),
 }));
 

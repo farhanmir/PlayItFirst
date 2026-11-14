@@ -1,9 +1,10 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { OrbitControls, PerspectiveCamera, Sparkles, Text } from "@react-three/drei";
-import { useEffect, useRef, type ReactNode } from "react";
+import { Billboard, OrbitControls, PerspectiveCamera, Sparkles, Text } from "@react-three/drei";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { DoubleSide, MathUtils, type Group, type PerspectiveCamera as ThreePerspectiveCamera } from "three";
 import type { Customer, FurnitureItem, FurnitureKind, PlayerState, PropertyListing, RoomSnapshot } from "../../shared/types";
 import { nearestStation } from "../../shared/stations";
+import { placementIssue, snapFloor } from "../../shared/placement";
 import { getLook, nudgeLook } from "../lib/look";
 import { play } from "../lib/audio";
 import { useApp } from "../lib/store";
@@ -57,6 +58,9 @@ export function CafeScene({ snapshot, viewMode = "monitor", buildMode = false }:
   const you = useApp((s) => s.you);
   const conn = useApp((s) => s.conn);
   const buildKind = useApp((s) => s.buildKind);
+  const buildRotation = useApp((s) => s.buildRotation);
+  const buildMovingId = useApp((s) => s.buildMovingId);
+  const [hover, setHover] = useState<{ x: number; z: number } | null>(null);
   const me = snapshot.players.find((p) => p.id === you);
   const mode = viewMode;
   const canFloorPlace =
@@ -66,10 +70,15 @@ export function CafeScene({ snapshot, viewMode = "monitor", buildMode = false }:
 
   const placeOnFloor = (x: number, z: number) => {
     if (!canFloorPlace || !buildKind || !conn || !property) return;
-    const px = Math.min(property.width - 0.6, Math.max(0.6, x));
-    const pz = Math.min(property.depth - 0.6, Math.max(0.6, z));
-    conn.send({ t: "place_furniture", kind: buildKind as FurnitureKind, x: px, z: pz });
-    play("place");
+    const px = snapFloor(x);
+    const pz = snapFloor(z);
+    if (placementIssue(property, snapshot.layout?.furniture ?? [], buildKind, px, pz, buildMovingId)) return;
+    if (buildMovingId) {
+      conn.send({ t: "move_furniture", id: buildMovingId, x: px, z: pz, rotation: buildRotation });
+      useApp.getState().set({ buildKind: null, buildMovingId: null });
+    } else {
+      conn.send({ t: "place_furniture", kind: buildKind as FurnitureKind, x: px, z: pz, rotation: buildRotation });
+    }
   };
 
   return (
@@ -120,9 +129,14 @@ export function CafeScene({ snapshot, viewMode = "monitor", buildMode = false }:
         <CafeRoom
           property={property}
           furniture={snapshot.layout?.furniture ?? []}
-          cutaway={mode === "dollhouse"}
+          cutaway={mode === "dollhouse" || mode === "monitor"}
+          overhead={mode !== "first"}
           placeEnabled={canFloorPlace}
           onFloorPlace={placeOnFloor}
+          onFloorHover={(x, z) => {
+            const nx = snapFloor(x), nz = snapFloor(z);
+            setHover((prev) => prev?.x === nx && prev.z === nz ? prev : { x: nx, z: nz });
+          }}
           highlightKind={
             you
               ? (() => {
@@ -132,6 +146,9 @@ export function CafeScene({ snapshot, viewMode = "monitor", buildMode = false }:
               : null
           }
         />
+        {canFloorPlace && buildKind && hover ? (
+          <PlacementGhost snapshot={snapshot} kind={buildKind} x={hover.x} z={hover.z} rotation={buildRotation} movingId={buildMovingId} />
+        ) : null}
         {snapshot.customers.map((c) => (
           <CustomerMesh key={c.id} customer={c} />
         ))}
@@ -234,7 +251,7 @@ function CameraRig({
       cam.far = 70;
       cam.updateProjectionMatrix();
     } else {
-      cam.fov = 48;
+      cam.fov = 62;
       cam.near = 0.1;
       cam.far = 70;
       cam.updateProjectionMatrix();
@@ -259,9 +276,9 @@ function CameraRig({
         cam.rotation.z = 0;
       } else {
         // Elevated follow cam, clamped inside the room so we never stare at exterior walls.
-        const dist = 4.8;
-        const height = 3.35 - Math.sin(pitch) * 0.85;
-        let cx = smooth.current.x - Math.sin(yaw) * dist * 0.65;
+        const dist = 6.4;
+        const height = 4.6 - Math.sin(pitch) * 1.2;
+        let cx = smooth.current.x - Math.sin(yaw) * dist;
         let cz = smooth.current.z + Math.cos(yaw) * dist;
         cx = MathUtils.clamp(cx, 1.4, Math.max(1.6, width - 1.4));
         cz = MathUtils.clamp(cz, 1.4, Math.max(1.6, depth - 1.4));
@@ -293,16 +310,20 @@ function CafeRoom({
   property,
   furniture,
   cutaway = false,
+  overhead = false,
   highlightKind,
   placeEnabled = false,
   onFloorPlace,
+  onFloorHover,
 }: {
   property: PropertyListing;
   furniture: FurnitureItem[];
   cutaway?: boolean;
+  overhead?: boolean;
   highlightKind?: FurnitureItem["kind"] | null;
   placeEnabled?: boolean;
   onFloorPlace?: (x: number, z: number) => void;
+  onFloorHover?: (x: number, z: number) => void;
 }) {
   const w = property.width;
   const d = property.depth;
@@ -315,6 +336,7 @@ function CafeRoom({
         rotation={[-Math.PI / 2, 0, 0]}
         position={[w / 2, 0, d / 2]}
         receiveShadow
+        onPointerMove={(e) => { if (placeEnabled) onFloorHover?.(e.point.x, e.point.z); }}
         onClick={(e) => {
           if (!placeEnabled || !onFloorPlace) return;
           e.stopPropagation();
@@ -337,6 +359,19 @@ function CafeRoom({
           emissiveIntensity={placeEnabled ? 0.08 : 0}
         />
       </mesh>
+
+      {placeEnabled ? <group>
+        {Array.from({ length: Math.floor(w * 2) + 1 }, (_, i) => (
+          <mesh key={`gx-${i}`} rotation={[-Math.PI / 2, 0, 0]} position={[i / 2, 0.025, d / 2]} raycast={() => null}>
+            <planeGeometry args={[0.012, d]} /><meshBasicMaterial color="#bdc5a5" transparent opacity={0.45} depthWrite={false} />
+          </mesh>
+        ))}
+        {Array.from({ length: Math.floor(d * 2) + 1 }, (_, i) => (
+          <mesh key={`gz-${i}`} rotation={[-Math.PI / 2, 0, 0]} position={[w / 2, 0.026, i / 2]} raycast={() => null}>
+            <planeGeometry args={[w, 0.012]} /><meshBasicMaterial color="#bdc5a5" transparent opacity={0.45} depthWrite={false} />
+          </mesh>
+        ))}
+      </group> : null}
 
       {/* Wood planks */}
       {Array.from({ length: plankCount }).map((_, i) => (
@@ -366,9 +401,22 @@ function CafeRoom({
 
       {/* Warm plaster walls — listing tone stays as an accent strip, not the whole room */}
       {!cutaway && <Wall length={w} position={[w / 2, 1.45, 0]} color={PALETTE.wall} />}
-      <Wall length={w} position={[w / 2, 1.45, d]} color={PALETTE.wall} />
+      {!cutaway && <Wall length={w} position={[w / 2, 1.45, d]} color={PALETTE.wall} />}
       <Wall length={d} position={[0, 1.45, d / 2]} rotation={Math.PI / 2} color={PALETTE.wall} />
       <Wall length={d} position={[w, 1.45, d / 2]} rotation={Math.PI / 2} color={PALETTE.wall} />
+      {/* Sage wainscoting and hand-lettered café identity. */}
+      <mesh position={[0.12, 0.5, d / 2]} receiveShadow>
+        <boxGeometry args={[0.04, 1, d - 0.25]} /><meshStandardMaterial color="#6b8068" roughness={0.9} />
+      </mesh>
+      {Array.from({ length: Math.floor(d) }).map((_, i) => (
+        <mesh key={`panel-${i}`} position={[0.15, 0.5, i + 0.5]}>
+          <boxGeometry args={[0.03, 0.9, 0.035]} /><meshStandardMaterial color="#9aa58a" roughness={0.9} />
+        </mesh>
+      ))}
+      <group position={[0.17, 2, 5.3]} rotation={[0, Math.PI / 2, 0]}>
+        <Text fontSize={0.35} color="#49644d" anchorX="center">SoftOpen</Text>
+        <Text position={[0, -0.32, 0]} fontSize={0.105} letterSpacing={0.12} color="#77654e">SLOW MORNINGS · GOOD COFFEE</Text>
+      </group>
       <mesh position={[w / 2, 2.35, d - 0.12]}>
         <boxGeometry args={[Math.min(w * 0.55, 6), 0.18, 0.05]} />
         <meshStandardMaterial color={property.imageTone || PALETTE.wood} roughness={0.8} />
@@ -404,14 +452,14 @@ function CafeRoom({
       )}
 
       {/* Ceiling beam + pendant lamps */}
-      <mesh position={[w / 2, 2.85, d / 2]} castShadow>
+      {!overhead && <mesh position={[w / 2, 2.85, d / 2]} castShadow>
         <boxGeometry args={[w * 0.7, 0.08, 0.18]} />
         <meshStandardMaterial color={PALETTE.woodDark} roughness={0.8} />
-      </mesh>
-      <mesh position={[w / 2, 2.85, d * 0.28]} castShadow>
+      </mesh>}
+      {!overhead && <mesh position={[w / 2, 2.85, d * 0.28]} castShadow>
         <boxGeometry args={[w * 0.55, 0.06, 0.14]} />
         <meshStandardMaterial color={PALETTE.woodDark} roughness={0.8} />
-      </mesh>
+      </mesh>}
       <PendantLight position={[w * 0.28, 2.55, d * 0.35]} />
       <PendantLight position={[w * 0.55, 2.55, d * 0.45]} />
       <PendantLight position={[w * 0.78, 2.55, d * 0.32]} />
@@ -431,6 +479,33 @@ function CafeRoom({
       {furniture.map((f) => (
         <FurnitureMesh key={f.id} item={f} highlight={highlightKind === f.kind} />
       ))}
+    </group>
+  );
+}
+
+function PlacementGhost({ snapshot, kind, x, z, rotation, movingId }: {
+  snapshot: RoomSnapshot; kind: FurnitureKind; x: number; z: number; rotation: number; movingId: string | null;
+}) {
+  const issue = placementIssue(snapshot.property!, snapshot.layout?.furniture ?? [], kind, x, z, movingId);
+  const color = issue ? "#e88778" : "#a9dcb2";
+  const size: [number, number, number] = kind === "counter" ? [2.2, 0.95, 0.8]
+    : kind === "pickup" ? [1.5, 0.9, 0.65] : kind === "fridge" ? [0.8, 1.7, 0.7]
+    : kind === "table" ? [1.1, 0.7, 1.1] : [0.65, 0.85, 0.65];
+  return (
+    <group position={[x, 0.04, z]} rotation={[0, rotation, 0]}>
+      <mesh position={[0, size[1] / 2, 0]} raycast={() => null}>
+        <boxGeometry args={size} />
+        <meshBasicMaterial color={color} transparent opacity={0.28} depthWrite={false} />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
+        <ringGeometry args={[0.48, 0.55, 32]} />
+        <meshBasicMaterial color={color} side={DoubleSide} />
+      </mesh>
+      <Billboard position={[0, size[1] + 0.35, 0]}>
+        <Text fontSize={0.18} color={color} outlineWidth={0.015} outlineColor="#26362c">
+          {issue ?? (movingId ? "Click to move · no charge" : "Click to place")}
+        </Text>
+      </Billboard>
     </group>
   );
 }
@@ -469,7 +544,7 @@ function WindowBank({ width, centerX, z }: { width: number; centerX: number; z: 
         return (
           <group key={i} position={[x, 0, 0.02]}>
             {/* Glass */}
-            <mesh>
+            <mesh position={[0, 0, 0.11]}>
               <boxGeometry args={[paneW, 1.2, 0.04]} />
               <meshStandardMaterial
                 color={PALETTE.glass}
@@ -482,7 +557,7 @@ function WindowBank({ width, centerX, z }: { width: number; centerX: number; z: 
               />
             </mesh>
             {/* Exterior daylight + soft sky */}
-            <mesh position={[0, 0, -0.12]}>
+            <mesh position={[0, 0, 0.08]}>
               <planeGeometry args={[paneW * 0.92, 1.05]} />
               <meshStandardMaterial
                 color={PALETTE.sky}
@@ -781,15 +856,24 @@ function EspressoMachine({ item }: { item: FurnitureItem }) {
 
   return (
     <group position={[item.x, 0, item.z]} rotation={[0, item.rotation, 0]}>
+      <mesh position={[0, 0.43, 0]} castShadow receiveShadow>
+        <boxGeometry args={[1, 0.86, 0.85]} />
+        <meshStandardMaterial color={PALETTE.wood} roughness={0.7} />
+      </mesh>
+      <mesh position={[0, 0.88, 0]} castShadow receiveShadow>
+        <boxGeometry args={[1.08, 0.08, 0.92]} />
+        <meshStandardMaterial color="#d4c5aa" roughness={0.4} />
+      </mesh>
+      <group position={[0, 0.94, 0]}>
       {/* Base */}
       <mesh position={[0, 0.12, 0]} castShadow receiveShadow>
         <boxGeometry args={[0.72, 0.24, 0.52]} />
-        <meshStandardMaterial color={PALETTE.metal} metalness={0.55} roughness={0.35} />
+        <meshStandardMaterial color="#c6c3b4" metalness={0.25} roughness={0.35} />
       </mesh>
       {/* Body */}
       <mesh position={[0, 0.55, 0]} castShadow>
         <boxGeometry args={[0.62, 0.62, 0.45]} />
-        <meshStandardMaterial color={PALETTE.metal} metalness={0.65} roughness={0.28} />
+        <meshStandardMaterial color="#7f9c89" metalness={0.2} roughness={0.28} />
       </mesh>
       {/* Group head */}
       <mesh position={[0, 0.42, 0.28]} castShadow>
@@ -836,6 +920,7 @@ function EspressoMachine({ item }: { item: FurnitureItem }) {
         color="#e8dcc8"
         position={[0, 0.38, 0.28]}
       />
+      </group>
     </group>
   );
 }
@@ -985,6 +1070,23 @@ function personaColor(persona: Customer["persona"]): string {
   }
 }
 
+function CharacterFace({ y = 1.42, office = false }: { y?: number; office?: boolean }) {
+  return (
+    <group position={[0, y, 0]}>
+      {[-0.065, 0.065].map((x) => (
+        <group key={x} position={[x, 0.015, 0.164]}>
+          <mesh><sphereGeometry args={[0.023, 8, 8]} /><meshStandardMaterial color="#302b29" /></mesh>
+          {office ? <mesh><torusGeometry args={[0.048, 0.008, 5, 12]} /><meshStandardMaterial color="#71523b" /></mesh> : null}
+        </group>
+      ))}
+      <mesh position={[0, -0.045, 0.18]}><sphereGeometry args={[0.035, 8, 8]} /><meshStandardMaterial color="#d7a087" /></mesh>
+      <mesh position={[0, -0.09, 0.15]} rotation={[0, 0, Math.PI]}>
+        <torusGeometry args={[0.045, 0.009, 5, 12, Math.PI]} /><meshStandardMaterial color="#9c6553" />
+      </mesh>
+    </group>
+  );
+}
+
 function CustomerMesh({ customer }: { customer: Customer }) {
   const angry = customer.state === "angry" || customer.patience < 20;
   const waiting = customer.state === "waiting" || customer.state === "ordering" || customer.state === "queue";
@@ -994,6 +1096,7 @@ function CustomerMesh({ customer }: { customer: Customer }) {
   const bob = useRef<Group>(null);
   const leftLeg = useRef<Group>(null);
   const rightLeg = useRef<Group>(null);
+  const arms = useRef<Group>(null);
   const orderLabel = customer.order ?? customer.preference;
   const target = useRef({ x: customer.x, z: customer.z });
   target.current = { x: customer.x, z: customer.z };
@@ -1017,6 +1120,7 @@ function CustomerMesh({ customer }: { customer: Customer }) {
     const swing = moving ? Math.sin(t * 8 + phase) * 0.45 : 0;
     if (leftLeg.current) leftLeg.current.rotation.x = swing;
     if (rightLeg.current) rightLeg.current.rotation.x = -swing;
+    if (arms.current) arms.current.rotation.z = Math.sin(t * (moving ? 7 : 1.8) + phase) * (moving ? 0.06 : 0.02);
   });
 
   return (
@@ -1030,6 +1134,15 @@ function CustomerMesh({ customer }: { customer: Customer }) {
           <sphereGeometry args={[0.18, 12, 12]} />
           <meshStandardMaterial color="#f0dcc8" roughness={0.68} />
         </mesh>
+        <CharacterFace office={customer.persona === "office"} />
+        <group ref={arms} position={[0, 1.06, 0]}>
+          {[-1, 1].map((side) => (
+            <group key={side} position={[side * 0.26, 0, 0]} rotation={[0, 0, side * 0.12]}>
+              <mesh position={[0, -0.1, 0]} castShadow><capsuleGeometry args={[0.065, 0.3, 3, 8]} /><meshStandardMaterial color={body} /></mesh>
+              <mesh position={[0, -0.32, 0.02]} castShadow><sphereGeometry args={[0.067, 8, 8]} /><meshStandardMaterial color="#e5bc9e" /></mesh>
+            </group>
+          ))}
+        </group>
         <mesh position={[0, 1.52, -0.02]}>
           <sphereGeometry args={[0.16, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
           <meshStandardMaterial
@@ -1038,12 +1151,14 @@ function CustomerMesh({ customer }: { customer: Customer }) {
           />
         </mesh>
         <group ref={leftLeg} position={[-0.1, 0.55, 0]}>
+          <mesh position={[0, -0.46, 0.05]} castShadow><boxGeometry args={[0.14, 0.1, 0.25]} /><meshStandardMaterial color="#e6d5b8" /></mesh>
           <mesh position={[0, -0.22, 0]} castShadow>
             <capsuleGeometry args={[0.07, 0.28, 3, 8]} />
             <meshStandardMaterial color={PALETTE.espresso} roughness={0.75} />
           </mesh>
         </group>
         <group ref={rightLeg} position={[0.1, 0.55, 0]}>
+          <mesh position={[0, -0.46, 0.05]} castShadow><boxGeometry args={[0.14, 0.1, 0.25]} /><meshStandardMaterial color="#e6d5b8" /></mesh>
           <mesh position={[0, -0.22, 0]} castShadow>
             <capsuleGeometry args={[0.07, 0.28, 3, 8]} />
             <meshStandardMaterial color={PALETTE.espresso} roughness={0.75} />
@@ -1052,7 +1167,7 @@ function CustomerMesh({ customer }: { customer: Customer }) {
       </group>
 
       {waiting && (
-        <group position={[0, 2.05, 0]}>
+        <Billboard position={[0, 2.05, 0]}>
           <mesh>
             <boxGeometry args={[Math.max(0.7, orderLabel.length * 0.11), 0.34, 0.04]} />
             <meshStandardMaterial color="#fff8ef" emissive="#f5e6d2" emissiveIntensity={0.35} />
@@ -1071,7 +1186,7 @@ function CustomerMesh({ customer }: { customer: Customer }) {
           >
             {orderLabel}
           </Text>
-        </group>
+        </Billboard>
       )}
       {waiting && (
         <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
@@ -1119,7 +1234,7 @@ function PlayerMesh({
     last.current = { x: nx, z: nz };
     root.current.position.x = nx;
     root.current.position.z = nz;
-    if (followLook) root.current.rotation.y = getLook().yaw;
+    if (followLook) root.current.rotation.y = Math.PI - getLook().yaw;
     const swing = speed > 0.4 ? Math.sin(clock.elapsedTime * 9) * 0.5 : 0;
     if (leftLeg.current) leftLeg.current.rotation.x = swing;
     if (rightLeg.current) rightLeg.current.rotation.x = -swing;
@@ -1153,6 +1268,9 @@ function PlayerMesh({
         <sphereGeometry args={[0.19, 12, 12]} />
         <meshStandardMaterial color="#f0e0d0" roughness={0.65} />
       </mesh>
+      <CharacterFace y={1.62} />
+      <mesh position={[0, 1.02, 0.193]}><boxGeometry args={[0.23, 0.15, 0.018]} /><meshStandardMaterial color="#c6bca1" /></mesh>
+      {[-0.12, 0.12].map((x) => <mesh key={x} position={[x, 1.28, 0.155]}><boxGeometry args={[0.045, 0.23, 0.02]} /><meshStandardMaterial color={PALETTE.foam} /></mesh>)}
       <mesh position={[0, 1.72, -0.02]}>
         <sphereGeometry args={[0.17, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
         <meshStandardMaterial color="#3a2a22" roughness={0.85} />
@@ -1182,13 +1300,15 @@ function PlayerMesh({
           <meshStandardMaterial color="#2f241c" roughness={0.8} />
         </mesh>
       </group>
-      <mesh position={[0, 2.12, 0]}>
+      {!isYou && <Billboard position={[0, 2.12, 0]}>
+      <mesh>
         <boxGeometry args={[Math.max(0.7, player.name.length * 0.09), 0.22, 0.02]} />
         <meshStandardMaterial color={PALETTE.espresso} transparent opacity={0.85} />
       </mesh>
-      <Text position={[0, 2.12, 0.02]} fontSize={0.14} color={PALETTE.foam} anchorX="center" anchorY="middle">
-        {isYou ? "You" : player.name}
+      <Text position={[0, 0, 0.02]} fontSize={0.14} color={PALETTE.foam} anchorX="center" anchorY="middle">
+        {player.name}
       </Text>
+      </Billboard>}
       {(player.holding || drink || brewing) && <HeldCup drink={!!drink} brewing={!!brewing} />}
     </group>
   );
@@ -1198,14 +1318,16 @@ function HeldCup({ drink, brewing, firstPerson = false }: { drink: boolean; brew
   const steam = useRef<Group>(null);
   useFrame(({ clock }) => {
     if (!steam.current) return;
-    steam.current.position.y = (firstPerson ? 1.2 : 1.28) + Math.sin(clock.elapsedTime * 3) * 0.03;
+    steam.current.position.y = 0.2 + Math.sin(clock.elapsedTime * 3) * 0.03;
   });
   return (
     <group position={firstPerson ? [0.35, 1.15, -0.45] : [0.38, 1.15, 0.22]}>
       <mesh castShadow>
         <cylinderGeometry args={[0.07, 0.06, 0.14, 10]} />
-        <meshStandardMaterial color={drink ? "#6b3f24" : brewing ? "#c4a574" : PALETTE.foam} roughness={0.5} />
+        <meshStandardMaterial color={PALETTE.foam} roughness={0.5} />
       </mesh>
+      <mesh position={[0.075, 0, 0]}><torusGeometry args={[0.045, 0.012, 6, 12]} /><meshStandardMaterial color={PALETTE.foam} /></mesh>
+      <mesh position={[0, 0.072, 0]}><cylinderGeometry args={[0.06, 0.06, 0.005, 16]} /><meshStandardMaterial color={drink ? PALETTE.crema : PALETTE.espresso} /></mesh>
       {(drink || brewing) && (
         <group ref={steam}>
           <Sparkles count={8} scale={[0.16, 0.28, 0.16]} size={1.5} speed={0.5} opacity={0.45} color="#f8f1e8" />

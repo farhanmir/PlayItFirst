@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import type { RoomSnapshot } from "../../shared/types";
-import { nearestStation } from "../../shared/stations";
+import { BREW_SECONDS, nearestStation } from "../../shared/stations";
 import { useApp } from "../lib/store";
 import { play } from "../lib/audio";
 import { moveFromKeys } from "../lib/look";
@@ -35,10 +35,7 @@ export function PlayControls({
   const suggest = useMemo(() => suggestedAction(snapshot, you), [snapshot, you]);
   const prompt = useMemo(() => actionPrompt(snapshot, you), [snapshot, you]);
   const nearLabel = stationLabel(station);
-  const jamieHelping =
-    !!snapshot.aiBarista?.holding ||
-    (snapshot.metrics.queueLength >= 3 &&
-      snapshot.simTime - (snapshot.lastHumanInteractAt ?? 0) >= 4);
+  const jamieHelping = !!snapshot.aiBarista?.holding;
 
   useEffect(() => {
     if (!conn) return;
@@ -46,6 +43,7 @@ export function PlayControls({
     const onDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       const k = e.key.toLowerCase();
+      if (e.repeat && ["e", " ", "enter", "f", "r", "q"].includes(k)) return;
       keys.add(k);
       // One contextual key: E or Space runs the suggested station action.
       if (k === "e" || k === " " || k === "enter") {
@@ -58,6 +56,8 @@ export function PlayControls({
       if (k === "q") act("restock");
     };
     const onUp = (e: KeyboardEvent) => keys.delete(e.key.toLowerCase());
+    const clearKeys = () => keys.clear();
+    window.addEventListener("blur", clearKeys);
     window.addEventListener("keydown", onDown);
     window.addEventListener("keyup", onUp);
 
@@ -76,6 +76,7 @@ export function PlayControls({
       clearInterval(id);
       window.removeEventListener("keydown", onDown);
       window.removeEventListener("keyup", onUp);
+      window.removeEventListener("blur", clearKeys);
     };
   }, [conn]);
 
@@ -83,10 +84,7 @@ export function PlayControls({
     conn?.send({ t: "interact", action });
     if (action === "take_order") play("order");
     if (action === "make_coffee") play("brew");
-    if (action === "serve") {
-      play("serve");
-      play("coin", 0.3);
-    }
+    // Payment feedback comes from the accepted snapshot in ServeToast.
     if (action === "restock") play("place");
     if (action === "collect") play("coin");
   };
@@ -119,6 +117,11 @@ export function PlayControls({
           </p>
         )}
       </div>
+
+      {me?.holding?.startsWith("brewing:") ? (
+        <progress className="brew-progress" aria-label="Coffee brewing" max={BREW_SECONDS}
+          value={Math.max(0, snapshot.simTime - Number(me.holding.split("@")[1]))} />
+      ) : null}
 
       <button
         type="button"
@@ -160,8 +163,11 @@ export function PlayControls({
       {mobile && me && (
         <MobilePad
           onMove={(dx, dz) => {
-            const x = me.x + dx;
-            const z = me.z + dz;
+            const state = useApp.getState();
+            const current = state.snapshot?.players.find((p) => p.id === state.you);
+            if (!current) return;
+            const x = current.x + dx;
+            const z = current.z + dz;
             patchMyPosition(x, z);
             conn?.send({ t: "player_move", x, z });
           }}
@@ -172,33 +178,43 @@ export function PlayControls({
 }
 
 function MobilePad({ onMove }: { onMove: (dx: number, dz: number) => void }) {
+  const direction = useRef({ x: 0, y: 0 });
+  const moveRef = useRef(onMove);
+  moveRef.current = onMove;
+  useEffect(() => {
+    const stop = () => { direction.current = { x: 0, y: 0 }; };
+    const timer = window.setInterval(() => {
+      const { x, y } = direction.current;
+      if (!x && !y) return;
+      const keys = new Set<string>();
+      if (y < -0.12) keys.add("w");
+      if (y > 0.12) keys.add("s");
+      if (x < -0.12) keys.add("a");
+      if (x > 0.12) keys.add("d");
+      const step = moveFromKeys(keys, 0.18);
+      moveRef.current(step.dx, step.dz);
+    }, 33);
+    window.addEventListener("blur", stop);
+    return () => { clearInterval(timer); window.removeEventListener("blur", stop); };
+  }, []);
+  const update = (el: HTMLDivElement, clientX: number, clientY: number) => {
+    const rect = el.getBoundingClientRect();
+    direction.current = { x: (clientX - rect.left) / rect.width - 0.5, y: (clientY - rect.top) / rect.height - 0.5 };
+  };
   return (
     <div
       className="mobile-pad"
       role="application"
       aria-label="Drag to move your character"
+      style={{ touchAction: "none" }}
       onPointerDown={(e) => {
-        const el = e.currentTarget;
-        const move = (ev: PointerEvent) => {
-          const rect = el.getBoundingClientRect();
-          const x = (ev.clientX - rect.left) / rect.width - 0.5;
-          const y = (ev.clientY - rect.top) / rect.height - 0.5;
-          const keys = new Set<string>();
-          if (y < -0.08) keys.add("w");
-          if (y > 0.08) keys.add("s");
-          if (x < -0.08) keys.add("a");
-          if (x > 0.08) keys.add("d");
-          const { dx, dz } = moveFromKeys(keys, 0.28);
-          if (dx || dz) onMove(dx, dz);
-          else onMove(x * 0.35, y * 0.35);
-        };
-        const up = () => {
-          window.removeEventListener("pointermove", move);
-          window.removeEventListener("pointerup", up);
-        };
-        window.addEventListener("pointermove", move);
-        window.addEventListener("pointerup", up);
+        e.currentTarget.setPointerCapture(e.pointerId);
+        update(e.currentTarget, e.clientX, e.clientY);
       }}
+      onPointerMove={(e) => { if (e.currentTarget.hasPointerCapture(e.pointerId)) update(e.currentTarget, e.clientX, e.clientY); }}
+      onLostPointerCapture={() => { direction.current = { x: 0, y: 0 }; }}
+      onPointerUp={(e) => { direction.current = { x: 0, y: 0 }; e.currentTarget.releasePointerCapture(e.pointerId); }}
+      onPointerCancel={() => { direction.current = { x: 0, y: 0 }; }}
     >
       Move
     </div>
