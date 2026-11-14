@@ -3,70 +3,230 @@
   z-index: 1;
   height: 100vh;
   height: 100dvh;
+  display: block;
+  padding: 0;
+  overflow: hidden;
+  background: #1a1511;
+}
+
+.game-immersive .game-stage {
+  position: absolute;
+  inset: 0;
+  border-radius: 0;
+  overflow: hidden;
+}
+
+.game-immersive .cafe-canvas,
+.game-immersive .cafe-canvas canvas {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 100%;
+  display: block;
+}
+
+.game-immersive .hud-top {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  right: 0.75rem;
+  z-index: 5;
+  width: auto;
+  padding: 0.45rem 0.75rem;
+  background: linear-gradient(180deg, rgba(18, 12, 9, 0.78), rgba(18, 12, 9, 0.42));
+  border: 1px solid rgba(245, 239, 232, 0.1);
+  backdrop-filter: blur(14px);
+  pointer-events: auto;
+}
+
+.hud-compact {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.hud-compact .hud-vitals {
+  justify-content: center;
+}
+
+.hud-compact .vital-low {
+  display: none;
+}
+
+.game-chrome {
+  position: absolute;
+  top: 4.4rem;
+  right: 0.75rem;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  align-items: stretch;
+}
+
+.chrome-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+  padding: 0.45rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(245, 239, 232, 0.12);
+  background: rgba(12, 9, 7, 0.72);
+  color: var(--foam-soft);
+  font-size: 0.78rem;
+  font-weight: 650;
+  backdrop-filter: blur(10px);
+  cursor: pointer;
+}
+
+.chrome-btn.active {
+  border-color: rgba(217, 119, 63, 0.55);
+  color: #fff;
+}
+
+.chrome-btn kbd {
+  font-size: 0.68rem;
+  opacity: 0.7;
+}
+
+.build-banner {
+  position: absolute;
+  left: 50%;
+  bottom: 1rem;
+  transform: translateX(-50%);
+  z-index: 6;
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.65rem 1rem;
+  border-radius: 14px;
+  background: rgba(12, 9, 7, 0.72);
+  border: 1px solid rgba(245, 239, 232, 0.12);
+  backdrop-filter: blur(12px);
+  text-align: center;
+}
+
+.build-banner strong {
+  font-family: var(--font-display);
+  color: var(--foam);
+}
+
+.build-banner span {
+  font-size: 0.8rem;
+  color: var(--crema);
+}
+
+.game-drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(360px, 92vw);
+  z-index: 8;
   display: grid;
   grid-template-rows: auto 1fr;
-  grid-template-columns: 1fr minmax(280px, 320px);
-  gap: 0.65rem;
-  padding: 0.65rem;
-  transition: grid-template-columns 0.35s ease;
-}
-
-.game.rails-collapsed {
-  grid-template-columns: 1fr 0fr;
-}
-
-.game.rails-collapsed .game-rails {
-  opacity: 0;
+  background: rgba(14, 10, 8, 0.92);
+  border-left: 1px solid rgba(245, 239, 232, 0.1);
+  backdrop-filter: blur(18px);
+  transform: translateX(105%);
+  transition: transform 0.28s ease;
   pointer-events: none;
-  overflow: hidden;
-  width: 0;
-  min-width: 0;
-  padding: 0;
-  margin: 0;
 }
 
-.game.immersive {
-  padding: 0.4rem;
-  gap: 0.4rem;
+.game.drawer-open .game-drawer {
+  transform: translateX(0);
+  pointer-events: auto;
 }
 
-.game.immersive .hud-top {
-  padding: 0.4rem 0.7rem;
-  background: linear-gradient(180deg, rgba(18, 12, 9, 0.82), rgba(18, 12, 9, 0.55));
-  border-color: rgba(245, 239, 232, 0.08);
+.drawer-tabs {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.7rem;
+  overflow-x: auto;
+}
+
+.drawer-tabs button {
+  flex: 1;
+  min-width: 4.2rem;
+  padding: 0.45rem 0.4rem;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--crema);
+  font-size: 0.75rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.drawer-tabs button.active {
+  background: rgba(245, 239, 232, 0.08);
+  border-color: rgba(245, 239, 232, 0.12);
+  color: var(--foam);
+}
+
+.drawer-body {
+  overflow: auto;
+  padding: 0 0.7rem 1rem;
+  display: grid;
+  gap: 0.7rem;
+  align-content: start;
+}
+
+.play-controls.immersive {
+  position: absolute;
+  left: 50%;
+  bottom: 1rem;
+  transform: translateX(-50%);
+  width: min(420px, calc(100vw - 1.5rem));
+  z-index: 5;
+  background: rgba(12, 9, 7, 0.55);
+  border: 1px solid rgba(245, 239, 232, 0.1);
+  backdrop-filter: blur(12px);
+  padding: 0.7rem 0.85rem;
+}
+
+.play-controls.immersive .action-grid {
+  display: none;
+}
+
+.context-act {
+  width: 100%;
+  margin-top: 0.45rem;
+  padding: 0.75rem 1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(217, 119, 63, 0.45);
+  background: linear-gradient(180deg, rgba(217, 119, 63, 0.95), rgba(168, 78, 36, 0.95));
+  color: #fff8f0;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+}
+
+.context-act:disabled {
+  opacity: 0.45;
+  cursor: default;
+  border-color: rgba(245, 239, 232, 0.12);
+  background: rgba(245, 239, 232, 0.08);
+}
+
+.order-rail.compact {
+  top: 4.5rem;
+  left: 0.75rem;
+  width: min(220px, 42vw);
+  max-height: 42vh;
+  background: rgba(12, 9, 7, 0.5);
+  border: 1px solid rgba(245, 239, 232, 0.1);
   backdrop-filter: blur(12px);
 }
 
-.game.immersive .game-stage {
-  border-radius: 14px;
-  box-shadow:
-    0 0 0 1px rgba(245, 239, 232, 0.06),
-    0 24px 60px rgba(0, 0, 0, 0.45);
-}
-
-.game.immersive .cafe-canvas {
-  min-height: 0;
-  height: 100%;
+.order-rail.compact .ticket {
+  padding: 0.45rem 0.55rem;
 }
 
 .rails-fab {
-  position: absolute;
-  top: 0.75rem;
-  right: 0.75rem;
-  z-index: 6;
-  padding: 0.4rem 0.7rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  border-radius: 999px;
-  border: 1px solid var(--glass-border);
-  background: rgba(12, 9, 7, 0.72);
-  color: var(--foam-soft);
-  backdrop-filter: blur(10px);
-}
-
-.game.rails-open .rails-fab {
-  right: 0.75rem;
+  display: none;
 }
 
 .play-crosshair {

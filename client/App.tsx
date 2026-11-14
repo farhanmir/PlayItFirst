@@ -15,6 +15,7 @@ import {
   sleep,
   type DemoPhase,
 } from "./lib/demo";
+import { apiUrl, publicOrigin } from "./lib/api";
 import { getStoredName, setStoredName } from "./lib/storage";
 
 export function App() {
@@ -31,7 +32,7 @@ export function App() {
       joinRoom(room, savedName, true);
     }
 
-    void fetch("/api/properties")
+    void fetch(apiUrl("/api/properties"))
       .then((r) => r.json())
       .then((properties: PropertyListing[]) => set({ properties }))
       .catch(() => undefined);
@@ -78,13 +79,18 @@ async function startHost(name: string) {
   play("ui");
   const set = useApp.getState().set;
   setStoredName(name);
-  const res = await fetch("/api/rooms", { method: "POST" });
+  const res = await fetch(apiUrl("/api/rooms"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-SoftOpen-Public-Origin": publicOrigin() },
+    body: JSON.stringify({ publicOrigin: publicOrigin() }),
+  });
   const data = (await res.json()) as { code: string; url: string; qrSvg: string };
+  const joinUrl = data.url?.startsWith("http") ? data.url : `${publicOrigin()}/?room=${data.code}`;
   set({
     name,
     roomCode: data.code,
     qrSvg: data.qrSvg,
-    joinUrl: data.url,
+    joinUrl,
     screen: "property",
   });
   wireConnection(data.code, name, "owner");
@@ -145,32 +151,22 @@ async function runJudgeDemo(setPhase: (p: DemoPhase) => void) {
       await sleep(50);
     }
 
-    // Seed rush + director so the pitch always has something to click
+    // Seed a rush so the floor is alive — the player still takes the first order.
     conn.send({ t: "demo_boost" });
     for (let i = 0; i < 25; i++) {
       const s = useApp.getState().snapshot;
       if (s?.director && !s.director.resolved && (s.customers?.length ?? 0) >= 3) break;
-      if (i === 12) conn.send({ t: "demo_boost" }); // retry once if snapshot lagged
+      if (i === 12) conn.send({ t: "demo_boost" });
       await sleep(120);
     }
 
-    // Park the host at the counter and run the first order → brew beat
     const snap = useApp.getState().snapshot;
     const counter = snap?.layout?.furniture.find((f) => f.kind === "counter");
-    const machine = snap?.layout?.furniture.find((f) => f.kind === "coffee_machine");
-    if (counter) conn.send({ t: "player_move", x: counter.x, z: counter.z });
-    await sleep(180);
-    conn.send({ t: "interact", action: "take_order" });
-    play("order");
-    await sleep(280);
-    if (machine) conn.send({ t: "player_move", x: machine.x, z: machine.z });
-    await sleep(160);
-    conn.send({ t: "interact", action: "make_coffee" });
-    play("brew");
+    if (counter) conn.send({ t: "player_move", x: counter.x + 0.35, z: counter.z + 0.9 });
 
     setPhase("ready");
     history.replaceState({}, "", `/?room=${code}&demo=1`);
-    await sleep(1600);
+    await sleep(1200);
     setPhase("idle");
   } catch (err) {
     console.warn(err);
@@ -193,9 +189,16 @@ function wireConnection(room: string, name: string, role: PlayerRole) {
         snapshot: m.snapshot,
         screen: m.snapshot.property ? "game" : useApp.getState().screen === "landing" ? "property" : useApp.getState().screen,
       });
-      void fetch(`/api/rooms/${room}/qr`)
+      void fetch(apiUrl(`/api/rooms/${room}/qr`), {
+        headers: { "X-SoftOpen-Public-Origin": publicOrigin() },
+      })
         .then((r) => r.json())
-        .then((data: { qrSvg: string; url: string }) => set({ qrSvg: data.qrSvg, joinUrl: data.url }))
+        .then((data: { qrSvg: string; url: string }) =>
+          set({
+            qrSvg: data.qrSvg,
+            joinUrl: data.url?.startsWith("http") ? data.url : `${publicOrigin()}/?room=${room}`,
+          }),
+        )
         .catch(() => undefined);
     }
     if (m.t === "snapshot") set({ snapshot: m.snapshot });

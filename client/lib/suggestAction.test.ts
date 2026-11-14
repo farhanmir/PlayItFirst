@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { suggestedAction } from "./suggestAction";
+import { actionPrompt, suggestedAction } from "./suggestAction";
 import type { RoomSnapshot } from "../../shared/types";
 
 function snap(partial: Partial<RoomSnapshot> & { players: RoomSnapshot["players"] }): RoomSnapshot {
@@ -53,7 +53,26 @@ describe("suggestedAction", () => {
   it("suggests take_order near counter with empty hands", () => {
     const s = snap({
       players: [{ id: "u", name: "U", role: "barista", x: 0, z: 0, holding: null, score: 0, color: "#fff" }],
+      customers: [
+        {
+          id: "c",
+          persona: "student",
+          name: "Pat",
+          budget: 8,
+          patience: 80,
+          preference: "latte",
+          state: "ordering",
+          progress: 0,
+          x: 0,
+          z: 0,
+          targetX: 0,
+          targetZ: 0,
+          satisfaction: 70,
+          joinedAt: 0,
+        },
+      ],
     });
     expect(suggestedAction(s, "u")).toBe("take_order");
+    expect(actionPrompt(s, "u")).toMatch(/Take latte order/i);
   });
 });

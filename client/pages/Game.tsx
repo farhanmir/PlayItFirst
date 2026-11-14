@@ -11,21 +11,17 @@ import { FinanceLedger } from "../components/FinanceLedger";
 import { Tabletop } from "../components/Tabletop";
 import { BlueprintPanel } from "../components/BlueprintPanel";
 import { OrderRail } from "../components/OrderRail";
-import { TutorialTips } from "../components/TutorialTips";
 import { TimelineCompare } from "../components/TimelineCompare";
 import { RivalCafePanel } from "../components/RivalCafePanel";
-import { RolePicker } from "../components/RolePicker";
 import { HelpOverlay } from "../components/HelpOverlay";
 import { PhotonCall } from "../components/PhotonCall";
 import { ViewModeToggle } from "../components/ViewModeToggle";
 import { SessionRecap } from "../components/SessionRecap";
-import { WebXRHint } from "../components/WebXRHint";
+import { WebXRSession } from "../components/WebXRSession";
 import { CrewBoard } from "../components/CrewBoard";
-import { MiniMap } from "../components/MiniMap";
 import { ServeToast } from "../components/ServeToast";
 import { MatterportPanel } from "../components/MatterportPanel";
 import { PhotonVoice } from "../components/PhotonVoice";
-import { WebXRSession } from "../components/WebXRSession";
 import { IntegrationsBadge } from "../components/IntegrationsBadge";
 import { PlayCrosshair } from "../components/PlayCrosshair";
 import type { CafeViewMode } from "../components/CafeScene";
@@ -33,25 +29,26 @@ import { play } from "../lib/audio";
 import { startAmbient, stopAmbient } from "../lib/ambient";
 import "./game.css";
 
+type DrawerTab = "manage" | "build" | "table" | "future" | "plan";
+
 export function Game() {
   const snapshot = useApp((s) => s.snapshot);
   const blueprint = useApp((s) => s.blueprint);
   const mobile = useApp((s) => s.mobile);
-  const [tab, setTab] = useState<"build" | "ops" | "table" | "future" | "plan">("ops");
-  const [viewMode, setViewMode] = useState<CafeViewMode>("monitor");
+  const conn = useApp((s) => s.conn);
+  const buildKind = useApp((s) => s.buildKind);
+  const set = useApp((s) => s.set);
+
+  const [viewMode, setViewMode] = useState<CafeViewMode>(mobile ? "third" : "first");
   const [userPickedView, setUserPickedView] = useState(false);
-  const [railsOpen, setRailsOpen] = useState(true);
+  const [buildMode, setBuildMode] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerTab, setDrawerTab] = useState<DrawerTab>("manage");
 
   useEffect(() => {
-    if (userPickedView) return;
-    if (snapshot?.phase === "play") {
-      setViewMode(mobile ? "third" : "first");
-      setRailsOpen(false);
-    } else if (snapshot?.phase === "build") {
-      setViewMode("monitor");
-      setRailsOpen(true);
-    }
-  }, [snapshot?.phase, mobile, userPickedView]);
+    if (userPickedView || buildMode) return;
+    setViewMode(mobile ? "third" : "first");
+  }, [snapshot?.phase, mobile, userPickedView, buildMode]);
 
   useEffect(() => {
     if (!snapshot) return;
@@ -70,6 +67,44 @@ export function Game() {
     if (snapshot?.director && !snapshot.director.resolved) play("rush", 0.35);
   }, [snapshot?.director?.id]);
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === "Tab") {
+        e.preventDefault();
+        setBuildMode((open) => {
+          const next = !open;
+          play("ui", 0.25);
+          if (next) {
+            setDrawerOpen(true);
+            setDrawerTab("build");
+            setViewMode("monitor");
+            setUserPickedView(true);
+            if (!useApp.getState().snapshot?.open) useApp.getState().conn?.send({ t: "set_phase", phase: "build" });
+          } else {
+            useApp.getState().set({ buildKind: null });
+            setViewMode(useApp.getState().mobile ? "third" : "first");
+            if (useApp.getState().snapshot?.open) useApp.getState().conn?.send({ t: "set_phase", phase: "play" });
+          }
+          return next;
+        });
+      }
+      if (e.key === "Escape") {
+        setBuildMode((open) => {
+          if (open) {
+            useApp.getState().set({ buildKind: null });
+            setViewMode(useApp.getState().mobile ? "third" : "first");
+            return false;
+          }
+          setDrawerOpen((drawer) => !drawer);
+          return open;
+        });
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   if (!snapshot?.property) {
     return (
       <main className="game-loading">
@@ -79,60 +114,93 @@ export function Game() {
     );
   }
 
-  const immersive =
-    snapshot.phase === "play" && (viewMode === "first" || viewMode === "third");
+  const playView = viewMode === "first" || viewMode === "third";
 
-  const onViewChange = (m: CafeViewMode) => {
+  const onViewChange = (mode: CafeViewMode) => {
     setUserPickedView(true);
-    setViewMode(m);
+    setViewMode(mode);
+    if (mode === "first" || mode === "third") {
+      setBuildMode(false);
+      set({ buildKind: null });
+    }
+  };
+
+  const enterBuild = () => {
+    play("ui", 0.25);
+    setBuildMode(true);
+    setDrawerOpen(true);
+    setDrawerTab("build");
+    setViewMode("monitor");
+    setUserPickedView(true);
+    // Stay in play for others — only this client uses the editor camera.
+    if (!snapshot.open) conn?.send({ t: "set_phase", phase: "build" });
+  };
+
+  const exitBuild = () => {
+    play("ui", 0.2);
+    setBuildMode(false);
+    set({ buildKind: null });
+    setViewMode(mobile ? "third" : "first");
+    if (snapshot.open) conn?.send({ t: "set_phase", phase: "play" });
+  };
+
+  const toggleBuild = () => {
+    if (buildMode) exitBuild();
+    else enterBuild();
   };
 
   return (
-    <main
-      className={`game ${immersive ? "immersive" : ""} ${railsOpen ? "rails-open" : "rails-collapsed"}`}
-    >
-      <Hud snapshot={snapshot} live />
-      {!immersive && <IntegrationsBadge />}
-      <HelpOverlay />
+    <main className={`game game-immersive ${buildMode ? "build-open" : ""} ${drawerOpen ? "drawer-open" : ""}`}>
       <div className="game-stage">
         <CafeCanvasFallback>
-          <CafeScene snapshot={snapshot} viewMode={viewMode} />
+          <CafeScene snapshot={snapshot} viewMode={viewMode} buildMode={buildMode} />
         </CafeCanvasFallback>
-        <ViewModeToggle mode={viewMode} onChange={onViewChange} />
+
+        <Hud snapshot={snapshot} live compact />
         <PlayCrosshair snapshot={snapshot} mode={viewMode} />
-        {!immersive && <WebXRHint onOpenTable={() => setTab("table")} />}
-        {!immersive && <MiniMap snapshot={snapshot} />}
-        {!immersive && <TutorialTips snapshot={snapshot} />}
+        <ServeToast snapshot={snapshot} />
         <DirectorPanel snapshot={snapshot} />
         <PhotonCall snapshot={snapshot} />
-        {!immersive && <RolePicker snapshot={snapshot} />}
-        <ServeToast snapshot={snapshot} />
-        {snapshot.phase === "play" && (
-          <>
-            {!immersive && <OrderRail snapshot={snapshot} />}
-            <PlayControls snapshot={snapshot} />
-          </>
-        )}
-        <button
-          type="button"
-          className="rails-fab btn-ghost"
-          aria-expanded={railsOpen}
-          aria-label={railsOpen ? "Hide side panel" : "Show side panel"}
-          onClick={() => {
-            play("ui", 0.2);
-            setRailsOpen((v) => !v);
-          }}
-        >
-          {railsOpen ? "Hide panel" : "Ops panel"}
-        </button>
+        <HelpOverlay />
+
+        {!buildMode && playView ? <OrderRail snapshot={snapshot} compact /> : null}
+        {!buildMode && snapshot.phase === "play" ? <PlayControls snapshot={snapshot} immersive /> : null}
+
+        <div className="game-chrome" role="toolbar" aria-label="Game chrome">
+          <ViewModeToggle mode={viewMode} onChange={onViewChange} />
+          <button type="button" className={`chrome-btn ${buildMode ? "active" : ""}`} onClick={toggleBuild}>
+            {buildMode ? "Exit build" : "Build"}
+            <kbd>Tab</kbd>
+          </button>
+          <button
+            type="button"
+            className={`chrome-btn ${drawerOpen ? "active" : ""}`}
+            onClick={() => {
+              play("ui", 0.2);
+              setDrawerOpen((open) => !open);
+            }}
+          >
+            {drawerOpen ? "Close" : "Menu"}
+            <kbd>Esc</kbd>
+          </button>
+        </div>
+
+        {buildMode ? (
+          <div className="build-banner" role="status">
+            <strong>Build mode</strong>
+            <span>
+              {buildKind ? "Click the floor to place · drag pieces live for everyone" : "Pick furniture · others keep serving"}
+            </span>
+          </div>
+        ) : null}
       </div>
 
-      <div className="game-rails" aria-hidden={!railsOpen}>
-        <div className="rail-tabs">
+      <aside className="game-drawer" aria-hidden={!drawerOpen}>
+        <div className="drawer-tabs">
           {(
             [
+              ["manage", "Manage"],
               ["build", "Build"],
-              ["ops", "Ops"],
               ["table", "Table"],
               ["future", "Future"],
               ["plan", "Plan"],
@@ -141,26 +209,21 @@ export function Game() {
             <button
               key={id}
               type="button"
-              className={tab === id ? "active" : ""}
+              className={drawerTab === id ? "active" : ""}
               onClick={() => {
-                play("ui", 0.25);
-                setTab(id);
-                setRailsOpen(true);
+                play("ui", 0.2);
+                setDrawerTab(id);
+                if (id === "build") enterBuild();
               }}
             >
               {label}
             </button>
           ))}
         </div>
-        <div className="rail-body">
-          {tab === "build" && (
+        <div className="drawer-body">
+          {drawerTab === "manage" && (
             <>
-              <BuildPanel snapshot={snapshot} />
-              {snapshot.property ? <MatterportPanel property={snapshot.property} /> : null}
-            </>
-          )}
-          {tab === "ops" && (
-            <>
+              <IntegrationsBadge />
               <PhotonChat snapshot={snapshot} />
               <PhotonVoice snapshot={snapshot} />
               <CrewBoard snapshot={snapshot} />
@@ -169,26 +232,32 @@ export function Game() {
               <EventLog lines={snapshot.eventLog} />
             </>
           )}
-          {tab === "table" && (
+          {drawerTab === "build" && (
+            <>
+              <BuildPanel snapshot={snapshot} liveEdit={!snapshot.open || buildMode} />
+              {snapshot.property ? <MatterportPanel property={snapshot.property} /> : null}
+            </>
+          )}
+          {drawerTab === "table" && (
             <>
               <Tabletop snapshot={snapshot} />
               <WebXRSession onEnterDollhouse={() => onViewChange("dollhouse")} />
             </>
           )}
-          {tab === "future" && (
+          {drawerTab === "future" && (
             <>
               <RivalCafePanel snapshot={snapshot} />
               <TimelineCompare snapshot={snapshot} />
             </>
           )}
-          {tab === "plan" && (
+          {drawerTab === "plan" && (
             <>
               <SessionRecap snapshot={snapshot} />
               <BlueprintPanel markdown={blueprint} />
             </>
           )}
         </div>
-      </div>
+      </aside>
     </main>
   );
 }

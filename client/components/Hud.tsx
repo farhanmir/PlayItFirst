@@ -3,23 +3,41 @@ import type { RoomSnapshot } from "../../shared/types";
 import { useApp } from "../lib/store";
 import { setMuted, play } from "../lib/audio";
 
-export function Hud({ snapshot, live = false }: { snapshot: RoomSnapshot; live?: boolean }) {
+export function Hud({
+  snapshot,
+  live = false,
+  compact = false,
+}: {
+  snapshot: RoomSnapshot;
+  live?: boolean;
+  compact?: boolean;
+}) {
   const f = snapshot.finance;
   const m = snapshot.metrics;
   const qrSvg = useApp((s) => s.qrSvg);
   const roomCode = useApp((s) => s.roomCode);
   const status = useApp((s) => s.status);
+  const you = useApp((s) => s.you);
+  const me = snapshot.players.find((p) => p.id === you);
   const [mute, setMute] = useState(false);
+  const holding = me?.holding
+    ? me.holding.startsWith("ticket:")
+      ? me.holding.slice(7)
+      : me.holding.startsWith("brewing:")
+        ? `Brewing ${me.holding.slice(8).split("@")[0]}`
+        : me.holding.startsWith("drink:")
+          ? me.holding.slice(6)
+          : me.holding
+    : null;
 
   return (
-    <header className={`hud-top panel ${live ? "hud-live" : ""}`}>
+    <header className={`hud-top panel ${live ? "hud-live" : ""} ${compact ? "hud-compact" : ""}`}>
       <div className="hud-brand">
         <strong>SoftOpen</strong>
-        <span className="tag">{snapshot.phase}</span>
+        {snapshot.open ? <span className="live-dot" title="Doors open">Open</span> : <span className="tag">Build</span>}
         <span className={`conn ${status}`} title={`Connection: ${status}`}>
           {status}
         </span>
-        {snapshot.open ? <span className="live-dot" title="Doors open">Live</span> : null}
         <button
           type="button"
           className="btn-ghost btn-small hud-mute"
@@ -32,22 +50,27 @@ export function Hud({ snapshot, live = false }: { snapshot: RoomSnapshot; live?:
             if (!next) play("ui", 0.2);
           }}
         >
-          {mute ? "Sound off" : "Sound on"}
+          {mute ? "Sound off" : "Sound"}
         </button>
       </div>
 
       <div className="hud-vitals" aria-label="Café vitals">
-        <Vital label="Funds" value={`$${Math.round(f.balance).toLocaleString()}`} />
-        <Vital label="Revenue" value={`+$${Math.round(f.revenue).toLocaleString()}`} tone="ok" priority="high" />
+        <Vital label="Cash" value={`$${Math.round(f.balance).toLocaleString()}`} priority="high" />
         <Vital label="Served" value={String(m.customersServed)} priority="high" />
         <Vital label="Queue" value={String(m.queueLength)} priority="high" pulse={m.queueLength >= 4} />
-        <Vital label="Wait" value={`${m.avgWaitSec}s`} priority="low" />
-        <Vital
-          label="Happy"
-          value={`${Math.round(m.satisfaction)}%`}
-          tone={m.satisfaction >= 70 ? "ok" : undefined}
-          priority="high"
-        />
+        {!compact ? (
+          <>
+            <Vital label="Revenue" value={`+$${Math.round(f.revenue).toLocaleString()}`} tone="ok" />
+            <Vital label="Wait" value={`${m.avgWaitSec}s`} priority="low" />
+            <Vital
+              label="Happy"
+              value={`${Math.round(m.satisfaction)}%`}
+              tone={m.satisfaction >= 70 ? "ok" : undefined}
+              priority="high"
+            />
+          </>
+        ) : null}
+        {compact && holding ? <Vital label="Holding" value={holding} priority="high" /> : null}
       </div>
 
       <div className="hud-invite">
@@ -56,7 +79,6 @@ export function Hud({ snapshot, live = false }: { snapshot: RoomSnapshot; live?:
         ) : null}
         <div className="hud-invite-meta">
           <span className="hud-room">{roomCode}</span>
-          {f.nessieAccountId ? <code className="hud-nessie">{f.nessieAccountId}</code> : null}
         </div>
       </div>
     </header>

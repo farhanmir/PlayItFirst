@@ -4,7 +4,7 @@ import { nearestStation } from "../../shared/stations";
 import { useApp } from "../lib/store";
 import { play } from "../lib/audio";
 import { moveFromKeys } from "../lib/look";
-import { suggestedAction, stationLabel, type PlayAction } from "../lib/suggestAction";
+import { actionPrompt, suggestedAction, stationLabel, type PlayAction } from "../lib/suggestAction";
 
 function patchMyPosition(x: number, z: number) {
   const { snapshot, you, set } = useApp.getState();
@@ -17,7 +17,13 @@ function patchMyPosition(x: number, z: number) {
   });
 }
 
-export function PlayControls({ snapshot }: { snapshot: RoomSnapshot }) {
+export function PlayControls({
+  snapshot,
+  immersive = false,
+}: {
+  snapshot: RoomSnapshot;
+  immersive?: boolean;
+}) {
   const conn = useApp((s) => s.conn);
   const you = useApp((s) => s.you);
   const me = snapshot.players.find((p) => p.id === you);
@@ -27,6 +33,7 @@ export function PlayControls({ snapshot }: { snapshot: RoomSnapshot }) {
 
   const station = useMemo(() => (you ? nearestStation(snapshot, you) : null), [snapshot, you]);
   const suggest = useMemo(() => suggestedAction(snapshot, you), [snapshot, you]);
+  const prompt = useMemo(() => actionPrompt(snapshot, you), [snapshot, you]);
   const nearLabel = stationLabel(station);
   const jamieHelping =
     !!snapshot.aiBarista?.holding ||
@@ -40,15 +47,15 @@ export function PlayControls({ snapshot }: { snapshot: RoomSnapshot }) {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       const k = e.key.toLowerCase();
       keys.add(k);
-      if (k === "e") act("take_order");
-      if (k === "f") act("make_coffee");
-      if (k === "r") act("serve");
-      if (k === "q") act("restock");
-      if (k === " " || k === "enter") {
+      // One contextual key: E or Space runs the suggested station action.
+      if (k === "e" || k === " " || k === "enter") {
         e.preventDefault();
         const next = suggestedAction(useApp.getState().snapshot ?? snapshot, useApp.getState().you);
         if (next) act(next);
       }
+      if (k === "f") act("make_coffee");
+      if (k === "r") act("serve");
+      if (k === "q") act("restock");
     };
     const onUp = (e: KeyboardEvent) => keys.delete(e.key.toLowerCase());
     window.addEventListener("keydown", onDown);
@@ -94,17 +101,9 @@ export function PlayControls({ snapshot }: { snapshot: RoomSnapshot }) {
           : me.holding
     : "Hands empty";
 
-  const actions: { id: PlayAction; label: string; key?: string }[] = [
-    { id: "take_order", label: "Take order", key: "E" },
-    { id: "make_coffee", label: "Brew", key: "F" },
-    { id: "serve", label: "Serve", key: "R" },
-    { id: "restock", label: "Restock", key: "Q" },
-    { id: "collect", label: "Collect $" },
-  ];
-
   return (
     <div
-      className={`play-controls panel ${mobile ? "mobile" : ""}`}
+      className={`play-controls panel ${mobile ? "mobile" : ""} ${immersive ? "immersive" : ""}`}
       role="toolbar"
       aria-label="Café play controls"
     >
@@ -120,36 +119,44 @@ export function PlayControls({ snapshot }: { snapshot: RoomSnapshot }) {
           </p>
         )}
       </div>
-      <p className="hint">
-        {mobile
-          ? "Tap action · drag pad to move · swipe canvas to look"
-          : "Click canvas to look · WASD move · Space next · E/F/R/Q"}
-      </p>
-      <div className="action-grid">
-        {actions.map((a) => (
-          <button
-            key={a.id}
-            type="button"
-            className={suggest === a.id ? "suggested" : undefined}
-            aria-label={a.label}
-            aria-current={suggest === a.id ? "true" : undefined}
-            onClick={() => act(a.id)}
-          >
-            {a.key ? <kbd>{a.key}</kbd> : null}
-            {a.label}
-          </button>
-        ))}
-        <button
-          type="button"
-          aria-label="Switch to build phase"
-          onClick={() => {
-            play("ui");
-            conn?.send({ t: "set_phase", phase: "build" });
-          }}
-        >
-          Build
-        </button>
-      </div>
+
+      <button
+        type="button"
+        className="context-act"
+        aria-label={prompt}
+        onClick={() => {
+          if (suggest) act(suggest);
+        }}
+        disabled={!suggest}
+      >
+        {prompt}
+      </button>
+
+      {!immersive || mobile ? (
+        <div className="action-grid">
+          {(
+            [
+              ["take_order", "Order"],
+              ["make_coffee", "Brew"],
+              ["serve", "Serve"],
+              ["restock", "Restock"],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              className={suggest === id ? "suggested" : undefined}
+              aria-current={suggest === id ? "true" : undefined}
+              onClick={() => act(id)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <p className="hint">WASD move · click to look · E / Space interact</p>
+      )}
+
       {mobile && me && (
         <MobilePad
           onMove={(dx, dz) => {
@@ -176,7 +183,6 @@ function MobilePad({ onMove }: { onMove: (dx: number, dz: number) => void }) {
           const rect = el.getBoundingClientRect();
           const x = (ev.clientX - rect.left) / rect.width - 0.5;
           const y = (ev.clientY - rect.top) / rect.height - 0.5;
-          // Camera-relative on mobile too
           const keys = new Set<string>();
           if (y < -0.08) keys.add("w");
           if (y > 0.08) keys.add("s");

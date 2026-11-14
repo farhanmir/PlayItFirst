@@ -2,7 +2,13 @@ import { FURNITURE_CATALOG, type FurnitureKind, type RoomSnapshot } from "../../
 import { useApp } from "../lib/store";
 import { play } from "../lib/audio";
 
-export function BuildPanel({ snapshot }: { snapshot: RoomSnapshot }) {
+export function BuildPanel({
+  snapshot,
+  liveEdit = false,
+}: {
+  snapshot: RoomSnapshot;
+  liveEdit?: boolean;
+}) {
   const conn = useApp((s) => s.conn);
   const buildKind = useApp((s) => s.buildKind);
   const set = useApp((s) => s.set);
@@ -23,9 +29,10 @@ export function BuildPanel({ snapshot }: { snapshot: RoomSnapshot }) {
 
   return (
     <aside className="side-panel panel build-panel">
-      <h3>Build mode</h3>
+      <h3>{liveEdit ? "Sims build catalog" : "Build mode"}</h3>
       <p>
-        Select an item, then <strong>click the café floor</strong> to place it. Layout changes hit everyone in the room live.
+        Select an item, then <strong>click the café floor</strong> to place it.
+        {liveEdit ? " Service keeps running for everyone else." : " Layout changes hit everyone in the room live."}
       </p>
       {buildKind ? (
         <p className="build-place-hint" aria-live="polite">
