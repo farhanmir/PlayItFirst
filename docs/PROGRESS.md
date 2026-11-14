@@ -180,3 +180,11 @@ Commits: ac35283 controls/collision/service and export; da73860 café art/HUD; 7
 ### Latest public provider recheck
 
 Render reported `b2ff7ee82b60d829277a810c712176cab658652d` at 23:05 UTC. One bounded synthetic-room provider attempt on that build failed after `get_cafe_state`, with no proposal or purchase. The run correctly returned `providerVerified: false`; provider identity was unavailable because the run did not complete. Evidence: [provider-public-b2ff7ee-verification.json](screenshots/provider-public-b2ff7ee-verification.json). No automatic retry. Historical successful execution on `03497a4` remains recorded, but does not establish current successful execution or Gemini attribution. Keep the live-provider release gate open.
+
+### Updated public game acceptance
+
+The new public build reported `b2ff7ee` and passed the deployment smoke on costar-extract: HTTPS/assets, two WSS clients, shared edit/rotation and resume. Updated measured-floor art and HUD rendered on desktop and iPhone 13 emulation with zero page errors.
+
+At 23:07:49 UTC, actual keyboard service on the public measured floor passed: take mocha → brew → keyboard walking along collision-aware waypoints → serve. Observed authoritative state: served 0→1, revenue $0→$7, milk 24→23, cups 40→39, beans 30→29, holding null; zero page errors. No state injection. An earlier greedy direct-line approach hit furniture; that failed automation was not treated as proof of an unreachable station. Successful private screenshot/assertions remain in /tmp/pif-public-routed-* pending sponsor publication clearance.
+
+Physical-phone QR/touch/performance, public measured counter-rerouting, current successful Gemini attribution, actual Photon/Nessie receipts, sponsor permissions and final human visual-quality acceptance remain open. No complete release claim.
