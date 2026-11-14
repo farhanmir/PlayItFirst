@@ -2,6 +2,7 @@ import { createDeepAgent } from "deepagents";
 import { createMiddleware, tool } from "langchain";
 import { ChatOpenAI } from "@langchain/openai";
 import { ChatAnthropic } from "@langchain/anthropic";
+import { ChatGoogle } from "@langchain/google";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import { z } from "zod";
 import type { ManagerAction } from "../shared/manager.ts";
@@ -22,12 +23,18 @@ export interface ManagerRun {
 export type ManagerRunner = (run: ManagerRun) => Promise<string>;
 
 export function managerModelConfigured(): boolean {
-  return !!(process.env.OPENAI_API_KEY?.trim() || process.env.ANTHROPIC_API_KEY?.trim());
+  return !!(process.env.GOOGLE_API_KEY?.trim() || process.env.GEMINI_API_KEY?.trim() || process.env.OPENAI_API_KEY?.trim() || process.env.ANTHROPIC_API_KEY?.trim());
 }
 
-function configuredModel(): BaseChatModel {
+export function configuredModel(): BaseChatModel {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   const model = process.env.DEEPAGENTS_MODEL?.trim();
+  const googleKey = process.env.GOOGLE_API_KEY?.trim() || process.env.GEMINI_API_KEY?.trim();
+  // Explicit AI Studio endpoint: never infer Vertex credentials from the host.
+  if (googleKey) return new ChatGoogle({ apiKey: googleKey, platformType: "gai",
+    model: model || "gemini-3.6-flash", maxOutputTokens: 2048, maxRetries: 0,
+    thinkingConfig: { thinkingLevel: "low" },
+  });
   if (apiKey) return new ChatOpenAI({ apiKey, model: model || "gpt-4o-mini", maxTokens: 600, maxRetries: 0, timeout: 15_000 });
   if (process.env.ANTHROPIC_API_KEY?.trim()) return new ChatAnthropic({
     apiKey: process.env.ANTHROPIC_API_KEY.trim(), model: model || "claude-haiku-4-5-20251001", maxTokens: 600, maxRetries: 0,

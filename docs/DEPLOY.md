@@ -14,6 +14,14 @@ Local production verification: build, then run the server with `NODE_ENV=product
 
 ## Repeatable deployment check (issue #6)
 
+### Optional Deepagents manager provider
+
+Set `GOOGLE_API_KEY` in the Render service environment (or ignored local `.env`) to use Gemini through the official `@langchain/google` `ChatGoogle` adapter. `GEMINI_API_KEY` is an alias; `GOOGLE_API_KEY` wins if both exist. Provider precedence is Google/Gemini, then OpenAI, then Anthropic. Existing `OPENAI_API_KEY` and `ANTHROPIC_API_KEY` remain supported. `DEEPAGENTS_MODEL` overrides the chosen provider's model; remove an override belonging to a different provider when switching keys. Defaults are `gemini-3.6-flash`, `gpt-4o-mini`, and `claude-haiku-4-5-20251001`, respectively.
+
+Google documents [Gemini 3.6 Flash with function calling](https://aistudio.google.com/docs/models/gemini-3.6-flash). Availability and quota must still be checked against your project. There are no automatic model calls, retries or purchases: owner requests use the existing Deepagents graph, four-model-turn/20-second limit, room authorization and exact proposal approval. No key means the labeled local fallback. Keys never belong in `VITE_*` or `render.yaml` values; the existing single-service blueprint needs no structural change.
+
+For a bounded real-provider acceptance check, run `node --import tsx scripts/check-gemini-manager.ts` after adding a real Google key to `.env`. This uses an explicitly synthetic property, verifies planning spends nothing, rejects guest approval, approves one $35 restock, checks fresh outcome/inventory and duplicate approval. It never loads CoStar/Matterport files. Do not ask the manager to inspect a restricted real-property room until sponsor authorization for external model processing is established. This script tests the manager service; two-browser live-provider verification remains a separate acceptance check.
+
 After deployment, run this once from a checkout with dependencies installed, replacing the example origin with the actual service URL:
 
 ```sh
