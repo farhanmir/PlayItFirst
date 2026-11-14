@@ -1,8 +1,6 @@
 /**
- * P0 vertical-slice regression coverage (issue #4).
- * Exercises the current simulation and room server only.
- * Acceptance gaps that still fail the issue #2 contract are `it.todo` below
- * and written up with expected vs actual in docs/QA-VERTICAL-SLICE.md.
+ * P0 vertical-slice regression coverage (issue #4, fixes for issue #2).
+ * Economy, queue, and navigation cases that used to be todos are asserted here.
  */
 import { createServer } from "node:http";
 import { afterEach, describe, expect, it } from "vitest";
@@ -10,13 +8,15 @@ import { WebSocketServer, WebSocket } from "ws";
 import properties from "../data/properties.json";
 import type { Customer, PropertyListing, RoomSnapshot } from "../shared/types.ts";
 import { qrSvg } from "./qr.ts";
-import { CafeRoomServer } from "./rooms.ts";
+import { CafeRoomServer, requestOrigin } from "./rooms.ts";
 import {
+  STATION_CLEARANCE,
   addPlayer,
   createRoomSnapshot,
   interact,
   moveFurniture,
   openCafe,
+  placeFurniture,
   selectProperty,
   stepSimulation,
   syncTabletop,
@@ -181,6 +181,10 @@ describe("shared room join", () => {
     const local = new CafeRoomServer(socketServer);
     expect(local.joinUrl("http://127.0.0.1:5173", "abc123")).toBe("http://127.0.0.1:5173/?room=abc123");
     expect(local.joinUrl("https://cafe.example", "abc123")).toBe("https://cafe.example/?room=abc123");
+    expect(requestOrigin("cafe.example", "https")).toBe("https://cafe.example");
+    expect(requestOrigin("cafe.example", "https, http")).toBe("https://cafe.example");
+    expect(requestOrigin("127.0.0.1:5173", undefined, false)).toBe("http://127.0.0.1:5173");
+    expect(requestOrigin("cafe.example", undefined, true)).toBe("https://cafe.example");
     const svg = qrSvg(local.joinUrl("https://cafe.example", "abc123"));
     expect(svg.startsWith("<svg")).toBe(true);
     expect(svg).toContain("fill=");
@@ -574,17 +578,220 @@ describe("customer path and queue", () => {
   });
 });
 
-describe("acceptance cases not implemented on this main", () => {
-  it.todo(
-    "serving books revenue only when the player is holding the brewed drink (today progress >= 0.45 sells with no inventory change)",
-  );
-  it.todo(
-    "a waiting customer is not auto-sold when progress reaches 1 (today stepSimulation posts a sale with no stock change and no event log)",
-  );
-  it.todo("register collect cannot post a sale without an order (today each collect adds $12)");
-  it.todo("restock cannot drive the balance negative (today a $10 balance becomes -$25)");
-  it.todo("customer paths avoid occupied stations (today movement is straight-line interpolation with no occupancy grid)");
+describe("exactly-once fulfillment", () => {
+  it("does not book revenue when the player is not holding the brewed drink", () => {
+    let snap = openCafe(selectProperty(createRoomSnapshot("empty-serve"), listing));
+    snap = addPlayer(snap, "p1", "Alex", "barista");
+    snap = atStation(snap, "p1", "pickup");
+    snap = {
+      ...snap,
+      simTime: 3,
+      inventory: { beans: 30, cups: 40, milk: 24 },
+      customers: [
+        customer({
+          id: "w1",
+          state: "waiting",
+          order: "latte",
+          progress: 0.5,
+          persona: "office",
+          name: "Nia",
+          ticketHolder: "p1",
+        }),
+      ],
+    };
+    const revenue = snap.finance.revenue;
+    const stock = { ...snap.inventory };
+    snap = interact(snap, "p1", "serve");
+    expect(snap.finance.revenue).toBe(revenue);
+    expect(snap.metrics.customersServed).toBe(0);
+    expect(snap.inventory).toEqual(stock);
+    expect(snap.customers[0]?.state).toBe("waiting");
+    expect(sales(snap)).toHaveLength(0);
+    expect(snap.eventLog[0]).toMatch(/brew a drink/i);
+  });
+
+  it("does not auto-sell a waiting guest when progress reaches 1", () => {
+    let snap = quietFloor(openCafe(selectProperty(createRoomSnapshot("no-autosale"), listing)));
+    snap = {
+      ...snap,
+      simTime: 1,
+      customers: [
+        customer({
+          id: "w2",
+          state: "waiting",
+          order: "espresso",
+          progress: 0.85,
+          persona: "regular",
+          name: "Omar",
+          patience: 5000,
+        }),
+      ],
+    };
+    const revenue = snap.finance.revenue;
+    const stock = { ...snap.inventory };
+    for (let i = 0; i < 80; i++) snap = stepSimulation(snap, 0.25);
+    expect(snap.metrics.customersServed).toBe(0);
+    expect(snap.finance.revenue).toBe(revenue);
+    expect(snap.inventory).toEqual(stock);
+    expect(sales(snap)).toHaveLength(0);
+    expect(snap.customers.find((item) => item.id === "w2")?.state).toBe("waiting");
+  });
+
+  it("does not mint revenue when collect is pressed twice", () => {
+    let snap = openCafe(selectProperty(createRoomSnapshot("collect"), listing));
+    snap = addPlayer(snap, "p1", "Alex", "barista");
+    snap = atStation(snap, "p1", "counter");
+    const revenue = snap.finance.revenue;
+    const balance = snap.finance.balance;
+    const salesBefore = sales(snap).length;
+    snap = interact(snap, "p1", "collect");
+    snap = interact(snap, "p1", "collect");
+    expect(snap.finance.revenue).toBe(revenue);
+    expect(snap.finance.balance).toBe(balance);
+    expect(snap.metrics.customersServed).toBe(0);
+    expect(sales(snap)).toHaveLength(salesBefore);
+  });
+
+  it("refuses a restock that the balance cannot cover and still restocks when it can", () => {
+    let snap = openCafe(selectProperty(createRoomSnapshot("restock"), listing));
+    snap = addPlayer(snap, "p1", "Alex", "barista");
+    snap = atStation(snap, "p1", "fridge");
+    const stock = { ...snap.inventory };
+    snap = { ...snap, finance: { ...snap.finance, balance: 10 } };
+    snap = interact(snap, "p1", "restock");
+    expect(snap.finance.balance).toBe(10);
+    expect(snap.inventory).toEqual(stock);
+    expect(snap.eventLog[0]).toMatch(/need \$35/i);
+
+    snap = { ...snap, finance: { ...snap.finance, balance: 100 } };
+    snap = interact(snap, "p1", "restock");
+    expect(snap.finance.balance).toBe(65);
+    expect(snap.inventory).toEqual({
+      milk: stock.milk + 12,
+      cups: stock.cups + 20,
+      beans: stock.beans + 15,
+    });
+  });
 });
+
+describe("collision-aware navigation", () => {
+  it("walks around a station on the queue path and still reaches the counter", () => {
+    let layout = quietFloor(openCafe(selectProperty(createRoomSnapshot("path-clear"), listing)));
+    const counter = layout.layout!.furniture.find((item) => item.kind === "counter")!;
+    const machine = layout.layout!.furniture.find((item) => item.kind === "coffee_machine")!;
+    layout = moveFurniture(layout, counter.id, 2, 8);
+    const slot = { x: 2.2, z: Math.max(0.8, 8 - 1.2) };
+    const start = { x: slot.x, z: 1 };
+    const withGuest = (base: RoomSnapshot) =>
+      quietFloor({
+        ...base,
+        customers: [customer({ id: "walk", state: "queue", name: "Walk", x: start.x, z: start.z, patience: 5000 })],
+      });
+
+    const clearSteps = stepsUntilNear(withGuest(layout), "walk", slot, 0.5);
+    let blocked = moveFurniture(layout, machine.id, slot.x, (start.z + slot.z) / 2);
+    expect(blocked.layout!.furniture.find((item) => item.kind === "coffee_machine")).toMatchObject({
+      x: slot.x,
+      z: (start.z + slot.z) / 2,
+    });
+    blocked = withGuest(blocked);
+    const obstacle = blocked.layout!.furniture.find((item) => item.kind === "coffee_machine")!;
+    const samples: { x: number; z: number }[] = [{ ...start }];
+    let steps = 0;
+    for (; steps < 40; steps++) {
+      blocked = stepSimulation(blocked, 0.25);
+      const walker = blocked.customers.find((item) => item.id === "walk")!;
+      samples.push({ x: walker.x, z: walker.z });
+      if (Math.hypot(walker.x - slot.x, walker.z - slot.z) < 0.5) break;
+    }
+    expect(steps).toBeGreaterThan(clearSteps);
+    expect(steps).toBeLessThan(40);
+    for (let i = 1; i < samples.length; i++) {
+      const prev = samples[i - 1]!;
+      const next = samples[i]!;
+      expect(segmentDistance(prev.x, prev.z, next.x, next.z, obstacle.x, obstacle.z)).toBeGreaterThanOrEqual(
+        STATION_CLEARANCE - 0.05,
+      );
+    }
+    const arrived = blocked.customers.find((item) => item.id === "walk")!;
+    expect(arrived.state === "ordering" || arrived.state === "queue").toBe(true);
+
+    const waited = quietFloor({
+      ...layout,
+      customers: [customer({ id: "line", state: "ordering", name: "Line", x: slot.x, z: slot.z })],
+    });
+    let measured = waited;
+    for (let i = 0; i < 8; i++) measured = stepSimulation(measured, 0.25);
+    expect(measured.metrics.avgWaitSec).toBeCloseTo(2, 1);
+  });
+
+  it("reroutes after a station is moved onto the remaining path", () => {
+    let snap = quietFloor(openCafe(selectProperty(createRoomSnapshot("reroute-live"), listing)));
+    const counter = snap.layout!.furniture.find((item) => item.kind === "counter")!;
+    const machine = snap.layout!.furniture.find((item) => item.kind === "coffee_machine")!;
+    const slot = { x: counter.x + 0.2, z: Math.max(0.8, counter.z - 1.2) };
+    snap = {
+      ...snap,
+      customers: [customer({ id: "walk", state: "queue", name: "Walk", x: slot.x, z: 8, patience: 5000 })],
+    };
+    snap = stepSimulation(snap, 0.25);
+    const mid = snap.customers.find((item) => item.id === "walk")!;
+    snap = moveFurniture(snap, machine.id, slot.x, (mid.z + slot.z) / 2);
+    const obstacle = snap.layout!.furniture.find((item) => item.kind === "coffee_machine")!;
+    let previous = { x: mid.x, z: mid.z };
+    let arrived = false;
+    for (let i = 0; i < 40; i++) {
+      snap = stepSimulation(snap, 0.25);
+      const walker = snap.customers.find((item) => item.id === "walk")!;
+      expect(segmentDistance(previous.x, previous.z, walker.x, walker.z, obstacle.x, obstacle.z)).toBeGreaterThanOrEqual(
+        STATION_CLEARANCE - 0.05,
+      );
+      previous = { x: walker.x, z: walker.z };
+      if (Math.hypot(walker.x - slot.x, walker.z - slot.z) < 0.5) {
+        arrived = true;
+        break;
+      }
+    }
+    expect(arrived).toBe(true);
+  });
+
+  it("rejects a furniture line that would seal the entrance off from the counter", () => {
+    let snap = openCafe(selectProperty(createRoomSnapshot("seal"), listing));
+    let rejected = false;
+    for (let x = 0.6; x <= listing.width - 0.6; x += 1) {
+      const before = snap.layout!.furniture.length;
+      const balance = snap.finance.balance;
+      const next = placeFurniture(snap, "chair", x, 2);
+      if (next.layout!.furniture.length === before) {
+        expect(next.finance.balance).toBe(balance);
+        expect(next.eventLog[0]).toMatch(/block the service path/i);
+        rejected = true;
+        break;
+      }
+      snap = next;
+    }
+    expect(rejected).toBe(true);
+  });
+});
+
+function stepsUntilNear(snapshot: RoomSnapshot, id: string, slot: { x: number; z: number }, radius: number) {
+  let steps = 0;
+  let snap = snapshot;
+  for (; steps < 40; steps++) {
+    const guest = snap.customers.find((item) => item.id === id);
+    if (guest && Math.hypot(guest.x - slot.x, guest.z - slot.z) < radius) return steps;
+    snap = stepSimulation(snap, 0.25);
+  }
+  return steps;
+}
+
+function segmentDistance(x1: number, z1: number, x2: number, z2: number, cx: number, cz: number) {
+  const dx = x2 - x1;
+  const dz = z2 - z1;
+  const len2 = dx * dx + dz * dz;
+  const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((cx - x1) * dx + (cz - z1) * dz) / len2));
+  return Math.hypot(x1 + t * dx - cx, z1 + t * dz - cz);
+}
 
 function salesOf(snapshot: { finance: { transactions: { category: string }[] } }) {
   return snapshot.finance.transactions.filter((tx) => tx.category === "sales");
