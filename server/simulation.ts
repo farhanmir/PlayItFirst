@@ -560,7 +560,8 @@ export function seedDemoCrowd(snapshot: RoomSnapshot): RoomSnapshot {
   for (let i = 0; i < states.length; i++) {
     const c = spawnCustomer(snapshot.property, counter.x, counter.z);
     c.state = states[i];
-    c.patience = 160;
+    // Generous patience so the judge pitch stays playable under the rush
+    c.patience = 220;
     c.x = counter.x + 0.2;
     c.z = Math.max(0.8, counter.z - 1.2 - i * 0.7);
     c.targetX = c.x;
