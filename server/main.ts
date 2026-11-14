@@ -212,7 +212,7 @@ server.on("request", (req, res) => {
     }
 
     if (url.pathname === "/api/health") {
-      json(res, 200, { ok: true, service: "softopen", product: "Play It First", legacy: "playfirst" });
+      json(res, 200, { ok: true, service: "softopen", product: "Play It First", legacy: "playfirst", commit: process.env.RENDER_GIT_COMMIT || null });
       return;
     }
 

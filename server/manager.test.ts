@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import { AIMessage } from "@langchain/core/messages";
 import properties from "../data/properties.json";
@@ -8,6 +8,7 @@ import { createManagerRunner, type ManagerRun } from "./manager-runtime.ts";
 import { addPlayer, createRoomSnapshot, openCafe, selectProperty } from "./simulation.ts";
 
 const owner: ManagerActor = { roomCode: "manager-test", memberId: "owner" };
+afterEach(() => vi.unstubAllEnvs());
 function setup(options: ConstructorParameters<typeof CafeManager>[1] = {}) {
   let snapshot = openCafe(selectProperty(createRoomSnapshot(owner.roomCode), properties[0] as PropertyListing));
   snapshot = addPlayer(snapshot, owner.memberId, "Owner", "owner");
@@ -21,6 +22,18 @@ function setup(options: ConstructorParameters<typeof CafeManager>[1] = {}) {
 }
 
 describe("room-scoped manager consent and transactions", () => {
+  it("keeps sponsor property context out of external models without explicit authorization", async () => {
+    vi.stubEnv("ALLOW_SPONSOR_MODEL_CONTEXT", "false");
+    const { manager, read, change } = setup({ configured: () => true,
+      runner: async () => { throw new Error("External model must not be called"); } });
+    change((s) => ({ ...s, property: { ...s.property!, source: "costar-extract" } }));
+    const plan = await manager.request(owner, "Restock supplies");
+    expect(plan.runtime).toBe("local");
+    expect(plan.trace.some((t) => t.tool === "model_context_blocked")).toBe(true);
+    expect(plan.trace.some((t) => t.tool === "run_failed")).toBe(false);
+    await manager.approve(owner, plan.proposals[0].id);
+    expect(read().inventory.milk).toBe(36);
+  });
   it("plans without spending, then executes owner approval exactly once on fresh state", async () => {
     const { manager, read, change } = setup();
     const initial = read();

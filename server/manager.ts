@@ -115,7 +115,12 @@ export class CafeManager {
     const id = randomUUID();
     this.activeRun = id;
     this.view.busy = true;
-    const configured = (this.options.configured ?? managerModelConfigured)();
+    const modelKeyConfigured = (this.options.configured ?? managerModelConfigured)();
+    const source = this.room.read().property?.source;
+    const restricted = source === "costar-extract" || source === "costar-live";
+    const contextBlocked = restricted && process.env.ALLOW_SPONSOR_MODEL_CONTEXT !== "true";
+    const configured = modelKeyConfigured && !contextBlocked;
+    if (modelKeyConfigured && contextBlocked) this.trace("model_context_blocked", "Using local rules: external processing of sponsor property context has not been authorized.");
     this.view.runtime = configured ? "deepagents" : "local";
     this.publish();
     const guard = () => {
