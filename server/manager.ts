@@ -12,6 +12,26 @@ export interface ManagerRoom {
   publish(view: ManagerView): void;
 }
 
+/** Allowlisted diagnostics only: provider messages/URLs can contain secrets. */
+function failureHint(error: unknown, timedOut: boolean): string {
+  if (timedOut) return "Manager timed out (deadline reached); no automatic retry.";
+  let current = error;
+  for (let depth = 0; depth < 3 && current && typeof current === "object"; depth++) {
+    const e = current as { statusCode?: unknown; status?: unknown; name?: unknown; cause?: unknown };
+    const status = e.statusCode ?? e.status;
+    if (status === 429) return "Model rate limit or quota reached (HTTP 429); no automatic retry.";
+    if (status === 401 || status === 403) return "Model authentication or permission refused (HTTP 401/403).";
+    if (status === 404) return "Configured model or endpoint unavailable (HTTP 404).";
+    if (status === 400) return "Model rejected the request or tool schema (HTTP 400).";
+    if (typeof status === "number" && status >= 500 && status <= 599) return "Model service temporarily unavailable (HTTP 5xx).";
+    if (e.name === "NoCandidatesError" || e.name === "MalformedOutputError") return "Model returned no usable response or malformed output.";
+    if (e.name === "InvalidToolError" || e.name === "ToolCallNotFoundError" || e.name === "InvalidInputError") return "Model tool-call format was rejected.";
+    if (e.name === "AbortError" || e.name === "TimeoutError") return "Model request aborted or timed out.";
+    current = e.cause;
+  }
+  return "Model or tool run failed; no automatic retry.";
+}
+
 export class CafeManager {
   private view: ManagerView = { runtime: "local", providerVerified: false, busy: false, summary: "Ask Jamie to inspect the café. Purchases always need owner approval.", proposals: [], trace: [] };
   private history: string[] = [];
@@ -153,10 +173,11 @@ export class CafeManager {
         this.localPlan(actor, prompt, tools, approvedId);
       }
       this.history = [...this.history, `Owner: ${prompt}`, `Jamie: ${this.view.summary}`].slice(-6);
-    } catch {
+    } catch (error) {
       // Provider error text may contain credentials/URLs. Never broadcast it.
-      this.view.summary = "Manager run failed or timed out. Check recorded receipts before retrying; completed actions are not rolled back.";
-      this.trace("run_failed", "Provider unavailable or run limit reached; no automatic retry.");
+      const hint = failureHint(error, controller.signal.aborted);
+      this.view.summary = `Manager run failed. ${hint} Check recorded receipts before retrying; completed actions are not rolled back.`;
+      this.trace("run_failed", hint);
     } finally {
       controller.abort();
       if (timer) clearTimeout(timer);

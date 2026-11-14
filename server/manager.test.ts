@@ -22,6 +22,25 @@ function setup(options: ConstructorParameters<typeof CafeManager>[1] = {}) {
 }
 
 describe("room-scoped manager consent and transactions", () => {
+  it.each([
+    [{ statusCode: 429 }, "rate limit or quota"],
+    [{ cause: { status: 400 } }, "tool schema"],
+    [{ status: 403 }, "permission"],
+    [{ statusCode: 503 }, "temporarily unavailable"],
+    [{ name: "MalformedOutputError" }, "malformed output"],
+    [{}, "Model or tool run failed"],
+  ])("reports safe failure categories without exposing provider secrets: %j", async (metadata, expected) => {
+    const { manager, read } = setup({ configured: () => true, runner: async () => {
+      throw Object.assign(new Error("SECRET_KEY https://provider.invalid/?key=SECRET_KEY"), metadata);
+    } });
+    const initial = read().finance.balance;
+    const result = await manager.request(owner, "Inspect synthetic state");
+    expect(result.trace.at(-1)?.detail).toContain(expected);
+    expect(JSON.stringify(result)).not.toContain("SECRET_KEY");
+    expect(JSON.stringify(result)).not.toContain("provider.invalid");
+    expect(result.providerVerified).toBe(false);
+    expect(read().finance.balance).toBe(initial);
+  });
   it("keeps sponsor property context out of external models without explicit authorization", async () => {
     vi.stubEnv("ALLOW_SPONSOR_MODEL_CONTEXT", "false");
     const { manager, read, change } = setup({ configured: () => true,
