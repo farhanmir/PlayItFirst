@@ -13,6 +13,7 @@ import {
   interact,
   runAiBaristaAssist,
   seedDemoCrowd,
+  syncTabletop,
 } from "./simulation.ts";
 
 const listing = (properties as PropertyListing[])[0];
@@ -156,5 +157,15 @@ describe("café simulation", () => {
     expect(snap.customers.length).toBeGreaterThan(before);
     expect(snap.customers.some((c) => c.state === "ordering")).toBe(true);
     expect(snap.metrics.queueLength).toBeGreaterThanOrEqual(3);
+  });
+
+  it("syncTabletop moves the counter for live layout wow", () => {
+    let snap = selectProperty(createRoomSnapshot("demo"), listing);
+    const counter = snap.layout!.furniture.find((f) => f.kind === "counter")!;
+    snap = syncTabletop(snap, [{ kind: "counter", x: counter.x + 2.5, z: counter.z + 1.2 }]);
+    const moved = snap.layout!.furniture.find((f) => f.kind === "counter")!;
+    expect(moved.x).toBeCloseTo(counter.x + 2.5, 1);
+    expect(moved.z).toBeCloseTo(counter.z + 1.2, 1);
+    expect(snap.eventLog[0]).toMatch(/Tabletop layout synced/i);
   });
 });

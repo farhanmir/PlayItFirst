@@ -10,12 +10,12 @@ const TIPS: { when: (s: RoomSnapshot) => boolean; title: string; body: string }[
   {
     when: (s) => s.phase === "play" && s.metrics.customersServed === 0,
     title: "Run the line",
-    body: "Take order → make coffee → serve. WASD to move. Friends can join from the QR code.",
+    body: "Take order → brew → serve. Space does the highlighted action. Friends join via QR.",
   },
   {
     when: (s) => s.metrics.queueLength >= 4,
     title: "Queue pressure",
-    body: "Try the tabletop board to move the counter, or answer Jamie in Photon for help.",
+    body: "Open the Table tab and drag the counter marker — layout syncs live and the line reroutes.",
   },
   {
     when: (s) => !!s.director && !s.director.resolved,

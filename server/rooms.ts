@@ -160,23 +160,31 @@ export class CafeRoomServer {
         room.snapshot = removeFurniture(room.snapshot, msg.id);
         this.broadcast(room);
         break;
-      case "tabletop_sync":
+      case "tabletop_sync": {
+        const before = room.snapshot.layout?.furniture.map((f) => `${f.kind}:${f.x.toFixed(1)},${f.z.toFixed(1)}`).join("|");
         room.snapshot = syncTabletop(room.snapshot, msg.markers);
-        room.snapshot = {
-          ...room.snapshot,
-          photon: [
-            {
-              id: randomUUID(),
-              from: "Jamie",
-              role: "Café Manager",
-              body: "layout just changed live — customers are rerouting around the new counter path.",
-              at: Date.now(),
-            },
-            ...room.snapshot.photon,
-          ].slice(0, 20),
-        };
+        const after = room.snapshot.layout?.furniture.map((f) => `${f.kind}:${f.x.toFixed(1)},${f.z.toFixed(1)}`).join("|");
+        const moved = before !== after;
+        const lastPhoton = room.snapshot.photon[0];
+        const recentlyNoted = lastPhoton?.body.includes("rerouting") && Date.now() - lastPhoton.at < 4000;
+        if (moved && !recentlyNoted) {
+          room.snapshot = {
+            ...room.snapshot,
+            photon: [
+              {
+                id: randomUUID(),
+                from: "Jamie",
+                role: "Café Manager",
+                body: "layout just changed live — customers are rerouting around the new counter path.",
+                at: Date.now(),
+              },
+              ...room.snapshot.photon,
+            ].slice(0, 20),
+          };
+        }
         this.broadcast(room);
         break;
+      }
       case "player_move":
         room.snapshot = movePlayer(room.snapshot, member.id, msg.x, msg.z);
         break;

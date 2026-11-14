@@ -22,6 +22,7 @@ import { SessionRecap } from "../components/SessionRecap";
 import { WebXRHint } from "../components/WebXRHint";
 import { CrewBoard } from "../components/CrewBoard";
 import { MiniMap } from "../components/MiniMap";
+import { ServeToast } from "../components/ServeToast";
 import type { CafeViewMode } from "../components/CafeScene";
 import { play } from "../lib/audio";
 import { startAmbient, stopAmbient } from "../lib/ambient";
@@ -83,6 +84,7 @@ export function Game() {
         <DirectorPanel snapshot={snapshot} />
         <PhotonCall snapshot={snapshot} />
         <RolePicker snapshot={snapshot} />
+        <ServeToast snapshot={snapshot} />
         {snapshot.phase === "play" && (
           <>
             <OrderRail snapshot={snapshot} />
