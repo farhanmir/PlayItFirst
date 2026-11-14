@@ -1,7 +1,7 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Billboard, OrbitControls, PerspectiveCamera, Sparkles, Text } from "@react-three/drei";
+import { Billboard, OrbitControls, PerspectiveCamera, RoundedBox, Sparkles, Text } from "@react-three/drei";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { CanvasTexture, RepeatWrapping, SRGBColorSpace, Shape, DoubleSide, MathUtils, type Group, type PerspectiveCamera as ThreePerspectiveCamera } from "three";
+import { CanvasTexture, Vector2, RepeatWrapping, SRGBColorSpace, Shape, DoubleSide, MathUtils, type Group, type PerspectiveCamera as ThreePerspectiveCamera } from "three";
 import type { Customer, FurnitureItem, FurnitureKind, PlayerState, PropertyListing, RoomSnapshot } from "../../shared/types";
 import { nearestStation } from "../../shared/stations";
 import { placementIssue, snapFloor } from "../../shared/placement";
@@ -17,16 +17,16 @@ const STATION_KIND: Record<string, FurnitureItem["kind"]> = {
 };
 
 const PALETTE = {
-  bg: "#c8b7a0",
-  fog: "#d9cbb8",
+  bg: "#aebdb7",
+  fog: "#d9dfd4",
   floor: "#7a563c",
   plank: "#6b4a32",
   plankAlt: "#8a6344",
   wall: "#f0e4d4",
   wallTrim: "#5c4030",
-  wood: "#8b5a3c",
+  wood: "#765039",
   woodDark: "#5c4030",
-  woodTop: "#c49a6c",
+  woodTop: "#e1d6bd",
   crema: "#c4a574",
   foam: "#f3ebe2",
   espresso: "#3b2418",
@@ -99,13 +99,15 @@ export function CafeScene({ snapshot, viewMode = "monitor", buildMode = false }:
         />
 
         {/* Warm daylight café — soft sun through the windows */}
-        <ambientLight intensity={0.38} color="#fff4e8" />
+        <ambientLight intensity={0.55} color="#fff4e8" />
         <directionalLight
           castShadow
           position={[8, 14, -2]}
-          intensity={1.35}
+          intensity={2.1}
           color="#ffe2b8"
-          shadow-mapSize={[1024, 1024]}
+          shadow-mapSize={[2048, 2048]}
+          shadow-normalBias={0.025}
+          shadow-radius={3}
           shadow-bias={-0.0004}
           shadow-camera-near={1}
           shadow-camera-far={40}
@@ -115,7 +117,7 @@ export function CafeScene({ snapshot, viewMode = "monitor", buildMode = false }:
           shadow-camera-bottom={-14}
         />
         <directionalLight position={[-5, 7, 4]} intensity={0.28} color="#a8c4e0" />
-        <hemisphereLight args={["#fff7ee", "#6b4f3a", 0.55]} />
+        <hemisphereLight args={["#fff7ee", "#738477", 0.8]} />
         <pointLight position={[property.width * 0.35, 2.4, property.depth * 0.4]} intensity={0.45} color="#f0b878" distance={10} decay={2} />
         <pointLight position={[property.width * 0.7, 2.4, property.depth * 0.55]} intensity={0.35} color="#c4a574" distance={9} decay={2} />
 
@@ -191,16 +193,23 @@ function CameraRig({
       return;
     }
     const el = gl.domElement;
+    el.style.touchAction = "none";
+    let dragging = false;
     const onClick = () => {
-      if (document.pointerLockElement !== el) void el.requestPointerLock();
+      if (document.pointerLockElement !== el && typeof el.requestPointerLock === "function") {
+        try { const result = el.requestPointerLock(); result?.catch(() => { /* Drag look remains available. */ }); } catch { /* Browser denied pointer lock. */ }
+      }
     };
+    const onDragStart = (e: PointerEvent) => { if (e.pointerType === "mouse" && e.button === 0) dragging = true; };
+    const onDragEnd = () => { dragging = false; };
+
     const onMove = (e: MouseEvent) => {
-      if (document.pointerLockElement !== el) return;
+      if (document.pointerLockElement !== el && !dragging) return;
       nudgeLook(e.movementX, e.movementY);
     };
     const onTouch = (e: TouchEvent) => {
-      if (e.touches.length !== 1) return;
-      const t = e.touches[0];
+      if (e.targetTouches.length !== 1) return;
+      const t = e.targetTouches[0];
       const prev = el as HTMLCanvasElement & { __lookX?: number; __lookY?: number };
       if (prev.__lookX != null && prev.__lookY != null) {
         nudgeLook(t.clientX - prev.__lookX, t.clientY - prev.__lookY, 0.004);
@@ -214,12 +223,18 @@ function CameraRig({
       prev.__lookY = undefined;
     };
     el.addEventListener("click", onClick);
+    el.addEventListener("pointerdown", onDragStart);
+    window.addEventListener("pointerup", onDragEnd);
+    window.addEventListener("blur", onDragEnd);
     document.addEventListener("mousemove", onMove);
     el.addEventListener("touchmove", onTouch, { passive: true });
     el.addEventListener("touchend", onTouchEnd);
     el.addEventListener("touchcancel", onTouchEnd);
     return () => {
       el.removeEventListener("click", onClick);
+      el.removeEventListener("pointerdown", onDragStart);
+      window.removeEventListener("pointerup", onDragEnd);
+      window.removeEventListener("blur", onDragEnd);
       document.removeEventListener("mousemove", onMove);
       el.removeEventListener("touchmove", onTouch);
       el.removeEventListener("touchend", onTouchEnd);
@@ -276,9 +291,9 @@ function CameraRig({
         cam.rotation.z = 0;
       } else {
         // Elevated follow cam, clamped inside the room so we never stare at exterior walls.
-        const dist = 6.4;
-        const height = 4.6 - Math.sin(pitch) * 1.2;
-        let cx = smooth.current.x - Math.sin(yaw) * dist;
+        const dist = 4.6;
+        const height = 3.5 - Math.sin(pitch) * 0.9;
+        let cx = smooth.current.x + Math.sin(yaw) * dist;
         let cz = smooth.current.z + Math.cos(yaw) * dist;
         cx = MathUtils.clamp(cx, 1.4, Math.max(1.6, width - 1.4));
         cz = MathUtils.clamp(cz, 1.4, Math.max(1.6, depth - 1.4));
@@ -327,7 +342,39 @@ function CafeRoom({
 }) {
   const w = property.width;
   const d = property.depth;
-  const plankCount = Math.min(Math.floor(w * 2), 28);
+  const wood = useMemo(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = 1024;
+    const ctx = canvas.getContext("2d")!;
+    let seed = 74;
+    const random = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+    ctx.fillStyle = "#68503b";
+    ctx.fillRect(0, 0, 1024, 1024);
+    for (let row = 0; row < 16; row++) {
+      const y = row * 64;
+      for (let col = -1; col < 4; col++) {
+        const x = col * 384 + (row % 3) * 128;
+        const tone = 140 + Math.floor(random() * 25);
+        ctx.fillStyle = `rgb(${tone},${tone * 0.77},${tone * 0.53})`;
+        ctx.fillRect(x + 1, y + 1, 382, 62);
+        for (let grain = 0; grain < 45; grain++) {
+          ctx.strokeStyle = `rgba(65,39,18,${0.025 + random() * 0.065})`;
+          ctx.beginPath();
+          const gy = y + random() * 62;
+          ctx.moveTo(x, gy);
+          ctx.bezierCurveTo(x + 120, gy - 3, x + 240, gy + 3, x + 384, gy);
+          ctx.stroke();
+        }
+      }
+    }
+    const texture = new CanvasTexture(canvas);
+    texture.wrapS = texture.wrapT = RepeatWrapping;
+    texture.repeat.set(w / 8, d / 8);
+    texture.colorSpace = SRGBColorSpace;
+    texture.anisotropy = 8;
+    return texture;
+  }, [w, d]);
+  useEffect(() => () => wood.dispose(), [wood]);
   if (property.floorPlan) return <MeasuredCafeRoom property={property} furniture={furniture} overhead={overhead} showRooms={cutaway}
     highlightKind={highlightKind} placeEnabled={placeEnabled} onFloorPlace={onFloorPlace} onFloorHover={onFloorHover} />;
 
@@ -375,21 +422,10 @@ function CafeRoom({
         ))}
       </group> : null}
 
-      {/* Wood planks */}
-      {Array.from({ length: plankCount }).map((_, i) => (
-        <mesh
-          key={`plank-${i}`}
-          rotation={[-Math.PI / 2, 0, 0]}
-          position={[(i + 0.5) * (w / plankCount), 0.008, d / 2]}
-          receiveShadow
-        >
-          <planeGeometry args={[w / plankCount - 0.02, d - 0.3]} />
-          <meshStandardMaterial
-            color={i % 2 === 0 ? PALETTE.plankAlt : PALETTE.plank}
-            roughness={0.88}
-          />
-        </mesh>
-      ))}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[w / 2, 0.008, d / 2]} receiveShadow>
+        <planeGeometry args={[w, d]} />
+        <meshStandardMaterial map={wood} roughness={0.68} />
+      </mesh>
 
       {/* Seating area rug */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[w * 0.55, 0.015, d * 0.58]} receiveShadow>
@@ -402,7 +438,7 @@ function CafeRoom({
       </mesh>
 
       {/* Warm plaster walls — listing tone stays as an accent strip, not the whole room */}
-      {!cutaway && <Wall length={w} position={[w / 2, 1.45, 0]} color={PALETTE.wall} />}
+      <Wall length={w} position={[w / 2, 1.45, 0]} color={PALETTE.wall} />
       {!cutaway && <Wall length={w} position={[w / 2, 1.45, d]} color={PALETTE.wall} />}
       <Wall length={d} position={[0, 1.45, d / 2]} rotation={Math.PI / 2} color={PALETTE.wall} />
       <Wall length={d} position={[w, 1.45, d / 2]} rotation={Math.PI / 2} color={PALETTE.wall} />
@@ -462,9 +498,9 @@ function CafeRoom({
         <boxGeometry args={[w * 0.55, 0.06, 0.14]} />
         <meshStandardMaterial color={PALETTE.woodDark} roughness={0.8} />
       </mesh>}
-      <PendantLight position={[w * 0.28, 2.55, d * 0.35]} />
-      <PendantLight position={[w * 0.55, 2.55, d * 0.45]} />
-      <PendantLight position={[w * 0.78, 2.55, d * 0.32]} />
+      {!overhead && <PendantLight position={[w * 0.28, 2.55, d * 0.35]} />}
+      {!overhead && <PendantLight position={[w * 0.55, 2.55, d * 0.45]} />}
+      {!overhead && <PendantLight position={[w * 0.78, 2.55, d * 0.32]} />}
 
       {/* Menu board on back wall */}
       <MenuBoard position={[w * 0.18, 1.85, d - 0.2]} />
@@ -528,6 +564,14 @@ function MeasuredCafeRoom({ property, furniture, overhead, showRooms, highlightK
         if (b - a < 0.01 || h <= 0) return;
         spans.push(<mesh key={key} position={[a + (b - a) / 2 - length / 2, y + h / 2, 0]} castShadow receiveShadow>
           <boxGeometry args={[b - a, h, wall.thickness]} /><meshStandardMaterial color={color} roughness={0.88} /></mesh>);
+        if (y === 0 && h >= 0.7) {
+          spans.push(<mesh key={`${key}-panel`} position={[a + (b - a) / 2 - length / 2, 0.36, 0]} receiveShadow>
+            <boxGeometry args={[b - a, 0.72, wall.thickness + 0.012]} /><meshStandardMaterial color="#71826c" roughness={0.85} /></mesh>);
+          spans.push(<mesh key={`${key}-rail`} position={[a + (b - a) / 2 - length / 2, 0.74, 0]}>
+            <boxGeometry args={[b - a, 0.045, wall.thickness + 0.035]} /><meshStandardMaterial color="#c3c3a6" roughness={0.7} /></mesh>);
+          spans.push(<mesh key={`${key}-skirting`} position={[a + (b - a) / 2 - length / 2, 0.045, 0]}>
+            <boxGeometry args={[b - a, 0.09, wall.thickness + 0.025]} /><meshStandardMaterial color={PALETTE.woodDark} roughness={0.75} /></mesh>);
+        }
       };
       let from = 0;
       for (const o of [...wall.openings].sort((a, b) => a.center - b.center)) {
@@ -552,9 +596,9 @@ function MeasuredCafeRoom({ property, furniture, overhead, showRooms, highlightK
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[origin.x + 3.2, 0.012, origin.z + 3.4]} receiveShadow>
       <planeGeometry args={[5.8, 5.8]} /><meshStandardMaterial color="#637255" roughness={1} />
     </mesh>
-    <Billboard position={[origin.x + 3, 3.0, origin.z + 1]}><Text fontSize={0.26} color="#49644d" outlineWidth={0.006} outlineColor="#f4ecdc">Play It First</Text></Billboard>
-    <PendantLight position={[origin.x + 1, 2.55, origin.z + 2]} />
-    <PendantLight position={[origin.x + 4.5, 2.55, origin.z + 4.8]} />
+
+    {!overhead && <PendantLight position={[origin.x + 1, 2.55, origin.z + 2]} />}
+    {!overhead && <PendantLight position={[origin.x + 4.5, 2.55, origin.z + 4.8]} />}
     <pointLight position={[plan.entry.x, 2, plan.entry.z]} color="#f4c98b" intensity={2} distance={7} />
     <Billboard position={[plan.entry.x, 1.7, plan.entry.z]}><Text fontSize={0.13} color="#4a6e4b">WELCOME IN</Text></Billboard>
     {furniture.map((f) => <FurnitureMesh key={f.id} item={f} highlight={highlightKind === f.kind} />)}
@@ -625,6 +669,34 @@ function Wall({
 function WindowBank({ width, centerX, z }: { width: number; centerX: number; z: number }) {
   const panes = 3;
   const paneW = width / panes - 0.08;
+  const streetscape = useMemo(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 1024; canvas.height = 512;
+    const ctx = canvas.getContext("2d")!;
+    const sky = ctx.createLinearGradient(0, 0, 0, 512);
+    sky.addColorStop(0, "#a9cad0"); sky.addColorStop(1, "#f5e9c9");
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, 1024, 512);
+    ctx.fillStyle = "#fff0c5"; ctx.beginPath(); ctx.arc(780, 90, 35, 0, Math.PI * 2); ctx.fill();
+    for (let i = 0; i < 7; i++) {
+      const x = i * 165 - 30, y = 115 + (i % 3) * 38;
+      ctx.fillStyle = ["#b59a85", "#d0b9a0", "#9caeac"][i % 3];
+      ctx.fillRect(x, y, 150, 320);
+      ctx.fillStyle = "#697e7e";
+      for (let row = 0; row < 3; row++) for (let col = 0; col < 4; col++) ctx.fillRect(x + 15 + col * 33, y + 25 + row * 55, 18, 30);
+      ctx.fillStyle = "#e2d5b9"; ctx.fillRect(x - 3, y - 7, 156, 10);
+    }
+    ctx.fillStyle = "#c4bea8"; ctx.fillRect(0, 410, 1024, 102);
+    for (const x of [100, 475, 900]) {
+      ctx.fillStyle = "#756447"; ctx.fillRect(x, 270, 10, 150);
+      for (let j = 0; j < 6; j++) {
+        ctx.fillStyle = j % 2 ? "#81956d" : "#607d65";
+        ctx.beginPath(); ctx.ellipse(x + Math.cos(j * 2) * 32, 270 + Math.sin(j * 2) * 30, 40, 48, 0, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    const texture = new CanvasTexture(canvas); texture.colorSpace = SRGBColorSpace;
+    return texture;
+  }, []);
+  useEffect(() => () => streetscape.dispose(), [streetscape]);
   return (
     <group position={[centerX, 1.55, z]}>
       {/* Frame */}
@@ -649,27 +721,13 @@ function WindowBank({ width, centerX, z }: { width: number; centerX: number; z: 
                 metalness={0.05}
               />
             </mesh>
-            {/* Exterior daylight + soft sky */}
+            {/* Original painted street view gives the windows depth without extra geometry. */}
             <mesh position={[0, 0, 0.08]}>
-              <planeGeometry args={[paneW * 0.92, 1.05]} />
-              <meshStandardMaterial
-                color={PALETTE.sky}
-                emissive={i % 2 === 0 ? PALETTE.cityWarm : PALETTE.cityCool}
-                emissiveIntensity={0.42}
-                transparent
-                opacity={0.92}
-              />
+              <planeGeometry args={[paneW * 0.98, 1.2]} />
+              <meshBasicMaterial map={streetscape} />
             </mesh>
-            {/* Soft city speckles */}
-            <Sparkles
-              count={8}
-              scale={[paneW * 0.7, 0.85, 0.1]}
-              size={1.8}
-              speed={0.15}
-              opacity={0.55}
-              color={i % 2 === 0 ? "#f0c090" : "#a8c0e0"}
-              position={[0, 0, -0.1]}
-            />
+            <mesh position={[0, 0, 0.15]}><boxGeometry args={[0.035, 1.2, 0.045]} /><meshStandardMaterial color="#dbcfb5" /></mesh>
+            <mesh position={[0, -0.12, 0.15]}><boxGeometry args={[paneW, 0.035, 0.045]} /><meshStandardMaterial color="#dbcfb5" /></mesh>
             {/* Light shaft into room */}
             <mesh position={[0, -0.35, 1.1]} rotation={[0.55, 0, 0]}>
               <boxGeometry args={[paneW * 0.55, 0.02, 2.2]} />
@@ -804,41 +862,20 @@ function CounterProp({ item }: { item: FurnitureItem }) {
   return (
     <group position={[item.x, 0, item.z]} rotation={[0, item.rotation, 0]}>
       {/* Cabinet body */}
-      <mesh position={[0, 0.4, 0]} castShadow receiveShadow>
-        <boxGeometry args={[2.2, 0.8, 0.68]} />
-        <meshStandardMaterial color={PALETTE.wood} roughness={0.75} />
-      </mesh>
+      <RoundedBox position={[0, 0.4, 0]} castShadow receiveShadow args={[2.2, 0.8, 0.68]} radius={0.025} smoothness={2}><meshStandardMaterial color={PALETTE.wood} roughness={0.75} /></RoundedBox>
       {/* Toe kick */}
-      <mesh position={[0, 0.05, 0.02]} castShadow>
-        <boxGeometry args={[2.15, 0.1, 0.62]} />
-        <meshStandardMaterial color={PALETTE.wallTrim} roughness={0.85} />
-      </mesh>
+      <RoundedBox position={[0, 0.05, 0.02]} castShadow args={[2.15, 0.1, 0.62]} radius={0.025} smoothness={2}><meshStandardMaterial color={PALETTE.wallTrim} roughness={0.85} /></RoundedBox>
       {/* Countertop */}
-      <mesh position={[0, 0.86, 0]} castShadow receiveShadow>
-        <boxGeometry args={[2.3, 0.08, 0.78]} />
-        <meshStandardMaterial color={PALETTE.woodTop} roughness={0.45} metalness={0.05} />
-      </mesh>
+      <RoundedBox position={[0, 0.86, 0]} castShadow receiveShadow args={[2.3, 0.08, 0.78]} radius={0.025} smoothness={2}><meshStandardMaterial color={PALETTE.woodTop} roughness={0.45} metalness={0.05} /></RoundedBox>
       {/* Front edge band */}
-      <mesh position={[0, 0.82, 0.38]} castShadow>
-        <boxGeometry args={[2.3, 0.06, 0.04]} />
-        <meshStandardMaterial color={PALETTE.crema} roughness={0.5} />
-      </mesh>
+      <RoundedBox position={[0, 0.82, 0.38]} castShadow args={[2.3, 0.06, 0.04]} radius={0.025} smoothness={2}><meshStandardMaterial color={PALETTE.crema} roughness={0.5} /></RoundedBox>
       {/* Drawer fronts */}
       {[-0.65, 0, 0.65].map((x) => (
-        <mesh key={x} position={[x, 0.45, 0.35]} castShadow>
-          <boxGeometry args={[0.55, 0.35, 0.03]} />
-          <meshStandardMaterial color={PALETTE.woodDark} roughness={0.7} />
-        </mesh>
+        <RoundedBox key={x} position={[x, 0.45, 0.35]} castShadow args={[0.55, 0.35, 0.03]} radius={0.025} smoothness={2}><meshStandardMaterial color={PALETTE.woodDark} roughness={0.7} /></RoundedBox>
       ))}
       {/* POS terminal */}
-      <mesh position={[-0.75, 1.05, -0.05]} castShadow>
-        <boxGeometry args={[0.28, 0.32, 0.08]} />
-        <meshStandardMaterial color="#1c1c1e" metalness={0.4} roughness={0.4} />
-      </mesh>
-      <mesh position={[-0.75, 1.05, 0.01]}>
-        <boxGeometry args={[0.22, 0.24, 0.01]} />
-        <meshStandardMaterial color="#8ec5e8" emissive="#3a6a90" emissiveIntensity={0.45} />
-      </mesh>
+      <RoundedBox position={[-0.75, 1.05, -0.05]} castShadow args={[0.28, 0.32, 0.08]} radius={0.025} smoothness={2}><meshStandardMaterial color="#1c1c1e" metalness={0.4} roughness={0.4} /></RoundedBox>
+      <RoundedBox position={[-0.75, 1.05, 0.01]} args={[0.22, 0.24, 0.01]} radius={0.025} smoothness={2}><meshStandardMaterial color="#8ec5e8" emissive="#3a6a90" emissiveIntensity={0.45} /></RoundedBox>
       {/* Tip jar + stacked cups */}
       <mesh position={[0.85, 0.98, 0.1]} castShadow>
         <cylinderGeometry args={[0.08, 0.07, 0.16, 10]} />
@@ -850,7 +887,7 @@ function CounterProp({ item }: { item: FurnitureItem }) {
           <meshStandardMaterial color={i % 2 ? PALETTE.foam : "#e8d8c8"} roughness={0.55} />
         </mesh>
       ))}
-      <Text position={[0, 1.22, 0.42]} rotation={[0, Math.PI, 0]} fontSize={0.11} color={PALETTE.foam} anchorX="center">
+      <Text position={[0, 0.55, 0.382]} fontSize={0.11} color={PALETTE.foam} anchorX="center">
         ORDER HERE
       </Text>
     </group>
@@ -860,15 +897,9 @@ function CounterProp({ item }: { item: FurnitureItem }) {
 function CupShelf({ position }: { position: [number, number, number] }) {
   return (
     <group position={position}>
-      <mesh castShadow>
-        <boxGeometry args={[1.5, 0.9, 0.22]} />
-        <meshStandardMaterial color={PALETTE.woodDark} roughness={0.8} />
-      </mesh>
+      <RoundedBox castShadow args={[1.5, 0.9, 0.22]} radius={0.025} smoothness={2}><meshStandardMaterial color={PALETTE.woodDark} roughness={0.8} /></RoundedBox>
       {[0.15, -0.15].map((y) => (
-        <mesh key={y} position={[0, y, 0.02]} castShadow>
-          <boxGeometry args={[1.35, 0.04, 0.18]} />
-          <meshStandardMaterial color={PALETTE.wood} roughness={0.75} />
-        </mesh>
+        <RoundedBox key={y} position={[0, y, 0.02]} castShadow args={[1.35, 0.04, 0.18]} radius={0.025} smoothness={2}><meshStandardMaterial color={PALETTE.wood} roughness={0.75} /></RoundedBox>
       ))}
       {[-0.5, -0.25, 0, 0.25, 0.5].map((x, i) => (
         <mesh key={x} position={[x, 0.28, 0.04]} castShadow>
@@ -889,25 +920,16 @@ function CupShelf({ position }: { position: [number, number, number] }) {
 function PastryCase({ position }: { position: [number, number, number] }) {
   return (
     <group position={position}>
-      <mesh position={[0, 0.35, 0]} castShadow receiveShadow>
-        <boxGeometry args={[0.95, 0.7, 0.55]} />
-        <meshStandardMaterial color={PALETTE.wood} roughness={0.75} />
-      </mesh>
-      <mesh position={[0, 0.85, 0]} castShadow>
-        <boxGeometry args={[0.9, 0.42, 0.5]} />
-        <meshStandardMaterial color={PALETTE.glass} transparent opacity={0.35} roughness={0.2} metalness={0.1} />
-      </mesh>
-      <mesh position={[0, 0.72, 0]} castShadow>
-        <boxGeometry args={[0.75, 0.04, 0.35]} />
-        <meshStandardMaterial color={PALETTE.crema} roughness={0.6} />
-      </mesh>
+      <RoundedBox position={[0, 0.35, 0]} castShadow receiveShadow args={[0.95, 0.7, 0.55]} radius={0.025} smoothness={2}><meshStandardMaterial color={PALETTE.wood} roughness={0.75} /></RoundedBox>
+      <RoundedBox position={[0, 0.85, 0]} castShadow args={[0.9, 0.42, 0.5]} radius={0.025} smoothness={2}><meshStandardMaterial color={PALETTE.glass} transparent opacity={0.35} roughness={0.2} metalness={0.1} /></RoundedBox>
+      <RoundedBox position={[0, 0.72, 0]} castShadow args={[0.75, 0.04, 0.35]} radius={0.025} smoothness={2}><meshStandardMaterial color={PALETTE.crema} roughness={0.6} /></RoundedBox>
       {[-0.2, 0.05, 0.25].map((x, i) => (
         <mesh key={x} position={[x, 0.78, 0]} castShadow>
           <sphereGeometry args={[0.07 + (i % 2) * 0.015, 10, 10]} />
           <meshStandardMaterial color={i === 1 ? "#c4784a" : "#e8c9a0"} roughness={0.7} />
         </mesh>
       ))}
-      <Text position={[0, 1.15, 0.28]} rotation={[0, Math.PI, 0]} fontSize={0.09} color={PALETTE.foam} anchorX="center">
+      <Text position={[0, 0.48, 0.29]} fontSize={0.09} color={PALETTE.foam} anchorX="center">
         Pastries
       </Text>
     </group>
@@ -917,10 +939,7 @@ function PastryCase({ position }: { position: [number, number, number] }) {
 function WallArt({ position }: { position: [number, number, number] }) {
   return (
     <group position={position}>
-      <mesh castShadow>
-        <boxGeometry args={[0.85, 0.6, 0.04]} />
-        <meshStandardMaterial color={PALETTE.woodDark} roughness={0.8} />
-      </mesh>
+      <RoundedBox castShadow args={[0.85, 0.6, 0.04]} radius={0.025} smoothness={2}><meshStandardMaterial color={PALETTE.woodDark} roughness={0.8} /></RoundedBox>
       <mesh position={[0, 0, 0.03]}>
         <planeGeometry args={[0.7, 0.45]} />
         <meshStandardMaterial color="#d9b896" emissive="#c49a6c" emissiveIntensity={0.12} />
@@ -949,30 +968,15 @@ function EspressoMachine({ item }: { item: FurnitureItem }) {
 
   return (
     <group position={[item.x, 0, item.z]} rotation={[0, item.rotation, 0]}>
-      <mesh position={[0, 0.43, 0]} castShadow receiveShadow>
-        <boxGeometry args={[1, 0.86, 0.85]} />
-        <meshStandardMaterial color={PALETTE.wood} roughness={0.7} />
-      </mesh>
-      <mesh position={[0, 0.88, 0]} castShadow receiveShadow>
-        <boxGeometry args={[1.08, 0.08, 0.92]} />
-        <meshStandardMaterial color="#d4c5aa" roughness={0.4} />
-      </mesh>
+      <RoundedBox position={[0, 0.43, 0]} castShadow receiveShadow args={[1, 0.86, 0.85]} radius={0.025} smoothness={2}><meshStandardMaterial color={PALETTE.wood} roughness={0.7} /></RoundedBox>
+      <RoundedBox position={[0, 0.88, 0]} castShadow receiveShadow args={[1.08, 0.08, 0.92]} radius={0.025} smoothness={2}><meshStandardMaterial color="#d4c5aa" roughness={0.4} /></RoundedBox>
       <group position={[0, 0.94, 0]}>
       {/* Base */}
-      <mesh position={[0, 0.12, 0]} castShadow receiveShadow>
-        <boxGeometry args={[0.72, 0.24, 0.52]} />
-        <meshStandardMaterial color="#c6c3b4" metalness={0.25} roughness={0.35} />
-      </mesh>
+      <RoundedBox position={[0, 0.12, 0]} castShadow receiveShadow args={[0.72, 0.24, 0.52]} radius={0.025} smoothness={2}><meshStandardMaterial color="#c6c3b4" metalness={0.25} roughness={0.35} /></RoundedBox>
       {/* Body */}
-      <mesh position={[0, 0.55, 0]} castShadow>
-        <boxGeometry args={[0.62, 0.62, 0.45]} />
-        <meshStandardMaterial color="#7f9c89" metalness={0.2} roughness={0.28} />
-      </mesh>
+      <RoundedBox position={[0, 0.55, 0]} castShadow args={[0.62, 0.62, 0.45]} radius={0.025} smoothness={2}><meshStandardMaterial color="#7f9c89" metalness={0.2} roughness={0.28} /></RoundedBox>
       {/* Group head */}
-      <mesh position={[0, 0.42, 0.28]} castShadow>
-        <boxGeometry args={[0.28, 0.14, 0.16]} />
-        <meshStandardMaterial color={PALETTE.metalLite} metalness={0.7} roughness={0.25} />
-      </mesh>
+      <RoundedBox position={[0, 0.42, 0.28]} castShadow args={[0.28, 0.14, 0.16]} radius={0.025} smoothness={2}><meshStandardMaterial color={PALETTE.metalLite} metalness={0.7} roughness={0.25} /></RoundedBox>
       {/* Portafilter handle */}
       <mesh position={[0, 0.38, 0.42]} rotation={[Math.PI / 2, 0, 0]} castShadow>
         <cylinderGeometry args={[0.035, 0.035, 0.22, 8]} />
@@ -988,11 +992,12 @@ function EspressoMachine({ item }: { item: FurnitureItem }) {
         <cylinderGeometry args={[0.015, 0.015, 0.28, 6]} />
         <meshStandardMaterial color={PALETTE.metalLite} metalness={0.8} roughness={0.2} />
       </mesh>
-      {/* Top hopper */}
-      <mesh position={[0, 0.95, -0.05]} castShadow>
-        <cylinderGeometry args={[0.12, 0.14, 0.22, 10]} />
-        <meshStandardMaterial color="#2c2c2e" metalness={0.4} roughness={0.4} />
-      </mesh>
+      {/* Cup warming rail and porcelain cups; pressure gauge reads as real equipment. */}
+      <RoundedBox position={[0, 0.88, 0]} args={[0.66, 0.04, 0.48]} radius={0.015} smoothness={2}><meshStandardMaterial color="#d0ccc0" metalness={0.45} roughness={0.3} /></RoundedBox>
+      {[-0.18, 0, 0.18].map((x) => <mesh key={x} position={[x, 0.95, 0]} castShadow><cylinderGeometry args={[0.055, 0.065, 0.1, 12]} /><meshStandardMaterial color="#f1eadb" roughness={0.3} /></mesh>)}
+      <mesh position={[-0.12, 0.69, 0.235]} rotation={[Math.PI / 2, 0, 0]}><cylinderGeometry args={[0.075, 0.075, 0.025, 24]} /><meshStandardMaterial color="#e8dfc9" metalness={0.1} roughness={0.35} /></mesh>
+      <mesh position={[-0.12, 0.7, 0.255]} rotation={[0, 0, -0.6]}><boxGeometry args={[0.008, 0.075, 0.01]} /><meshStandardMaterial color="#333e38" /></mesh>
+      {[-0.2, -0.1, 0, 0.1, 0.2].map((x) => <mesh key={x} position={[x, 0.248, 0.12]}><boxGeometry args={[0.015, 0.008, 0.25]} /><meshStandardMaterial color="#595f59" metalness={0.6} roughness={0.35} /></mesh>)}
       {/* Status lamp */}
       <mesh position={[0.2, 0.78, 0.2]}>
         <sphereGeometry args={[0.04, 8, 8]} />
@@ -1041,15 +1046,9 @@ function CafeChair({ item }: { item: FurnitureItem }) {
   return (
     <group position={[item.x, 0, item.z]} rotation={[0, item.rotation, 0]}>
       {/* Seat */}
-      <mesh position={[0, 0.42, 0]} castShadow receiveShadow>
-        <boxGeometry args={[0.42, 0.06, 0.42]} />
-        <meshStandardMaterial color={PALETTE.woodDark} roughness={0.7} />
-      </mesh>
+      <RoundedBox position={[0, 0.42, 0]} castShadow receiveShadow args={[0.42, 0.06, 0.42]} radius={0.025} smoothness={2}><meshStandardMaterial color={PALETTE.woodDark} roughness={0.7} /></RoundedBox>
       {/* Back */}
-      <mesh position={[0, 0.72, -0.18]} castShadow>
-        <boxGeometry args={[0.4, 0.55, 0.05]} />
-        <meshStandardMaterial color={PALETTE.wood} roughness={0.7} />
-      </mesh>
+      <RoundedBox position={[0, 0.72, -0.18]} castShadow args={[0.4, 0.55, 0.05]} radius={0.025} smoothness={2}><meshStandardMaterial color={PALETTE.wood} roughness={0.7} /></RoundedBox>
       {/* Legs */}
       {[
         [-0.16, -0.16],
@@ -1069,25 +1068,13 @@ function CafeChair({ item }: { item: FurnitureItem }) {
 function FridgeProp({ item }: { item: FurnitureItem }) {
   return (
     <group position={[item.x, 0, item.z]} rotation={[0, item.rotation, 0]}>
-      <mesh position={[0, 0.85, 0]} castShadow receiveShadow>
-        <boxGeometry args={[0.78, 1.7, 0.68]} />
-        <meshStandardMaterial color={PALETTE.fridge} metalness={0.35} roughness={0.4} />
-      </mesh>
+      <RoundedBox position={[0, 0.85, 0]} castShadow receiveShadow args={[0.78, 1.7, 0.68]} radius={0.025} smoothness={2}><meshStandardMaterial color={PALETTE.fridge} metalness={0.35} roughness={0.4} /></RoundedBox>
       {/* Door seam */}
-      <mesh position={[0, 0.85, 0.35]}>
-        <boxGeometry args={[0.72, 1.55, 0.02]} />
-        <meshStandardMaterial color="#b8c0c8" metalness={0.3} roughness={0.45} />
-      </mesh>
+      <RoundedBox position={[0, 0.85, 0.35]} args={[0.72, 1.55, 0.02]} radius={0.025} smoothness={2}><meshStandardMaterial color="#b8c0c8" metalness={0.3} roughness={0.45} /></RoundedBox>
       {/* Handle */}
-      <mesh position={[0.28, 0.9, 0.38]} castShadow>
-        <boxGeometry args={[0.04, 0.35, 0.04]} />
-        <meshStandardMaterial color="#4a5058" metalness={0.7} roughness={0.3} />
-      </mesh>
+      <RoundedBox position={[0.28, 0.9, 0.38]} castShadow args={[0.04, 0.35, 0.04]} radius={0.025} smoothness={2}><meshStandardMaterial color="#4a5058" metalness={0.7} roughness={0.3} /></RoundedBox>
       {/* Cool glow strip */}
-      <mesh position={[0, 0.85, 0.36]}>
-        <boxGeometry args={[0.55, 0.08, 0.01]} />
-        <meshStandardMaterial color="#cfe0f0" emissive="#8ab0d0" emissiveIntensity={0.5} />
-      </mesh>
+      <RoundedBox position={[0, 0.85, 0.36]} args={[0.55, 0.08, 0.01]} radius={0.025} smoothness={2}><meshStandardMaterial color="#cfe0f0" emissive="#8ab0d0" emissiveIntensity={0.5} /></RoundedBox>
     </group>
   );
 }
@@ -1095,19 +1082,10 @@ function FridgeProp({ item }: { item: FurnitureItem }) {
 function PickupStation({ item }: { item: FurnitureItem }) {
   return (
     <group position={[item.x, 0, item.z]} rotation={[0, item.rotation, 0]}>
-      <mesh position={[0, 0.4, 0]} castShadow receiveShadow>
-        <boxGeometry args={[1.4, 0.8, 0.55]} />
-        <meshStandardMaterial color={PALETTE.wood} roughness={0.75} />
-      </mesh>
-      <mesh position={[0, 0.84, 0]} castShadow receiveShadow>
-        <boxGeometry args={[1.5, 0.08, 0.62]} />
-        <meshStandardMaterial color={PALETTE.woodTop} roughness={0.45} />
-      </mesh>
+      <RoundedBox position={[0, 0.4, 0]} castShadow receiveShadow args={[1.4, 0.8, 0.55]} radius={0.025} smoothness={2}><meshStandardMaterial color={PALETTE.wood} roughness={0.75} /></RoundedBox>
+      <RoundedBox position={[0, 0.84, 0]} castShadow receiveShadow args={[1.5, 0.08, 0.62]} radius={0.025} smoothness={2}><meshStandardMaterial color={PALETTE.woodTop} roughness={0.45} /></RoundedBox>
       {/* Pickup shelf ledge */}
-      <mesh position={[0, 1.05, 0.08]} castShadow>
-        <boxGeometry args={[1.2, 0.04, 0.35]} />
-        <meshStandardMaterial color={PALETTE.crema} roughness={0.55} />
-      </mesh>
+      <RoundedBox position={[0, 1.05, 0.08]} castShadow args={[1.2, 0.04, 0.35]} radius={0.025} smoothness={2}><meshStandardMaterial color={PALETTE.crema} roughness={0.55} /></RoundedBox>
       {/* Cup markers */}
       {[-0.35, 0, 0.35].map((x) => (
         <mesh key={x} position={[x, 1.12, 0.08]}>
@@ -1135,19 +1113,11 @@ function PlantProp({ item }: { item: FurnitureItem }) {
         <cylinderGeometry args={[0.14, 0.14, 0.04, 10]} />
         <meshStandardMaterial color="#2a1c14" roughness={1} />
       </mesh>
-      {/* Foliage */}
-      <mesh position={[0, 0.55, 0]} castShadow>
-        <sphereGeometry args={[0.22, 12, 12]} />
-        <meshStandardMaterial color={PALETTE.leaf} roughness={0.8} />
-      </mesh>
-      <mesh position={[0.12, 0.65, 0.05]} castShadow>
-        <sphereGeometry args={[0.14, 10, 10]} />
-        <meshStandardMaterial color={PALETTE.leafBright} roughness={0.75} />
-      </mesh>
-      <mesh position={[-0.1, 0.62, -0.08]} castShadow>
-        <sphereGeometry args={[0.12, 10, 10]} />
-        <meshStandardMaterial color="#4a7a5c" roughness={0.8} />
-      </mesh>
+      {/* Broad leaves with stems, rather than three spherical blobs. */}
+      {[0, 1, 2, 3, 4, 5, 6].map((i) => <group key={i} rotation={[0, i * 2.4, 0]}>
+        <mesh position={[0.055, 0.49 + i * 0.04, 0]} rotation={[0, 0, -0.22]} castShadow><cylinderGeometry args={[0.009, 0.012, 0.35 + i * 0.035, 5]} /><meshStandardMaterial color="#536341" /></mesh>
+        <mesh position={[0.14, 0.62 + i * 0.045, 0]} rotation={[0, 0, -0.65]} scale={[0.65, 1, 0.12]} castShadow><sphereGeometry args={[0.18, 8, 8]} /><meshStandardMaterial color={i % 2 ? PALETTE.leaf : PALETTE.leafBright} roughness={0.8} /></mesh>
+      </group>)}
     </group>
   );
 }
@@ -1186,7 +1156,7 @@ function CharacterFace({ y = 1.42, office = false }: { y?: number; office?: bool
 function characterStyle(seed: string) {
   const n = Array.from(seed).reduce((sum, c) => sum + c.charCodeAt(0), 0);
   return { skin: ["#efc9a5", "#c28a65", "#87563e", "#dba57c"][n % 4],
-    hair: ["#3a2924", "#654332", "#302b32", "#b57c43"][n % 4], variant: n % 3 };
+    hair: ["#3a2924", "#654332", "#302b32", "#b57c43"][n % 4], shirt: ["#527c78", "#a9604b", "#697ca2", "#c49b54", "#857298", "#658158"][n % 6], variant: n % 3 };
 }
 
 function CharacterHead({ seed, y, office = false }: { seed: string; y: number; office?: boolean }) {
@@ -1198,17 +1168,21 @@ function CharacterHead({ seed, y, office = false }: { seed: string; y: number; o
       <mesh position={[side * 0.115, -0.045, 0.147]} scale={[1, 0.55, 0.18]}><sphereGeometry args={[0.045, 8, 8]} /><meshStandardMaterial color="#ce8c77" roughness={0.9} /></mesh>
     </group>)}
     <CharacterFace y={0} office={office} />
-    <mesh position={[0, 0.065, -0.02]} scale={[1.08, 1, 1.04]} castShadow><sphereGeometry args={[0.185, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2]} /><meshStandardMaterial color={hair} roughness={0.95} /></mesh>
-    {[0, 1, 2].map((i) => <mesh key={i} position={[-0.105 + i * 0.085, 0.105 - i * 0.023, 0.125]} rotation={[0, 0, -0.35]} scale={[1.2, 0.65, 0.65]} castShadow><sphereGeometry args={[0.074, 8, 8]} /><meshStandardMaterial color={hair} roughness={0.95} /></mesh>)}
+    <mesh position={[0, 0.065, -0.005]} scale={[1.08, 1.12, 1.04]} castShadow><sphereGeometry args={[0.205, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2]} /><meshStandardMaterial color={hair} roughness={0.95} /></mesh>
+    {[0, 1, 2].map((i) => <mesh key={i} position={[-0.105 + i * 0.085, 0.12 - i * 0.023, 0.175]} rotation={[0, 0, -0.35]} scale={[1.2, 0.65, 0.65]} castShadow><sphereGeometry args={[0.074, 8, 8]} /><meshStandardMaterial color={hair} roughness={0.95} /></mesh>)}
     {variant === 1 && <mesh position={[0, 0.145, -0.17]} castShadow><sphereGeometry args={[0.105, 10, 8]} /><meshStandardMaterial color={hair} roughness={0.95} /></mesh>}
     {variant === 2 && [-1, 1].map((side) => <mesh key={side} position={[side * 0.16, 0.005, -0.06]} scale={[0.6, 1.3, 1]} castShadow><sphereGeometry args={[0.09, 8, 8]} /><meshStandardMaterial color={hair} roughness={0.95} /></mesh>)}
   </group>;
 }
 
+// Tailored shoulder/waist silhouettes, shared across all customers.
+const SHIRT_PROFILE = [new Vector2(0, -0.3), new Vector2(0.19, -0.3), new Vector2(0.18, -0.12), new Vector2(0.22, 0.16), new Vector2(0.25, 0.22), new Vector2(0.11, 0.3), new Vector2(0, 0.3)];
+const BARISTA_PROFILE = [new Vector2(0, -0.34), new Vector2(0.21, -0.34), new Vector2(0.19, -0.1), new Vector2(0.25, 0.2), new Vector2(0.28, 0.25), new Vector2(0.12, 0.34), new Vector2(0, 0.34)];
+
 function CustomerMesh({ customer }: { customer: Customer }) {
   const angry = customer.state === "angry" || customer.patience < 20;
   const waiting = customer.state === "waiting" || customer.state === "ordering" || customer.state === "queue";
-  const body = angry ? PALETTE.angry : personaColor(customer.persona);
+  const body = angry ? PALETTE.angry : characterStyle(customer.id).shirt;
   const { skin } = characterStyle(customer.id);
   const root = useRef<Group>(null);
   const bob = useRef<Group>(null);
@@ -1249,7 +1223,7 @@ function CustomerMesh({ customer }: { customer: Customer }) {
     <group ref={root} position={[customer.x, 0, customer.z]}>
       <group ref={bob}>
         <mesh position={[0, 0.92, 0]} castShadow>
-          <capsuleGeometry args={[0.22, 0.38, 4, 12]} />
+          <latheGeometry args={[SHIRT_PROFILE, 12]} />
           <meshStandardMaterial color={body} roughness={0.9} />
         </mesh>
         <CharacterHead seed={customer.id} y={1.46} office={customer.persona === "office"} />
@@ -1259,7 +1233,7 @@ function CustomerMesh({ customer }: { customer: Customer }) {
         <group ref={arms} position={[0, 1.06, 0]}>
           {[-1, 1].map((side) => (
             <group key={side} position={[side * 0.26, 0, 0]} rotation={[0, 0, side * 0.12]}>
-              <mesh position={[0, -0.1, 0]} castShadow><capsuleGeometry args={[0.065, 0.3, 3, 8]} /><meshStandardMaterial color={body} /></mesh>
+              <mesh position={[0, -0.1, 0]} castShadow><cylinderGeometry args={[0.085, 0.055, 0.36, 8]} /><meshStandardMaterial color={body} /></mesh>
               <mesh position={[0, -0.32, 0.02]} castShadow><sphereGeometry args={[0.067, 8, 8]} /><meshStandardMaterial color={skin} roughness={0.8} /></mesh>
             </group>
           ))}
@@ -1267,20 +1241,20 @@ function CustomerMesh({ customer }: { customer: Customer }) {
         <group ref={leftLeg} position={[-0.1, 0.55, 0]}>
           <mesh position={[0, -0.46, 0.05]} castShadow><boxGeometry args={[0.14, 0.1, 0.25]} /><meshStandardMaterial color="#e6d5b8" /></mesh>
           <mesh position={[0, -0.22, 0]} castShadow>
-            <capsuleGeometry args={[0.07, 0.28, 3, 8]} />
+            <cylinderGeometry args={[0.09, 0.065, 0.4, 8]} />
             <meshStandardMaterial color={PALETTE.espresso} roughness={0.75} />
           </mesh>
         </group>
         <group ref={rightLeg} position={[0.1, 0.55, 0]}>
           <mesh position={[0, -0.46, 0.05]} castShadow><boxGeometry args={[0.14, 0.1, 0.25]} /><meshStandardMaterial color="#e6d5b8" /></mesh>
           <mesh position={[0, -0.22, 0]} castShadow>
-            <capsuleGeometry args={[0.07, 0.28, 3, 8]} />
+            <cylinderGeometry args={[0.09, 0.065, 0.4, 8]} />
             <meshStandardMaterial color={PALETTE.espresso} roughness={0.75} />
           </mesh>
         </group>
       </group>
 
-      {waiting && (
+      {customer.state === "ordering" && (
         <Billboard position={[0, 2.05, 0]}>
           <mesh>
             <boxGeometry args={[Math.max(0.7, orderLabel.length * 0.11), 0.34, 0.04]} />
@@ -1351,7 +1325,7 @@ function PlayerMesh({
     last.current = { x: nx, z: nz };
     root.current.position.x = nx;
     root.current.position.z = nz;
-    if (followLook) root.current.rotation.y = Math.PI - getLook().yaw;
+    if (followLook) root.current.rotation.y = Math.PI + getLook().yaw;
     const swing = speed > 0.4 ? Math.sin(clock.elapsedTime * 9) * 0.5 : 0;
     if (leftLeg.current) leftLeg.current.rotation.x = swing;
     if (rightLeg.current) rightLeg.current.rotation.x = -swing;
@@ -1370,7 +1344,7 @@ function PlayerMesh({
   return (
     <group ref={root} position={[player.x, 0, player.z]}>
       <mesh position={[0, 1.02, 0]} castShadow>
-        <capsuleGeometry args={[0.24, 0.46, 4, 12]} />
+        <latheGeometry args={[BARISTA_PROFILE, 12]} />
         <meshStandardMaterial
           color={player.color}
           roughness={0.9}
@@ -1391,21 +1365,21 @@ function PlayerMesh({
       {/* Arms */}
       {[-1, 1].map((side) => <group key={side} ref={side < 0 ? leftArm : rightArm} position={[side * 0.29, 1.23, 0]}>
         <group rotation={[0, 0, side * 0.12]}>
-          <mesh position={[0, -0.16, 0]} castShadow><capsuleGeometry args={[0.075, 0.23, 3, 8]} /><meshStandardMaterial color={player.color} roughness={0.9} /></mesh>
+          <mesh position={[0, -0.16, 0]} castShadow><cylinderGeometry args={[0.095, 0.065, 0.34, 8]} /><meshStandardMaterial color={player.color} roughness={0.9} /></mesh>
           <mesh position={[0, -0.34, 0.02]} castShadow><sphereGeometry args={[0.075, 8, 8]} /><meshStandardMaterial color={skin} roughness={0.8} /></mesh>
         </group>
       </group>)}
       <group ref={leftLeg} position={[-0.12, 0.55, 0]}>
         <mesh position={[0, -0.46, 0.055]} castShadow><boxGeometry args={[0.17, 0.12, 0.28]} /><meshStandardMaterial color="#e4d2b8" roughness={0.9} /></mesh>
         <mesh position={[0, -0.24, 0]} castShadow>
-          <capsuleGeometry args={[0.08, 0.32, 3, 8]} />
+          <cylinderGeometry args={[0.1, 0.07, 0.44, 8]} />
           <meshStandardMaterial color="#2f241c" roughness={0.8} />
         </mesh>
       </group>
       <group ref={rightLeg} position={[0.12, 0.55, 0]}>
         <mesh position={[0, -0.46, 0.055]} castShadow><boxGeometry args={[0.17, 0.12, 0.28]} /><meshStandardMaterial color="#e4d2b8" roughness={0.9} /></mesh>
         <mesh position={[0, -0.24, 0]} castShadow>
-          <capsuleGeometry args={[0.08, 0.32, 3, 8]} />
+          <cylinderGeometry args={[0.1, 0.07, 0.44, 8]} />
           <meshStandardMaterial color="#2f241c" roughness={0.8} />
         </mesh>
       </group>

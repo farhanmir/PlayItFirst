@@ -17,18 +17,8 @@ export function Hud({
   const qrSvg = useApp((s) => s.qrSvg);
   const roomCode = useApp((s) => s.roomCode);
   const status = useApp((s) => s.status);
-  const you = useApp((s) => s.you);
-  const me = snapshot.players.find((p) => p.id === you);
   const [mute, setMute] = useState(false);
-  const holding = me?.holding
-    ? me.holding.startsWith("ticket:")
-      ? me.holding.slice(7)
-      : me.holding.startsWith("brewing:")
-        ? `Brewing ${me.holding.slice(8).split("@")[0]}`
-        : me.holding.startsWith("drink:")
-          ? me.holding.slice(6)
-          : me.holding
-    : null;
+
 
   return (
     <header className={`hud-top panel ${live ? "hud-live" : ""} ${compact ? "hud-compact" : ""}`}>
@@ -70,7 +60,7 @@ export function Hud({
             />
           </>
         ) : null}
-        {compact && holding ? <Vital label="Holding" value={holding} priority="high" /> : null}
+
       </div>
 
       <div className="hud-invite">
