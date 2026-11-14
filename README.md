@@ -13,51 +13,62 @@ npm run dev
 
 Open http://localhost:5173
 
-## What works in this build
+## Demo path (2 minutes)
+
+1. Enter your name → **Host café**
+2. Pick a Houston or LA storefront (rent/size/traffic become the rules)
+3. **Build** furniture or drag the **Table** markers → Sync layout
+4. **Open for business** → WASD + Take order / Make coffee / Serve (`E` / `F` / `R`)
+5. Answer the AI director + message Jamie in **Ops** / Photon
+6. Check **Future** for alternate timelines, then **Plan** → generate blueprint
+7. Friends scan the HUD QR to join as baristas
+
+## What works
 
 | Area | Status |
 | --- | --- |
-| CoStar-style property selection (Houston / LA) | ✅ Mock listings shaped like CoStar + Matterport constraints |
-| Playable 3D café (Three.js / R3F) | ✅ Floor plan sized by property |
-| First-person / mobile play + coffee actions | ✅ |
-| Real-time multiplayer + QR join | ✅ (Gitzilla room/WS/QR patterns) |
-| Autonomous customers, queues, personas | ✅ |
+| CoStar-style property selection (Houston / LA) | ✅ Mock listings + Matterport-shaped constraints |
+| Playable 3D café (Three.js / R3F) | ✅ Warm procedural interior, props, lighting |
+| Desktop orbit + mobile follow-cam play | ✅ |
+| Real-time multiplayer + QR join | ✅ Gitzilla-inspired rooms/WS/QR |
+| Customers, personas, tickets, queues | ✅ |
+| Inventory (milk / cups / beans) | ✅ |
 | Build mode + live layout changes | ✅ |
-| Tabletop marker sync (physical ↔ digital) | ✅ Browser marker board |
-| AI game director | ✅ Event injection with state consequences |
-| Nessie finance ledger | ✅ Local sim + optional `NESSIE_KEY` |
-| Photon-style manager messaging | ✅ In-app agent chat that mutates game state |
-| Business launch blueprint | ✅ Generated from session |
+| Tabletop marker sync | ✅ |
+| AI game director | ✅ State-changing choices |
+| Nessie finance ledger | ✅ Local + optional `NESSIE_KEY` |
+| Photon manager chat | ✅ Natural-language actions |
+| Business time machine | ✅ Alternate future compare |
+| Launch blueprint | ✅ From gameplay session |
+| WebAudio café SFX | ✅ Unlock on first gesture |
 
-Stretch (scaffolded / not required for demo): Vision Pro mode, full competitive dual-café, Photon voice calls, deep LangChain cloud agents.
+Stretch: live CoStar/Matterport APIs, Photon voice, Vision Pro, competitive dual-café, hosted Deepagents.
 
 ## Architecture
 
 Reuses battle-tested ideas from [Gitzilla](https://github.com/gfhdhytghd/Gitzilla) without becoming Gitzilla:
 
-- Single-port Node server + Vite middleware + `/ws`
-- Authoritative simulation tick + snapshot broadcast
-- QR join codes (vendored encoder from Gitzilla)
-- Resume tokens and reconnect
-
-PlayFirst-specific layers: café sim, property data, build/tabletop sync, director, Nessie ledger, Photon chat, blueprint export.
+- Single-port Node + Vite middleware + `/ws`
+- Authoritative sim tick + snapshot broadcast
+- QR join + resume tokens
 
 ```
-shared/     typed contracts
-server/     rooms, simulation, director, finance, QR
-client/     React UI + React Three Fiber café
-data/       property listings
+shared/   contracts
+server/   rooms, simulation, director, finance, QR
+client/   React UI + R3F café + audio
+data/     property listings
 ```
 
-## Demo path
+## Scripts
 
-1. Host a room → pick a Houston or LA property  
-2. Build: place machines/tables or drag the tabletop board and **Sync**  
-3. Open for business → take orders / make coffee / serve  
-4. Watch the director rush + reply to Jamie in Photon  
-5. Generate the launch blueprint  
+```sh
+npm run dev        # game server + client
+npm test           # sim + multiplayer smoke
+npm run typecheck
+npm run build
+```
 
 ## Env (optional)
 
 - `PORT` — default `5173`
-- `NESSIE_KEY` — Capital One Nessie sandbox key for live account provisioning
+- `NESSIE_KEY` — Capital One Nessie sandbox key

@@ -1,5 +1,6 @@
 import { FURNITURE_CATALOG, type FurnitureKind, type RoomSnapshot } from "../../shared/types";
 import { useApp } from "../lib/store";
+import { play } from "../lib/audio";
 
 export function BuildPanel({ snapshot }: { snapshot: RoomSnapshot }) {
   const conn = useApp((s) => s.conn);
@@ -10,6 +11,7 @@ export function BuildPanel({ snapshot }: { snapshot: RoomSnapshot }) {
     const x = 2 + Math.random() * Math.max(2, property.width - 4);
     const z = 2 + Math.random() * Math.max(2, property.depth - 4);
     conn?.send({ t: "place_furniture", kind, x, z });
+    play("place");
   };
 
   return (
@@ -28,7 +30,14 @@ export function BuildPanel({ snapshot }: { snapshot: RoomSnapshot }) {
         ))}
       </div>
       <div className="build-actions">
-        <button className="btn" type="button" onClick={() => conn?.send({ t: "open_cafe" })}>
+        <button
+          className="btn"
+          type="button"
+          onClick={() => {
+            play("open");
+            conn?.send({ t: "open_cafe" });
+          }}
+        >
           Open for business
         </button>
         <button className="btn btn-ghost" type="button" onClick={() => conn?.send({ t: "set_phase", phase: "play" })}>

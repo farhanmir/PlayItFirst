@@ -33,12 +33,15 @@ export function createRoomSnapshot(code: string, startingBudget = 20_000): RoomS
     customers: [],
     finance: createFinance(startingBudget),
     metrics: emptyMetrics(),
+    inventory: { milk: 24, cups: 40, beans: 30 },
     director: null,
     photon: [],
     tick: 0,
     simTime: 0,
     open: false,
     eventLog: ["Room created. Choose a property to begin."],
+    rushBoost: 0,
+    menuReduced: false,
   };
 }
 
@@ -77,10 +80,13 @@ export function selectProperty(snapshot: RoomSnapshot, property: PropertyListing
   const starter: FurnitureItem[] = [
     { id: randomUUID(), kind: "counter", label: "Service Counter", x: 2, z: 4, rotation: 0, cost: 450 },
     { id: randomUUID(), kind: "coffee_machine", label: "Espresso Machine", x: 1, z: 5.5, rotation: 0, cost: 1800, throughput: 2 },
-    { id: randomUUID(), kind: "pickup", label: "Pickup Station", x: 4, z: 4, rotation: 0, cost: 300 },
-    { id: randomUUID(), kind: "table", label: "Café Table", x: 8, z: 3, rotation: 0, cost: 220, seats: 2 },
-    { id: randomUUID(), kind: "table", label: "Café Table", x: 10, z: 6, rotation: 0, cost: 220, seats: 2 },
-    { id: randomUUID(), kind: "fridge", label: "Reach-in Fridge", x: 0.8, z: 7.5, rotation: 0, cost: 900 },
+    { id: randomUUID(), kind: "pickup", label: "Pickup Station", x: Math.min(6.5, property.width - 1.5), z: 5.2, rotation: 0, cost: 300 },
+    { id: randomUUID(), kind: "table", label: "Café Table", x: Math.min(8, property.width - 2), z: 3, rotation: 0, cost: 220, seats: 2 },
+    { id: randomUUID(), kind: "table", label: "Café Table", x: Math.min(10, property.width - 1.5), z: Math.min(6, property.depth - 2), rotation: 0, cost: 220, seats: 2 },
+    { id: randomUUID(), kind: "chair", label: "Chair", x: Math.min(7.2, property.width - 2.5), z: 3, rotation: 0, cost: 80, seats: 1 },
+    { id: randomUUID(), kind: "chair", label: "Chair", x: Math.min(8.8, property.width - 1.2), z: 3, rotation: 0, cost: 80, seats: 1 },
+    { id: randomUUID(), kind: "decoration", label: "Plant / Decor", x: Math.min(property.width - 1, 12), z: 1.2, rotation: 0, cost: 60 },
+    { id: randomUUID(), kind: "fridge", label: "Reach-in Fridge", x: 0.8, z: Math.min(7.5, property.depth - 1), rotation: 0, cost: 900 },
   ];
   const spent = starter.reduce((s, f) => s + f.cost, 0);
   let finance = snapshot.finance;
@@ -233,40 +239,67 @@ export function interact(
   let finance = snapshot.finance;
   let metrics = { ...snapshot.metrics };
   let players = [...snapshot.players];
+  let inventory = { ...(snapshot.inventory ?? { milk: 24, cups: 40, beans: 30 }) };
   const log = [...snapshot.eventLog];
+  const needsMilk = (order?: string) => order === "latte" || order === "cappuccino" || order === "mocha";
 
   if (action === "take_order") {
     const target = customers.find((c) => c.state === "queue" || c.state === "ordering");
     if (target) {
+      const menu = snapshot.menuReduced ? ["americano", "espresso"] : ORDERS;
+      const preference =
+        target.preference && menu.includes(target.preference)
+          ? target.preference
+          : menu[Math.floor(Math.random() * menu.length)];
       customers = customers.map((c) =>
-        c.id === target.id
-          ? { ...c, state: "waiting", order: ORDERS[Math.floor(Math.random() * ORDERS.length)], progress: 0.15 }
-          : c,
+        c.id === target.id ? { ...c, state: "waiting", order: preference, progress: 0.12 } : c,
       );
-      players = players.map((p) => (p.id === playerId ? { ...p, holding: "ticket", score: p.score + 1 } : p));
-      log.unshift(`${player.name} took an order`);
+      players = players.map((p) =>
+        p.id === playerId ? { ...p, holding: `ticket:${preference}`, score: p.score + 1 } : p,
+      );
+      log.unshift(`${player.name} took a ${preference} order for ${target.name}`);
     }
   }
 
   if (action === "make_coffee") {
-    players = players.map((p) => (p.id === playerId ? { ...p, holding: "coffee", score: p.score + 2 } : p));
-    customers = customers.map((c) =>
-      c.state === "waiting" ? { ...c, progress: Math.min(1, c.progress + 0.35) } : c,
+    if (inventory.beans <= 0 || inventory.cups <= 0) {
+      log.unshift(`${player.name} can’t brew — out of beans or cups`);
+      return { ...snapshot, eventLog: log.slice(0, 30) };
+    }
+    const ticketOrder = player.holding?.startsWith("ticket:") ? player.holding.slice(7) : undefined;
+    const waiting = customers.find((c) => c.state === "waiting");
+    const order = ticketOrder || waiting?.order || "espresso";
+    if (needsMilk(order) && inventory.milk <= 0) {
+      log.unshift(`${player.name} needs milk for a ${order}`);
+      return { ...snapshot, eventLog: log.slice(0, 30) };
+    }
+    inventory.beans -= 1;
+    inventory.cups -= 1;
+    if (needsMilk(order)) inventory.milk -= 1;
+    players = players.map((p) =>
+      p.id === playerId ? { ...p, holding: `drink:${order}`, score: p.score + 2 } : p,
     );
-    log.unshift(`${player.name} pulled a shot`);
+    customers = customers.map((c) =>
+      c.state === "waiting" ? { ...c, progress: Math.min(1, c.progress + 0.45) } : c,
+    );
+    log.unshift(`${player.name} brewed a ${order}`);
   }
 
   if (action === "serve") {
-    const ready = customers.find((c) => c.state === "waiting" && c.progress >= 0.5);
+    const holdingDrink = player.holding?.startsWith("drink:");
+    const ready = customers.find((c) => c.state === "waiting" && (c.progress >= 0.45 || holdingDrink));
     if (ready) {
       const tip = ready.persona === "office" ? 4 : ready.persona === "regular" ? 3 : 1;
-      const price = 4.5 + tip;
+      const matchBonus = holdingDrink && player.holding === `drink:${ready.order}` ? 1.5 : 0;
+      const price = 4.5 + tip + matchBonus;
       finance = applyTransaction(finance, `${ready.order ?? "coffee"} · ${ready.name}`, price, "sales");
       metrics.customersServed += 1;
-      metrics.satisfaction = Math.min(100, metrics.satisfaction + 2);
-      metrics.revenuePerHour = Math.round((metrics.customersServed / Math.max(1, snapshot.simTime / 3600)) * price);
+      metrics.satisfaction = Math.min(100, metrics.satisfaction + (matchBonus ? 4 : 2));
+      metrics.revenuePerHour = Math.round(
+        (metrics.customersServed / Math.max(1, snapshot.simTime / 3600)) * price,
+      );
       customers = customers.map((c) =>
-        c.id === ready.id ? { ...c, state: "happy", progress: 1, satisfaction: 90 } : c,
+        c.id === ready.id ? { ...c, state: "happy", progress: 1, satisfaction: 92 } : c,
       );
       players = players.map((p) => (p.id === playerId ? { ...p, holding: null, score: p.score + 5 } : p));
       log.unshift(`${player.name} served ${ready.name}`);
@@ -275,6 +308,11 @@ export function interact(
 
   if (action === "restock") {
     finance = applyTransaction(finance, "Milk & cups restock", -35, "inventory");
+    inventory = {
+      milk: inventory.milk + 12,
+      cups: inventory.cups + 20,
+      beans: inventory.beans + 15,
+    };
     metrics.satisfaction = Math.min(100, metrics.satisfaction + 1);
     log.unshift(`${player.name} restocked supplies (−$35)`);
   }
@@ -284,7 +322,7 @@ export function interact(
     log.unshift(`${player.name} collected payments`);
   }
 
-  return { ...snapshot, customers, finance, metrics, players, eventLog: log.slice(0, 30) };
+  return { ...snapshot, customers, finance, metrics, inventory, players, eventLog: log.slice(0, 30) };
 }
 
 export function stepSimulation(snapshot: RoomSnapshot, dt: number): RoomSnapshot {
@@ -306,9 +344,13 @@ export function stepSimulation(snapshot: RoomSnapshot, dt: number): RoomSnapshot
   let finance = snapshot.finance;
   const log = [...snapshot.eventLog];
 
+  const plants = layout.furniture.filter((f) => f.kind === "decoration").length;
+  const ambience = Math.min(8, plants * 1.5);
+
   // Spawn based on foot traffic + capacity pressure (tuned for playable demo pacing)
   const openSlots = Math.max(0, Math.min(10, property.capacity) - customers.length);
-  const spawnChance = property.footTraffic * 0.12 * dt;
+  const rush = snapshot.rushBoost ?? 0;
+  const spawnChance = property.footTraffic * (0.12 + rush * 0.08) * dt;
   if (openSlots > 0 && Math.random() < spawnChance) {
     customers.push(spawnCustomer(property, queueAnchor.x, queueAnchor.z));
   }
@@ -321,8 +363,9 @@ export function stepSimulation(snapshot: RoomSnapshot, dt: number): RoomSnapshot
   const queue: Customer[] = [];
   customers = customers.map((c, index) => {
     let next = { ...c };
-    next.patience -= dt * (c.persona === "office" ? 12 : c.persona === "student" ? 4 : 7);
-    next.progress = Math.min(1, next.progress + dt * 0.08 * throughput);
+    next.patience -= dt * ((c.persona === "office" ? 10 : c.persona === "student" ? 3.5 : 6) - ambience * 0.15);
+    const brewRate = snapshot.menuReduced ? 0.12 : 0.08;
+    next.progress = Math.min(1, next.progress + dt * brewRate * throughput);
 
     if (next.state === "entering") {
       next.x += (next.targetX - next.x) * Math.min(1, dt * 2);
@@ -407,6 +450,11 @@ export function stepSimulation(snapshot: RoomSnapshot, dt: number): RoomSnapshot
   metrics.queueLength = queueLength;
   metrics.avgWaitSec = Math.round(avgWait * 10) / 10;
   metrics.revenuePerHour = Math.round(finance.revenue / Math.max(0.05, snapshot.simTime / 3600));
+  if (ambience > 0 && metrics.satisfaction < 92) {
+    metrics.satisfaction = Math.min(92, metrics.satisfaction + dt * 0.15 * ambience);
+  }
+  // Decay residual rush boost
+  const rushBoost = Math.max(0, (snapshot.rushBoost ?? 0) - dt * 0.05);
 
   // Wage drip (~every ~15s at 20 Hz)
   if (snapshot.tick > 0 && snapshot.tick % 300 === 0 && snapshot.players.length) {
@@ -419,6 +467,7 @@ export function stepSimulation(snapshot: RoomSnapshot, dt: number): RoomSnapshot
     customers,
     finance,
     metrics,
+    rushBoost,
     eventLog: log.slice(0, 30),
     tick: snapshot.tick + 1,
     simTime: snapshot.simTime + dt,

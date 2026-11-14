@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useApp } from "../lib/store";
 import { CafeScene } from "../components/CafeScene";
 import { Hud } from "../components/Hud";
@@ -9,15 +9,29 @@ import { PhotonChat } from "../components/PhotonChat";
 import { FinanceLedger } from "../components/FinanceLedger";
 import { Tabletop } from "../components/Tabletop";
 import { BlueprintPanel } from "../components/BlueprintPanel";
+import { OrderRail } from "../components/OrderRail";
+import { TutorialTips } from "../components/TutorialTips";
+import { TimelineCompare } from "../components/TimelineCompare";
+import { play } from "../lib/audio";
 import "./game.css";
 
 export function Game() {
   const snapshot = useApp((s) => s.snapshot);
   const blueprint = useApp((s) => s.blueprint);
   const mobile = useApp((s) => s.mobile);
-  const [tab, setTab] = useState<"build" | "ops" | "table" | "plan">("ops");
-  // Desktop keeps an orbit overview for demos; phones get a follow-cam play view.
+  const [tab, setTab] = useState<"build" | "ops" | "table" | "future" | "plan">("ops");
   const firstPerson = useMemo(() => mobile && snapshot?.phase === "play", [mobile, snapshot?.phase]);
+
+  useEffect(() => {
+    if (!snapshot) return;
+    if (snapshot.open && snapshot.phase === "play" && snapshot.eventLog[0]?.includes("Doors open")) {
+      play("open");
+    }
+  }, [snapshot?.open]);
+
+  useEffect(() => {
+    if (snapshot?.director && !snapshot.director.resolved) play("rush", 0.35);
+  }, [snapshot?.director?.id]);
 
   if (!snapshot?.property) {
     return (
@@ -33,8 +47,14 @@ export function Game() {
       <Hud snapshot={snapshot} />
       <div className="game-stage">
         <CafeScene snapshot={snapshot} firstPerson={!!firstPerson && snapshot.phase !== "build"} />
+        <TutorialTips snapshot={snapshot} />
         <DirectorPanel snapshot={snapshot} />
-        {snapshot.phase === "play" && <PlayControls snapshot={snapshot} />}
+        {snapshot.phase === "play" && (
+          <>
+            <OrderRail snapshot={snapshot} />
+            <PlayControls snapshot={snapshot} />
+          </>
+        )}
       </div>
 
       <div className="game-rails">
@@ -43,11 +63,20 @@ export function Game() {
             [
               ["build", "Build"],
               ["ops", "Ops"],
-              ["table", "Tabletop"],
-              ["plan", "Blueprint"],
+              ["table", "Table"],
+              ["future", "Future"],
+              ["plan", "Plan"],
             ] as const
           ).map(([id, label]) => (
-            <button key={id} type="button" className={tab === id ? "active" : ""} onClick={() => setTab(id)}>
+            <button
+              key={id}
+              type="button"
+              className={tab === id ? "active" : ""}
+              onClick={() => {
+                play("ui", 0.25);
+                setTab(id);
+              }}
+            >
               {label}
             </button>
           ))}
@@ -58,14 +87,39 @@ export function Game() {
             <>
               <PhotonChat snapshot={snapshot} />
               <FinanceLedger snapshot={snapshot} />
+              <InventoryCard snapshot={snapshot} />
               <EventLog lines={snapshot.eventLog} />
             </>
           )}
           {tab === "table" && <Tabletop snapshot={snapshot} />}
+          {tab === "future" && <TimelineCompare snapshot={snapshot} />}
           {tab === "plan" && <BlueprintPanel markdown={blueprint} />}
         </div>
       </div>
     </main>
+  );
+}
+
+function InventoryCard({ snapshot }: { snapshot: import("../../shared/types").RoomSnapshot }) {
+  const inv = snapshot.inventory ?? { milk: 0, cups: 0, beans: 0 };
+  return (
+    <aside className="side-panel panel inventory-panel">
+      <p className="tag">Inventory</p>
+      <div className="inv-grid">
+        <div>
+          <span>Milk</span>
+          <strong className={inv.milk < 4 ? "bad" : ""}>{inv.milk}</strong>
+        </div>
+        <div>
+          <span>Cups</span>
+          <strong className={inv.cups < 6 ? "bad" : ""}>{inv.cups}</strong>
+        </div>
+        <div>
+          <span>Beans</span>
+          <strong className={inv.beans < 5 ? "bad" : ""}>{inv.beans}</strong>
+        </div>
+      </div>
+    </aside>
   );
 }
 

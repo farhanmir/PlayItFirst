@@ -133,6 +133,12 @@ export interface Metrics {
   queueLength: number;
 }
 
+export interface InventoryState {
+  milk: number;
+  cups: number;
+  beans: number;
+}
+
 export interface CafeLayout {
   propertyId: string;
   furniture: FurnitureItem[];
@@ -150,12 +156,16 @@ export interface RoomSnapshot {
   customers: Customer[];
   finance: FinanceState;
   metrics: Metrics;
+  inventory: InventoryState;
   director: DirectorEvent | null;
   photon: PhotonMessage[];
   tick: number;
   simTime: number;
   open: boolean;
   eventLog: string[];
+  /** Soft difficulty modifier from director choices */
+  rushBoost?: number;
+  menuReduced?: boolean;
 }
 
 export type ClientMsg =

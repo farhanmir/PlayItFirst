@@ -108,6 +108,7 @@ export function applyDirectorChoice(
       metrics.queueLength = Math.max(0, metrics.queueLength - 2);
       photon = "temp barista checked in. queue should ease in a minute.";
       log.unshift("Hired temporary help (−$120)");
+      snapshot = { ...snapshot, rushBoost: Math.max(0, (snapshot.rushBoost ?? 1) - 0.4) };
       break;
     case "open_station":
       metrics.queueLength = Math.max(0, metrics.queueLength - 1);
@@ -117,11 +118,13 @@ export function applyDirectorChoice(
     case "reduce_menu":
       metrics.avgWaitSec = Math.max(20, metrics.avgWaitSec * 0.7);
       log.unshift("Temporarily reduced the menu");
+      snapshot = { ...snapshot, menuReduced: true };
       break;
     case "tough_it":
       metrics.satisfaction = Math.max(20, metrics.satisfaction - 8);
       log.unshift("Chose to tough out the rush");
       photon = "we're getting slammed. pickup is backing up and milk is low.";
+      snapshot = { ...snapshot, rushBoost: (snapshot.rushBoost ?? 0) + 1.2 };
       break;
     case "discount":
       finance.balance -= 80;

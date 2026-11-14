@@ -5,6 +5,7 @@ import { Landing } from "./pages/Landing";
 import { PropertySelect } from "./pages/PropertySelect";
 import { Game } from "./pages/Game";
 import type { PlayerRole, PropertyListing } from "../shared/types";
+import { unlockAudio, play } from "./lib/audio";
 
 export function App() {
   const screen = useApp((s) => s.screen);
@@ -35,6 +36,8 @@ export function App() {
 }
 
 async function startHost(name: string) {
+  await unlockAudio();
+  play("ui");
   const set = useApp.getState().set;
   localStorage.setItem("playfirst.name", name);
   const res = await fetch("/api/rooms", { method: "POST" });
@@ -51,6 +54,7 @@ async function startHost(name: string) {
 }
 
 function joinRoom(code: string, name: string, fromLink = false) {
+  void unlockAudio();
   const set = useApp.getState().set;
   localStorage.setItem("playfirst.name", name);
   set({
