@@ -308,6 +308,24 @@
   isolation: isolate;
 }
 
+.cafe-canvas-fallback {
+  display: grid;
+  place-content: center;
+  gap: 0.35rem;
+  text-align: center;
+  padding: 1.5rem;
+  background:
+    radial-gradient(ellipse at 40% 30%, rgba(196, 165, 116, 0.12), transparent 55%),
+    linear-gradient(160deg, #2a1c14, #1a1511 70%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+}
+
+.cafe-canvas-fallback .muted {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
 .cafe-canvas canvas {
   width: 100% !important;
   height: 100% !important;
@@ -1168,10 +1186,15 @@
     left: 0.5rem;
     right: 0.5rem;
     width: auto;
-    bottom: 0.5rem;
-    max-height: min(48vh, 360px);
+    /* Sit above play controls so Answer/Decline stay tappable */
+    bottom: min(42vh, 280px);
+    max-height: min(36vh, 260px);
     overflow: auto;
     z-index: 9;
+  }
+
+  .photon-call.live {
+    bottom: 0.5rem;
   }
 
   .call-actions .btn,

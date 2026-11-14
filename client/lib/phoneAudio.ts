@@ -136,7 +136,10 @@ export function createPhoneAudio(callbacks: { muted(): boolean; onRunning(): voi
       arm();
       let resumed: Promise<void>;
       try {
-        resumed = context.resume();
+        resumed = Promise.race([
+          context.resume(),
+          new Promise<void>((resolve) => setTimeout(resolve, 900)),
+        ]);
         if (session === "media" && !callbacks.muted()) {
           if (!media) {
             media = document.createElement("audio");

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useApp } from "../lib/store";
 import { CafeScene } from "../components/CafeScene";
+import { CafeCanvasFallback } from "../components/CafeCanvasFallback";
 import { Hud } from "../components/Hud";
 import { BuildPanel } from "../components/BuildPanel";
 import { PlayControls } from "../components/PlayControls";
@@ -68,11 +69,13 @@ export function Game() {
       <Hud snapshot={snapshot} />
       <HelpOverlay />
       <div className="game-stage">
-        <CafeScene
-          snapshot={snapshot}
-          firstPerson={!!firstPerson && snapshot.phase !== "build"}
-          viewMode={viewMode}
-        />
+        <CafeCanvasFallback>
+          <CafeScene
+            snapshot={snapshot}
+            firstPerson={!!firstPerson && snapshot.phase !== "build"}
+            viewMode={viewMode}
+          />
+        </CafeCanvasFallback>
         {!mobile && <DollhouseToggle mode={viewMode} onChange={setViewMode} />}
         <WebXRHint />
         <MiniMap snapshot={snapshot} />

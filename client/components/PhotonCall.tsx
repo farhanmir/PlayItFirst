@@ -9,10 +9,12 @@ import { play } from "../lib/audio";
 
 export function PhotonCall({ snapshot }: { snapshot: RoomSnapshot }) {
   const conn = useApp((s) => s.conn);
+  const mobile = useApp((s) => s.mobile);
   const [ringing, setRinging] = useState(false);
   const [active, setActive] = useState(false);
   const [line, setLine] = useState("");
   const [seenEvent, setSeenEvent] = useState<string | null>(null);
+  const directorOpen = !!snapshot.director && !snapshot.director.resolved;
 
   useEffect(() => {
     const ev = snapshot.director;
@@ -25,6 +27,8 @@ export function PhotonCall({ snapshot }: { snapshot: RoomSnapshot }) {
     play("ping", 0.4);
   }, [snapshot.director?.id, snapshot.director?.resolved, snapshot.director?.severity, seenEvent]);
 
+  // Narrow screens: keep director choices readable — show the call after they resolve.
+  if (mobile && directorOpen && !active) return null;
   if (!ringing && !active) return null;
 
   return (

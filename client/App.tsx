@@ -73,7 +73,7 @@ export function App() {
 }
 
 async function startHost(name: string) {
-  await unlockAudio();
+  void unlockAudio().catch(() => undefined);
   play("ui");
   const set = useApp.getState().set;
   localStorage.setItem("playfirst.name", name);
@@ -107,7 +107,7 @@ function joinRoom(code: string, name: string, fromLink = false) {
 async function runJudgeDemo(setPhase: (p: DemoPhase) => void) {
   try {
     setPhase("hosting");
-    await unlockAudio();
+    void unlockAudio().catch(() => undefined);
     play("ui");
     const code = await startHost(DEMO_PLAYER_NAME);
     setPhase("selecting");

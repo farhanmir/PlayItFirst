@@ -34,12 +34,14 @@ function ensure() {
   return ctx;
 }
 
-/** Unlock AudioContext inside a user gesture (iOS-safe). */
+/** Unlock AudioContext inside a user gesture (iOS-safe). Never block forever (headless / autoplay policies). */
 export async function unlockAudio() {
   const c = ensure();
   if (!c) return;
+  const withTimeout = <T,>(p: Promise<T>, ms: number) =>
+    Promise.race([p, new Promise<T>((_, rej) => setTimeout(() => rej(new Error("audio unlock timeout")), ms))]);
   try {
-    await phone.unlock(c);
+    await withTimeout(phone.unlock(c), 1200);
   } catch {
     if (c.state === "suspended") await c.resume().catch(() => undefined);
   }
