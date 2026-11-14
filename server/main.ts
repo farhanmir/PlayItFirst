@@ -115,7 +115,8 @@ server.on("request", (req, res) => {
         matterport: !!(process.env.MATTERPORT_TOKEN || process.env.MATTERPORT_SDK_TOKEN),
         nessie: !!process.env.NESSIE_KEY,
         deepagents: deepagentsConfigured(),
-        photonVoice: "webrtc-signaling",
+        photonVoice: "webrtc-crew-not-photon-2",
+        photonMessaging: "in-app-regex-not-photon-2",
         webxr: "client",
       });
       return;

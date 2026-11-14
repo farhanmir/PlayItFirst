@@ -51,8 +51,14 @@ export function PropertySelect() {
                 />
                 <div className="media-chips">
                   <span className="tag">{p.city}</span>
-                  <span className="tag tag-soft">Matterport twin</span>
-                  {p.source === "costar-live" ? <span className="tag">CoStar live</span> : null}
+                  <span className="tag tag-soft">
+                    {p.matterportModelId ? "Matterport model" : "Matterport showcase stand-in"}
+                  </span>
+                  {p.source === "costar-live" ? (
+                    <span className="tag">CoStar live</span>
+                  ) : (
+                    <span className="tag tag-soft">CoStar-shaped mock</span>
+                  )}
                 </div>
                 <p className="media-dims">
                   {p.width}m × {p.depth}m plate
