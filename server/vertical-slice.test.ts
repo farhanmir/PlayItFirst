@@ -376,7 +376,11 @@ describe("paid order, inventory, and exactly-once revenue", () => {
       const order = ticket.slice("ticket:".length);
       const milkUsed = order === "latte" || order === "cappuccino" || order === "mocha" ? 1 : 0;
 
-      host.ws.send(JSON.stringify({ t: "player_move", x: machine.x, z: machine.z }));
+      // Walk around the counter, then stand beside (not inside) the machine.
+      const hostPosition = taken.players.find((player: { name: string }) => player.name === "Host");
+      host.ws.send(JSON.stringify({ t: "player_move", x: machine.x + 3, z: hostPosition.z }));
+      host.ws.send(JSON.stringify({ t: "player_move", x: machine.x + 3, z: machine.z }));
+      host.ws.send(JSON.stringify({ t: "player_move", x: machine.x + 1, z: machine.z }));
       host.ws.send(JSON.stringify({ t: "interact", action: "make_coffee" }));
       const brewed = await waitForSnapshot(guest.ws, (snapshot) => {
         const hostPlayer = snapshot.players.find((player: { name: string }) => player.name === "Host");

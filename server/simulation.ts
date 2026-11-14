@@ -1,3 +1,4 @@
+import { furnitureMoveClear } from "../shared/movement.ts";
 /**
  * Authoritative café simulation — customers, queues, orders, layout throughput.
  * Pattern inspired by Gitzilla's authoritative 30 Hz sim, specialized for Play It First.
@@ -381,6 +382,7 @@ export function movePlayer(snapshot: RoomSnapshot, playerId: string, x: number, 
   const plan = snapshot.property.floorPlan;
   const player = snapshot.players.find((p) => p.id === playerId);
   if (plan && player && !floorMoveClear(plan, player, { x, z })) return snapshot;
+  if (player && snapshot.layout && !furnitureMoveClear(snapshot.layout.furniture, player, { x, z })) return snapshot;
   return {
     ...snapshot,
     players: snapshot.players.map((p) =>
@@ -946,80 +948,7 @@ function spawnCustomer(property: PropertyListing, qx: number, qz: number): Custo
   };
 }
 
-export function buildBlueprint(snapshot: RoomSnapshot): string {
-  const p = snapshot.property;
-  const layout = snapshot.layout;
-  const m = snapshot.metrics;
-  const f = snapshot.finance;
-  if (!p || !layout) return "# Blueprint unavailable\n\nSelect a property and build first.";
-
-  const equipment = layout.furniture
-    .map((item) => `- ${item.label} @ (${item.x.toFixed(1)}, ${item.z.toFixed(1)}) — $${item.cost}`)
-    .join("\n");
-
-  const sourceLabel =
-    p.source === "costar-extract"
-      ? "Authorized CoStar event extract; asking terms, not an executed lease"
-      : p.source === "costar-live"
-      ? "CoStar live feed (verify with broker)"
-      : p.source === "local"
-        ? "Local fixture listing"
-        : "CoStar-shaped mock listing (set COSTAR_API_URL for live)";
-
-  return `# Play It First Business Launch Blueprint
-
-Generated from your gameplay at **${p.name}**
-
-## Data provenance
-- **Property source:** ${sourceLabel}
-- **Listing id:** ${p.costarId}
-- **Gameplay assumptions:** starting capital, menu prices, spawn rates, and wages are simulated — not market forecasts.
-- **Matterport:** floorplate notes + optional showcase embed; playable room is a reconstruction from listing dimensions.
-
-## Selected commercial property
-- **Listing:** ${p.name} (${p.costarId})
-- **Address:** ${p.address}
-- **Size:** ${p.sqft} sqft · capacity ${p.capacity}
-- **Monthly rent:** $${p.monthlyRent.toLocaleString()} ${p.source === "costar-live" ? "(from listing)" : "(fixture / assumption)"}
-- **Matterport notes:** ${p.matterportHint}
-
-## Customized floor plan & equipment
-${equipment}
-
-**Budget spent on build-out (simulated):** $${layout.budgetSpent.toLocaleString()}
-
-## Estimated startup budget & operating expenses
-- Starting capital *(gameplay assumption)*: $${snapshot.startingBudget.toLocaleString()}
-- Current simulated balance: $${Math.round(f.balance).toLocaleString()}
-- Simulated revenue *(session)*: $${Math.round(f.revenue).toLocaleString()}
-- Simulated expenses *(session)*: $${Math.round(f.expenses).toLocaleString()}
-
-## Staffing & operational plan
-- Roles observed: ${snapshot.players.map((pl) => `${pl.name} (${pl.role})`).join(", ") || "Owner-operated"}
-- Customers served (session): ${m.customersServed}
-- Customers lost: ${m.customersLost}
-- Avg wait: ${m.avgWaitSec}s · Satisfaction: ${Math.round(m.satisfaction)}%
-
-## Accessibility & layout considerations
-- Entrance queue should not block the door — keep ordering and pickup separated.
-- Leave at least one clear circulation lane (~3 ft) between stations.
-- Verify ADA counter height and aisle widths with a licensed designer before build-out.
-
-## Scenario results & lessons
-${snapshot.eventLog
-  .slice(0, 8)
-  .map((e) => `- ${e}`)
-  .join("\n")}
-
-## Next steps for a real launch
-1. Validate this CoStar listing with a broker and tour the Matterport / in-person space.
-2. Get contractor bids against the equipment list above.
-3. Run a soft-open staffing plan from your Play It First roles.
-4. Confirm permits, health codes, and insurance for ${p.city}.
-
-> **Disclaimer:** Play It First is an educational simulation. A real launch still needs professional validation — market research, permits, insurance, contractor bids, and real financial planning. This blueprint is a starting conversation, not advice.
-`;
-}
+export { buildBlueprint } from "./blueprint.ts";
 
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));

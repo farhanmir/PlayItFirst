@@ -164,7 +164,7 @@ export function Game() {
         <HelpOverlay />
 
         {!buildMode && playView ? <OrderRail snapshot={snapshot} compact /> : null}
-        {!buildMode && snapshot.phase === "play" ? <PlayControls snapshot={snapshot} immersive /> : null}
+        {!buildMode && snapshot.phase === "play" ? <PlayControls snapshot={snapshot} immersive enabled={!drawerOpen && playView} /> : null}
 
         <div className="game-chrome" role="toolbar" aria-label="Game chrome">
           <ViewModeToggle mode={viewMode} onChange={onViewChange} />

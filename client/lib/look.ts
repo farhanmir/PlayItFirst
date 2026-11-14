@@ -1,6 +1,6 @@
 /** Shared look angles for first/third person cameras + relative WASD. */
 /** Start diagonally across the service counter so the line and equipment are visible. */
-let yaw = -0.9;
+let yaw = 0.9;
 let pitch = -0.22;
 const listeners = new Set<() => void>();
 
@@ -39,7 +39,7 @@ export function moveFromKeys(keys: Set<string>, speed: number) {
   const sin = Math.sin(y);
   const cos = Math.cos(y);
   return {
-    dx: sin * forward + cos * strafe,
-    dz: -cos * forward + sin * strafe,
+    dx: -sin * forward + cos * strafe,
+    dz: -cos * forward - sin * strafe,
   };
 }

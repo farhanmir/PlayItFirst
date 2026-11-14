@@ -1,4 +1,4 @@
-/** Judge-demo orchestration: host → Midtown → brief messaging → open café. */
+/** Judge-demo orchestration: host → available property → open café. */
 
 export const DEMO_PROPERTY_ID = "hou-midtown-1204";
 export const DEMO_PLAYER_NAME = "Judge";
@@ -22,13 +22,13 @@ export function demoStatusFor(phase: DemoPhase): DemoStatus {
     case "hosting":
       return { phase, message: "Hosting judge room…" };
     case "selecting":
-      return { phase, message: "Selecting Midtown Corner Suite…" };
+      return { phase, message: "Selecting the café property…" };
     case "entering":
-      return { phase, message: "Walking the Matterport floorplate…" };
+      return { phase, message: "Preparing the café floor…" };
     case "opening":
       return { phase, message: "Unlocking the doors for service…" };
     case "ready":
-      return { phase, message: "Live floor — rush + director ready. Beat the rival." };
+      return { phase, message: "Café open. Take your first order at the counter." };
     case "error":
       return { phase, message: "Demo hitch — try Host café instead." };
     default:

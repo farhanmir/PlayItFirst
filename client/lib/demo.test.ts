@@ -8,13 +8,13 @@ describe("judge demo helpers", () => {
     expect(isDemoQuery("?room=abc")).toBe(false);
   });
 
-  it("uses Midtown as the demo property", () => {
+  it("retains Midtown as the fallback demo property", () => {
     expect(DEMO_PROPERTY_ID).toBe("hou-midtown-1204");
   });
 
   it("returns messaging for each phase", () => {
-    expect(demoStatusFor("selecting").message).toMatch(/Midtown/i);
+    expect(demoStatusFor("selecting").message).toMatch(/property/i);
     expect(demoStatusFor("opening").message.length).toBeGreaterThan(4);
-    expect(demoStatusFor("ready").message).toMatch(/rush|rival/i);
+    expect(demoStatusFor("ready").message).toMatch(/first order/i);
   });
 });
