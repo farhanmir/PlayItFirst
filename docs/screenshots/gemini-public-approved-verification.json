@@ -1,0 +1,69 @@
+{
+  "origin": "https://playitfirst.onrender.com",
+  "syntheticOnly": true,
+  "property": null,
+  "providerVerified": true,
+  "before": {
+    "balance": 20000,
+    "inventory": {
+      "milk": 24,
+      "cups": 40,
+      "beans": 30
+    }
+  },
+  "after": {
+    "balance": 19965,
+    "inventory": {
+      "milk": 36,
+      "cups": 60,
+      "beans": 45
+    }
+  },
+  "receipt": {
+    "id": "a192581b-f592-4be3-8e45-136c0fb3ea5a",
+    "action": "reorder_supplies",
+    "reason": "Reordering supplies to restock milk, cups, and beans for $35 while the café is closed.",
+    "cost": 35,
+    "requestedBy": "c7d20b8e-eae6-4379-a3f8-62cc9ee76276",
+    "expiresAt": 1794698109604,
+    "status": "executed",
+    "result": "Supplies delivered; $35 recorded in the game ledger.",
+    "transactionId": "b7c2ab43-3f46-411b-96ae-69cdb196e17c"
+  },
+  "trace": [
+    {
+      "tool": "get_cafe_state",
+      "detail": "Read tick 25: $20000, 0 in line",
+      "at": 1794697986114
+    },
+    {
+      "tool": "propose_action",
+      "detail": "reorder_supplies: $35; awaiting owner approval",
+      "at": 1794697989604
+    },
+    {
+      "tool": "execute_approved_action",
+      "detail": "reorder_supplies: Supplies delivered; $35 recorded in the game ledger.",
+      "at": 1794697993570
+    },
+    {
+      "tool": "get_cafe_state",
+      "detail": "Read tick 175: $19965, 0 in line",
+      "at": 1794697994213
+    },
+    {
+      "tool": "read_outcome",
+      "detail": "Observed tick 175; 1 action receipts. No causal improvement inferred.",
+      "at": 1794697994213
+    }
+  ],
+  "guestApprovalRejected": true,
+  "twoClientsAgree": true,
+  "duplicateApprovalCharged": false,
+  "testedCommit": "07e55e52720f5bff8a95ff48c6c64aab4b3d3fff",
+  "providerIdentity": {
+    "provider": "google",
+    "model": "gemini-3.6-flash"
+  },
+  "limitation": "The successful model summary misinterpreted USD as cents; explicit currency metadata/prompt correction was added afterward in 3751379. Earlier provider failure cause remains unconfirmed."
+}

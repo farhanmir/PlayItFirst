@@ -2,6 +2,14 @@
 
 Tracking https://github.com/farhanmir/PlayItFirst/issues/2. Work directly on `main` under AGENTS.md.
 
+## Live Gemini approval verified; safe failure diagnostics
+
+Public Render **`07e55e52720f5bff8a95ff48c6c64aab4b3d3fff`** completed an actual two-client synthetic-room provider test. The completed runs identify **Google / `gemini-3.6-flash`**. No property was selected, so no sponsor listing or geometry was sent. Gemini inspected state and proposed exactly one $35 restock without spending; guest approval was denied. Authenticated owner approval invoked `execute_approved_action`, then `read_outcome`. Actual balance **$20,000 → $19,965**, inventory **milk24→36, cups40→60, beans30→45**, one stable transaction receipt; second client agreed and duplicate approval did not charge again. [Recorded receipt and trace](screenshots/gemini-public-approved-verification.json).
+
+The earlier provider failure remains historical evidence with an **unconfirmed cause**; this successful run does not establish permanent availability. `07e55e5` adds allowlisted failure categories for HTTP429 quota/rate limits, auth/permission, invalid requests, unavailable models, provider errors, timeouts and malformed output. Raw provider messages/URLs/keys are never broadcast. Six regression cases verify classification, secret redaction and no financial mutation; no automatic retries were added.
+
+The live model incorrectly described dollar-valued balances as cents despite executing the correct $35 transaction. `3751379` adds explicit `USD`/`dollars` tool metadata and instructions to quote exact amounts without dividing by100. The full tool workflow above was verified before that narration correction; corrected narration still needs live confirmation. **121 tests across24 files**, typecheck/build pass (existing bundle warning). Safely merged teammate main through `6c9999d`, preserving superior art, authoritative collision/controls, provider identity, Nessie reconciliation and Photon transport groundwork, plus our tested order/blueprint/sound/touch fixes. Pre-existing local dependency edits and untracked prior screenshots remain intact. Render-only `GOOGLE_API_KEY` is sufficient; no local key or separate Deepagents enable flag is required. Issue #8 updated with actual evidence.
+
 ## Character polish — first pass
 
 Safely merged teammate `fdb5816` (expired-drink recovery and nearby service-station acceptance) before pushing; preserved both progress sections and all uncommitted dependency edits. Combined main passes **82 tests across 18 files**, typecheck and build.
