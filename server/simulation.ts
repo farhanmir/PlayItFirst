@@ -17,6 +17,8 @@ import type {
 import { FURNITURE_CATALOG } from "../shared/types.ts";
 import { BREW_SECONDS, nearestStation } from "../shared/stations.ts";
 import { placementIssue } from "../shared/placement.ts";
+import { floorMoveClear, floorPositionClear } from "../shared/floorplan.ts";
+import { measuredGrid, measuredRoute } from "./navigation.ts";
 import { applyTransaction, createFinance } from "./finance.ts";
 
 export { nearestStation };
@@ -102,6 +104,11 @@ export function selectProperty(snapshot: RoomSnapshot, property: PropertyListing
     { id: randomUUID(), kind: "decoration", label: "Plant / Decor", x: Math.min(property.width - 1, 12), z: 1.2, rotation: 0, cost: 60 },
     { id: randomUUID(), kind: "fridge", label: "Reach-in Fridge", x: 0.8, z: Math.min(7.5, property.depth - 1), rotation: 0, cost: 900 },
   ];
+  if (property.floorPlan) {
+    const origin = property.floorPlan.serviceOrigin;
+    const positions = [[1, 2], [3, 2], [5, 2], [2, 5], [5, 5], [1.2, 5], [2.8, 5], [0.5, 0.5], [3, 4]];
+    starter.forEach((f, i) => { f.x = origin.x + positions[i][0]; f.z = origin.z + positions[i][1]; });
+  }
   const spent = starter.reduce((s, f) => s + f.cost, 0);
   let finance = snapshot.finance;
   finance = applyTransaction(finance, "Starter equipment package", -spent, "equipment");
@@ -117,6 +124,7 @@ export function selectProperty(snapshot: RoomSnapshot, property: PropertyListing
     ...snapshot,
     property,
     layout,
+    players: property.floorPlan ? snapshot.players.map((p, i) => ({ ...p, x: starter[0].x + 0.35 + i * 0.4, z: starter[0].z + 0.9 })) : snapshot.players,
     phase: "build",
     finance,
     eventLog: [
@@ -262,6 +270,12 @@ function servicePathOpen(snapshot: RoomSnapshot): boolean {
   const goal = counter
     ? { x: counter.x + 0.2, z: Math.max(0.8, counter.z - 1.2) }
     : { x: 2, z: 2 };
+  if (snapshot.property.floorPlan) {
+    if (!floorPositionClear(snapshot.property.floorPlan, goal.x, goal.z, 0.18)) return false;
+    const path = measuredRoute(snapshot.property, snapshot.layout, snapshot.property.floorPlan.entry, goal);
+    const end = path.at(-1);
+    return !!end && Math.hypot(end.x - goal.x, end.z - goal.z) < 0.8;
+  }
   const circles = blockingCircles(snapshot.layout);
   const bounds = {
     minX: 0.35,
@@ -363,6 +377,10 @@ export function syncTabletop(
 
 export function movePlayer(snapshot: RoomSnapshot, playerId: string, x: number, z: number): RoomSnapshot {
   if (!snapshot.property) return snapshot;
+  if (!Number.isFinite(x) || !Number.isFinite(z)) return snapshot;
+  const plan = snapshot.property.floorPlan;
+  const player = snapshot.players.find((p) => p.id === playerId);
+  if (plan && player && !floorMoveClear(plan, player, { x, z })) return snapshot;
   return {
     ...snapshot,
     players: snapshot.players.map((p) =>
@@ -714,6 +732,28 @@ export function stepSimulation(snapshot: RoomSnapshot, dt: number): RoomSnapshot
     maxZ: property.depth - 0.35,
   };
   const stepToward = (guest: Customer, rate: number, stayInside: boolean) => {
+    if (property.floorPlan) {
+      const goal = { x: guest.targetX, z: guest.targetZ };
+      const grid = measuredGrid(property, layout);
+      if (!guest.route || guest.routeVersion !== grid.version || !guest.routeGoal || Math.hypot(goal.x - guest.routeGoal.x, goal.z - guest.routeGoal.z) > 0.1) {
+        guest.route = measuredRoute(property, layout, guest, goal);
+        guest.routeGoal = goal;
+        guest.routeVersion = grid.version;
+      }
+      guest.route = [...guest.route];
+      let remaining = dt * 2.4;
+      while (guest.route.length && remaining > 0) {
+        const target = guest.route[0];
+        const distance = Math.hypot(target.x - guest.x, target.z - guest.z);
+        if (distance < 0.04) { guest.route.shift(); continue; }
+        const step = Math.min(distance, remaining);
+        const next = { x: guest.x + (target.x - guest.x) * step / distance, z: guest.z + (target.z - guest.z) * step / distance };
+        if (!floorMoveClear(property.floorPlan, guest, next, 0.16)) { guest.route = undefined; break; }
+        guest.x = next.x; guest.z = next.z; remaining -= step;
+        if (step === distance) guest.route.shift();
+      }
+      return;
+    }
     const moved = moveWithClearance(
       guest.x,
       guest.z,
@@ -740,7 +780,7 @@ export function stepSimulation(snapshot: RoomSnapshot, dt: number): RoomSnapshot
 
     if (next.state === "entering") {
       stepToward(next, 2, true);
-      if (Math.hypot(next.x - next.targetX, next.z - next.targetZ) < 0.2) next.state = "queue";
+      if (Math.hypot(next.x - next.targetX, next.z - next.targetZ) < (property.floorPlan ? 0.4 : 0.2)) next.state = "queue";
     }
 
     if (next.state === "queue" || next.state === "ordering") {
@@ -768,8 +808,8 @@ export function stepSimulation(snapshot: RoomSnapshot, dt: number): RoomSnapshot
 
     if (next.state === "happy" || next.state === "angry") {
       next.state = next.state === "happy" ? "leaving" : "leaving";
-      next.targetX = property.width + 1;
-      next.targetZ = 1;
+      next.targetX = property.floorPlan?.entry.x ?? property.width + 1;
+      next.targetZ = property.floorPlan?.entry.z ?? 1;
     }
 
     if (next.state === "leaving") {
@@ -788,7 +828,8 @@ export function stepSimulation(snapshot: RoomSnapshot, dt: number): RoomSnapshot
     return next;
   });
 
-  customers = customers.filter((c) => !(c.state === "leaving" && c.x > property.width + 0.5));
+  customers = customers.filter((c) => !(c.state === "leaving" && (property.floorPlan
+    ? Math.hypot(c.x - property.floorPlan.entry.x, c.z - property.floorPlan.entry.z) < 0.4 : c.x > property.width + 0.5)));
 
   const queueLength = customers.filter((c) => c.state === "queue" || c.state === "ordering").length;
   const waiting = customers.filter((c) => c.state === "waiting" || c.state === "ordering");
@@ -891,8 +932,8 @@ function spawnCustomer(property: PropertyListing, qx: number, qz: number): Custo
     preference: ORDERS[Math.floor(Math.random() * ORDERS.length)],
     state: "entering",
     progress: 0,
-    x: -1,
-    z: 1 + Math.random() * 2,
+    x: property.floorPlan?.entry.x ?? -1,
+    z: property.floorPlan?.entry.z ?? 1 + Math.random() * 2,
     targetX: qx,
     targetZ: Math.max(1, qz - 1),
     satisfaction: 70,

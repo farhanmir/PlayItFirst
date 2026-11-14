@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import urllib.request
 import zipfile
+from measured_floor import convert_floor
 
 
 def import_suite(archive, password, listing_id, space_id, key, token):
@@ -36,7 +37,7 @@ def import_suite(archive, password, listing_id, space_id, key, token):
         matched = next((r for r in rows if r["PropertyId"] == str(listing["propertyId"]) and r["MatterportModelId"] == model), None)
         if not matched or matched["City"] not in ("Houston", "Los Angeles"):
             raise ValueError("No matching property/model row")
-    query = {"query": "query($id:ID!) { model(id:$id) { id name dimensionEstimates(units:metric) { area } } }", "variables": {"id": model}}
+    query = {"query": "query($id:ID!) { model(id:$id) { id name dimensionEstimates(units:metric) { area } floors { id edges { id type thickness vertices { id position { x y } } openings { id type relativeCenter width height } } } rooms { id dimensionEstimates(units:metric) { area } boundary { edges { id } } } } }", "variables": {"id": model}}
     request = urllib.request.Request("https://api.matterport.com/api/models/graph", data=json.dumps(query).encode(), headers={
         "Authorization": "Basic " + base64.b64encode(f"{key}:{token}".encode()).decode(), "Content-Type": "application/json"})
     response = json.load(urllib.request.urlopen(request, timeout=20))
@@ -46,19 +47,20 @@ def import_suite(archive, password, listing_id, space_id, key, token):
     scan_area = live.get("dimensionEstimates", {}).get("area")
     if not scan_area or not math.isfinite(scan_area) or scan_area <= 0:
         raise ValueError("No usable measured scan area")
+    floor_plan, width, depth = convert_floor(live)
     return [{
         "id": f"costar-{listing['propertyId']}-{space_id}", "name": f"{matched['Address']} · Suite {space.get('suite', '')}",
         "city": matched["City"], "neighborhood": "", "address": f"{matched['Address']}, {matched['City']}, {matched['State']}",
         "sqft": area, "monthlyRent": round(area * rate / (12 if basis == 2 else 1), 2),
-        "width": math.sqrt(scan_area * 1.4), "depth": math.sqrt(scan_area / 1.4), "capacity": 28, "footTraffic": 0.6,
+        "width": width, "depth": depth, "floorPlan": floor_plan, "capacity": 28, "footTraffic": 0.6,
         "costarId": str(listing["propertyId"]), "matterportModelId": model,
         "matterportEmbedUrl": f"https://my.matterport.com/show/?m={model}", "source": "costar-extract", "imageTone": "#6b8068",
         "description": "Authorized event extract: active retail suite, marketed as a second-generation restaurant. Asking terms are not an executed lease.",
-        "matterportHint": f"Exact suite attachment verified against live model: {live.get('name', model)}. Simplified playable rectangle, not a wall reconstruction.",
+        "matterportHint": f"Measured walls, rooms and openings from matched scan: {live.get('name', model)}. Original game materials and equipment.",
         "provenance": {"listingId": str(listing_id), "spaceId": str(space_id), "suite": space.get("suite", ""), "askingRate": rate,
             "rateBasis": "USD/sqft/year" if basis == 2 else "USD/sqft/month", "scanAreaM2": scan_area,
-            "geometry": "Area-scaled rectangle from scan area; aspect ratio and entrance are assumed, walls not reconstructed",
-            "assumptions": ["1.4 rectangle aspect ratio", "Entrance and furniture positions", "28-person simulation capacity", "0.6 simulated foot traffic", "CAM/taxes/additional charges excluded", "Permitted café use not independently verified"]},
+            "geometry": "Measured single-floor room polygons, walls and openings; API x/y translated to game x/z in meters",
+            "assumptions": ["Operational entrance chosen among measured exterior doors", "New café equipment positions", "Standardized wall height and cozy materials", "28-person simulation capacity", "0.6 simulated foot traffic", "CAM/taxes/additional charges excluded", "Permitted café use not independently verified"]},
     }]
 
 
@@ -78,4 +80,4 @@ if __name__ == "__main__":
     target = Path(args.out)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
-    print("Matched suite imported; raw records and credentials remain local. Geometry is explicitly simplified.")
+    print("Matched suite imported with measured topology; raw records and credentials remain local.")

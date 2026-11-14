@@ -10,3 +10,5 @@ dist
 # Private sponsor archive and extracted records
 costar-hackathon-kit.zip
 .sponsor/
+__pycache__/
+*.pyc

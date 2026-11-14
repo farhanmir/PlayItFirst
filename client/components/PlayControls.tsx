@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import type { RoomSnapshot } from "../../shared/types";
 import { BREW_SECONDS, nearestStation } from "../../shared/stations";
+import { floorMoveClear } from "../../shared/floorplan";
 import { useApp } from "../lib/store";
 import { play } from "../lib/audio";
 import { moveFromKeys } from "../lib/look";
@@ -8,13 +9,17 @@ import { actionPrompt, suggestedAction, stationLabel, type PlayAction } from "..
 
 function patchMyPosition(x: number, z: number) {
   const { snapshot, you, set } = useApp.getState();
-  if (!snapshot || !you) return;
+  if (!snapshot || !you) return false;
+  const current = snapshot.players.find((p) => p.id === you);
+  const plan = snapshot.property?.floorPlan;
+  if (plan && current && !floorMoveClear(plan, current, { x, z })) return false;
   set({
     snapshot: {
       ...snapshot,
       players: snapshot.players.map((p) => (p.id === you ? { ...p, x, z } : p)),
     },
   });
+  return true;
 }
 
 export function PlayControls({
@@ -68,8 +73,7 @@ export function PlayControls({
       if (!dx && !dz) return;
       const x = current.x + dx;
       const z = current.z + dz;
-      patchMyPosition(x, z);
-      conn.send({ t: "player_move", x, z });
+      if (patchMyPosition(x, z)) conn.send({ t: "player_move", x, z });
     }, 33);
 
     return () => {
@@ -168,8 +172,7 @@ export function PlayControls({
             if (!current) return;
             const x = current.x + dx;
             const z = current.z + dz;
-            patchMyPosition(x, z);
-            conn?.send({ t: "player_move", x, z });
+            if (patchMyPosition(x, z)) conn?.send({ t: "player_move", x, z });
           }}
         />
       )}

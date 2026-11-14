@@ -1,5 +1,6 @@
 /** Shared contracts for Play It First client + authoritative server. */
 import type { ManagerView } from "./manager";
+import type { MeasuredFloorPlan } from "./floorplan";
 
 export type BusinessType = "cafe" | "restaurant" | "gaming_cafe" | "bookstore" | "retail" | "gym";
 export type PlayerRole = "owner" | "barista" | "cashier" | "manager" | "customer" | "builder";
@@ -44,6 +45,7 @@ export interface PropertyListing {
     geometry: string; scanAreaM2?: number; assumptions: string[];
   };
   liveFetchedAt?: number;
+  floorPlan?: MeasuredFloorPlan;
 }
 
 export interface FurnitureItem {
@@ -71,6 +73,9 @@ export interface CatalogItem {
 export type CustomerPersona = "student" | "office" | "regular";
 
 export interface Customer {
+  route?: Vec2[];
+  routeGoal?: Vec2;
+  routeVersion?: string;
   id: string;
   persona: CustomerPersona;
   name: string;

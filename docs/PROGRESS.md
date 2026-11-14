@@ -2,6 +2,18 @@
 
 Tracking https://github.com/farhanmir/PlayItFirst/issues/2. Work directly on `main` under AGENTS.md.
 
+## Measured place → animated game
+
+Replaced the imported suite's assumed rectangular floor with the actual captured single-floor topology: **12 room polygons, 66 physical walls, 11 doorway openings and four windows**. All 72 source edges are processed; six invisible room dividers are omitted as physical walls. A room boundary containing wall spurs is reduced to its enclosing polygon while the spurs remain physical walls. No rooms are dropped. Multi-floor captures are explicitly rejected until supported rather than silently truncating the place.
+
+`scripts/measured_floor.py` converts authenticated Model API data into meter-based game coordinates; `import-costar.py` now generates the measured `floorPlan`. The live mesh/textures are not reused. The scene rebuilds the captured structure with original wood/sage/plaster materials, cutaway walls, windows and proximity-opening doors. Existing animated customers, characters, equipment and build controls remain. Wall heights/materials, café equipment and the operating entrance chosen among measured exterior doors are game-design choices, documented as assumptions.
+
+The server and optimistic movement share measured wall/door collision checks. Building outside room polygons or across walls is rejected. Customers use a cached navigation grid through real door gaps, reroute after furniture edits and enter/leave through a measured exterior doorway. Starter equipment is placed in a verified clear portion of the largest captured room. The manager reads measured room areas, entrance and layout counts. Mock properties retain their existing scene/simulation.
+
+Validation: **75 JavaScript tests**, **3 Python converter tests**, typecheck/build green. Tests cover blocked walls, usable doors, routing through a partition, sealed-door reroutes, build rejection and malformed topology. Against the private real suite, a 44-waypoint route reached the counter from the selected entrance without crossing walls. Real Edge keyboard play took/brewed/served one cold brew for $9, consuming exactly one cup and bean; no JavaScript errors. A plant placement on the measured floor appeared on both desktop and phone-sized clients. Local evidence: `.sponsor/measured-gameplay.png`, `measured-build.png`, `measured-served.png`, `measured-build-ghost.png`, `measured-phone.png`, `measured-game-verification.json`. Synced teammate commit `f43874e` without losing either progress section; its deployment smoke check passes against the rebuilt production server on port 5187 with `costar-extract`, including two-client edit and resume.
+
+The regenerated `.sponsor/property.json` must be supplied privately to Render to enable this scene there; no sponsor geometry or credentials are committed. This reconstructs the **whole captured suite**, not unscanned portions of the building. Actual external walkthrough rendering/publication clearance and real-phone/public deployment still need verification. The earlier rectangle/access limitations below are historical and superseded by this section.
+
 ## Open-issue audit
 
 Closed **#4**: independent QA coverage and the original five production regressions are implemented, with fresh **72-test/typecheck/build** verification and existing browser evidence. Updated every remaining issue (#2, #6–#11) with concrete acceptance gaps; none was closed on partial sponsor evidence.
@@ -90,8 +102,8 @@ The existing `render.yaml` remains the preferred **free, single-service** deploy
 
 - Browser automation is not a physical human/phone playtest. Public HTTPS/WSS and real-phone QR scanning remain unverified until Render is connected.
 - Characters remain original procedural meshes, not fully rigged or licensed asset models. No performance/FPS claim for physical phones.
-- Build move is select-then-click; direct object dragging is still absent. Ghosts show a simple volume/footprint, not the complete furniture model. Local bounds/overlap preview is conservative; the server can additionally reject a green preview if it seals a service path. Occupancy remains the existing radial clearance model.
+- Build move is select-then-click; direct object dragging is still absent. Ghosts show a simple volume/footprint, not the complete furniture model. Local bounds/overlap preview is conservative; the server can additionally reject a green preview if it seals a service path. Furniture uses circular clearance; imported walls/doors use measured segments and a navigation grid.
 - Customer order bubbles can overlap in a long queue. More art and camera tuning may still be needed to reach the owner's visual-quality target.
 - Vite reports the existing large bundle warning (about 1.35 MB uncompressed / 389 KB gzip). Tests/build pass; this is not a phone performance benchmark.
-- No durable room saves; sponsor property data is still mock. Public deployment and real sponsor integrations are not complete.
+- No durable room saves. Bundled fallback data is mock; the authorized matched suite requires its private normalized file. Public deployment and the remaining provider integrations are not complete.
 
