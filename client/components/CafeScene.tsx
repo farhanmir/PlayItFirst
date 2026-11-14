@@ -6,6 +6,7 @@ import type { Customer, FurnitureItem, FurnitureKind, PlayerState, PropertyListi
 import { nearestStation } from "../../shared/stations";
 import { placementIssue, snapFloor } from "../../shared/placement";
 import { getLook, nudgeLook } from "../lib/look";
+import { createTouchLookTracker } from "../lib/touchLook";
 import { play } from "../lib/audio";
 import { useApp } from "../lib/store";
 
@@ -62,6 +63,16 @@ export function CafeScene({ snapshot, viewMode = "monitor", buildMode = false }:
   const buildMovingId = useApp((s) => s.buildMovingId);
   const [hover, setHover] = useState<{ x: number; z: number } | null>(null);
   const me = snapshot.players.find((p) => p.id === you);
+  const serviceLine = snapshot.customers
+    .filter((customer) => ["queue", "ordering", "waiting"].includes(customer.state))
+    .sort((a, b) => a.joinedAt - b.joinedAt);
+  // One readable order in the world; the rail retains the complete queue details.
+  // Prioritize this player's ticket so another barista cannot obscure their task.
+  const featuredCustomer = serviceLine.find((customer) => customer.ticketHolder === you && customer.state === "waiting")
+    ?? serviceLine.find((customer) => customer.state === "ordering")
+    ?? serviceLine.find((customer) => customer.state === "waiting")
+    ?? serviceLine[0];
+  const queuedCustomers = serviceLine.filter((customer) => customer.state !== "waiting");
   const mode = viewMode;
   const canFloorPlace =
     !!buildKind &&
@@ -150,7 +161,8 @@ export function CafeScene({ snapshot, viewMode = "monitor", buildMode = false }:
           <PlacementGhost snapshot={snapshot} kind={buildKind} x={hover.x} z={hover.z} rotation={buildRotation} movingId={buildMovingId} />
         ) : null}
         {snapshot.customers.map((c) => (
-          <CustomerMesh key={c.id} customer={c} />
+          <CustomerMesh key={c.id} customer={c} featured={c.id === featuredCustomer?.id}
+            yourTicket={c.ticketHolder === you} queuePosition={queuedCustomers.findIndex((customer) => customer.id === c.id) + 1} />
         ))}
         {snapshot.players.map((p) => (
           <PlayerMesh
@@ -198,32 +210,36 @@ function CameraRig({
       if (document.pointerLockElement !== el) return;
       nudgeLook(e.movementX, e.movementY);
     };
+    const touchLook = createTouchLookTracker();
+    const previousTouchAction = el.style.touchAction;
+    el.style.touchAction = "none";
+    const onTouchStart = (e: TouchEvent) => {
+      // HUD and movement-pad touches belong to their controls, never the camera.
+      const touch = Array.from(e.changedTouches).find((candidate) => candidate.target === el);
+      if (touch) touchLook.start(touch);
+    };
     const onTouch = (e: TouchEvent) => {
-      if (e.touches.length !== 1) return;
-      const t = e.touches[0];
-      const prev = el as HTMLCanvasElement & { __lookX?: number; __lookY?: number };
-      if (prev.__lookX != null && prev.__lookY != null) {
-        nudgeLook(t.clientX - prev.__lookX, t.clientY - prev.__lookY, 0.004);
-      }
-      prev.__lookX = t.clientX;
-      prev.__lookY = t.clientY;
+      const delta = touchLook.move(e.touches);
+      if (delta) nudgeLook(delta.x, delta.y, 0.004);
     };
-    const onTouchEnd = () => {
-      const prev = el as HTMLCanvasElement & { __lookX?: number; __lookY?: number };
-      prev.__lookX = undefined;
-      prev.__lookY = undefined;
-    };
+    const onTouchEnd = (e: TouchEvent) => touchLook.end(e.changedTouches);
+    const resetTouchLook = () => touchLook.reset();
     el.addEventListener("click", onClick);
     document.addEventListener("mousemove", onMove);
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
     el.addEventListener("touchmove", onTouch, { passive: true });
     el.addEventListener("touchend", onTouchEnd);
     el.addEventListener("touchcancel", onTouchEnd);
+    window.addEventListener("blur", resetTouchLook);
     return () => {
       el.removeEventListener("click", onClick);
       document.removeEventListener("mousemove", onMove);
+      el.removeEventListener("touchstart", onTouchStart);
       el.removeEventListener("touchmove", onTouch);
       el.removeEventListener("touchend", onTouchEnd);
       el.removeEventListener("touchcancel", onTouchEnd);
+      window.removeEventListener("blur", resetTouchLook);
+      el.style.touchAction = previousTouchAction;
       if (document.pointerLockElement === el) document.exitPointerLock();
     };
   }, [playLook, gl]);
@@ -1205,7 +1221,9 @@ function CharacterHead({ seed, y, office = false }: { seed: string; y: number; o
   </group>;
 }
 
-function CustomerMesh({ customer }: { customer: Customer }) {
+function CustomerMesh({ customer, featured, yourTicket, queuePosition }: {
+  customer: Customer; featured: boolean; yourTicket: boolean; queuePosition: number;
+}) {
   const angry = customer.state === "angry" || customer.patience < 20;
   const waiting = customer.state === "waiting" || customer.state === "ordering" || customer.state === "queue";
   const body = angry ? PALETTE.angry : personaColor(customer.persona);
@@ -1280,18 +1298,21 @@ function CustomerMesh({ customer }: { customer: Customer }) {
         </group>
       </group>
 
-      {waiting && (
-        <Billboard position={[0, 2.05, 0]}>
+      {waiting && featured && (
+        <Billboard position={[0, 2.12, 0]}>
           <mesh>
-            <boxGeometry args={[Math.max(0.7, orderLabel.length * 0.11), 0.34, 0.04]} />
+            <boxGeometry args={[Math.max(1.05, orderLabel.length * 0.11), 0.48, 0.04]} />
             <meshStandardMaterial color="#fff8ef" emissive="#f5e6d2" emissiveIntensity={0.35} />
           </mesh>
-          <mesh position={[0, -0.2, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <Text position={[0, 0.13, 0.03]} fontSize={0.075} letterSpacing={0.07} color={PALETTE.leaf} anchorX="center" anchorY="middle">
+            {yourTicket ? "YOUR TICKET" : customer.state === "waiting" ? "IN PROGRESS" : "ORDER HERE"}
+          </Text>
+          <mesh position={[0, -0.27, 0]} rotation={[Math.PI / 2, 0, 0]}>
             <coneGeometry args={[0.08, 0.12, 4]} />
             <meshStandardMaterial color="#fff8ef" />
           </mesh>
           <Text
-            position={[0, 0.02, 0.03]}
+            position={[0, -0.04, 0.03]}
             fontSize={0.14}
             color={PALETTE.espresso}
             anchorX="center"
@@ -1299,6 +1320,14 @@ function CustomerMesh({ customer }: { customer: Customer }) {
             maxWidth={1.6}
           >
             {orderLabel}
+          </Text>
+        </Billboard>
+      )}
+      {waiting && !featured && (
+        <Billboard position={[0, 1.97, 0]}>
+          <mesh><circleGeometry args={[0.105, 16]} /><meshStandardMaterial color={customer.state === "waiting" ? PALETTE.crema : PALETTE.leaf} roughness={0.85} /></mesh>
+          <Text position={[0, 0, 0.015]} fontSize={0.115} color={PALETTE.foam} anchorX="center" anchorY="middle">
+            {customer.state === "waiting" ? "…" : queuePosition}
           </Text>
         </Billboard>
       )}
@@ -1336,6 +1365,7 @@ function PlayerMesh({
   const leftArm = useRef<Group>(null);
   const rightArm = useRef<Group>(null);
   const { skin } = characterStyle(player.id);
+  const { camera } = useThree();
   const target = useRef({ x: player.x, z: player.z });
   const last = useRef({ x: player.x, z: player.z });
   target.current = { x: player.x, z: player.z };
@@ -1344,6 +1374,13 @@ function PlayerMesh({
 
   useFrame(({ clock }, dt) => {
     if (!root.current) return;
+    if (hideBody) {
+      // Camera-relative view model: follows yaw, pitch and the camera's smoothing.
+      // The normal avatar faces +Z, but the first-person camera faces local -Z.
+      root.current.position.copy(camera.position);
+      root.current.quaternion.copy(camera.quaternion);
+      return;
+    }
     const k = 1 - Math.exp(-14 * dt);
     const nx = MathUtils.lerp(root.current.position.x, target.current.x, k);
     const nz = MathUtils.lerp(root.current.position.z, target.current.z, k);
@@ -1351,6 +1388,8 @@ function PlayerMesh({
     last.current = { x: nx, z: nz };
     root.current.position.x = nx;
     root.current.position.z = nz;
+    root.current.rotation.x = 0;
+    root.current.rotation.z = 0;
     if (followLook) root.current.rotation.y = Math.PI - getLook().yaw;
     const swing = speed > 0.4 ? Math.sin(clock.elapsedTime * 9) * 0.5 : 0;
     if (leftLeg.current) leftLeg.current.rotation.x = swing;
@@ -1425,12 +1464,13 @@ function PlayerMesh({
 
 function HeldCup({ drink, brewing, firstPerson = false }: { drink: boolean; brewing: boolean; firstPerson?: boolean }) {
   const steam = useRef<Group>(null);
+  const { size } = useThree();
   useFrame(({ clock }) => {
     if (!steam.current) return;
     steam.current.position.y = 0.2 + Math.sin(clock.elapsedTime * 3) * 0.03;
   });
   return (
-    <group position={firstPerson ? [0.35, 1.15, -0.45] : [0.38, 1.15, 0.22]}>
+    <group position={firstPerson ? [Math.min(0.25, 0.14 * size.width / size.height), -0.23, -0.48] : [0.38, 1.15, 0.22]}>
       <mesh castShadow>
         <cylinderGeometry args={[0.07, 0.06, 0.14, 10]} />
         <meshStandardMaterial color={PALETTE.foam} roughness={0.5} />
