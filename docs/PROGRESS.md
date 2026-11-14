@@ -168,3 +168,11 @@ Chromium software WebGL actual keyboard service on the revised collision path: t
 Nessie migration now uses the documented v2 HTTPS/bearer/cents contract, opening balance, queued receipts during provisioning, bounded synchronization, read-only reconciliation, and explicit ambiguous/failure states without automatic replay. Six mocked-network tests pass; no sandbox key or real bank receipt was available. Photon has tested signature/text-transport primitives only; no inbound route, owner pairing or actual telephone provider is activated. See PHOTON_SETUP.md. Local crew voice and ledger no longer claim Photon/Nessie success.
 
 Blueprint export now includes actual provenance, cents, measured geometry, equipment/rotation, retained costs/receipts, executed manager decisions, inventory, shift results, and explicit assumptions. Provider identity metadata is exposed only after a successful actual model run; failed/local/blocked runs clear stale provider proof.
+
+### Final local service, route and export evidence
+
+Safe mock-property browser screenshot and assertions: [polish-service.png](screenshots/polish-service.png), [polish-service.json](screenshots/polish-service.json). The two-client WebSocket test now compares the same seeded queued guest through the actual movement reducer before/after accepted counter relocation. Remaining walking distance changes from 0 to 4.006638 world units and the destination changes; both paths arrive. This proves the edit changes routing, not that the new layout is better. Public measured-floor counter rerouting remains a separate gate.
+
+Actual Chromium UI export passed on an isolated production server: Judge demo → Menu → Plan → Generate → Download. Downloaded Markdown includes the selected property, current cash, rent/equipment receipts, decisions and honest zero-service limitation. No state injection or page errors.
+
+Commits: ac35283 controls/collision/service and export; da73860 café art/HUD; 7da959e provider proof; f668b7e Nessie reconciliation; ddce01f Photon transport/status. Main push completed through b2ff7ee. Public deployment must still be checked independently for these changes.
