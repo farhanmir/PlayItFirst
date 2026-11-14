@@ -176,3 +176,7 @@ Safe mock-property browser screenshot and assertions: [polish-service.png](scree
 Actual Chromium UI export passed on an isolated production server: Judge demo → Menu → Plan → Generate → Download. Downloaded Markdown includes the selected property, current cash, rent/equipment receipts, decisions and honest zero-service limitation. No state injection or page errors.
 
 Commits: ac35283 controls/collision/service and export; da73860 café art/HUD; 7da959e provider proof; f668b7e Nessie reconciliation; ddce01f Photon transport/status. Main push completed through b2ff7ee. Public deployment must still be checked independently for these changes.
+
+### Latest public provider recheck
+
+Render reported `b2ff7ee82b60d829277a810c712176cab658652d` at 23:05 UTC. One bounded synthetic-room provider attempt on that build failed after `get_cafe_state`, with no proposal or purchase. The run correctly returned `providerVerified: false`; provider identity was unavailable because the run did not complete. Evidence: [provider-public-b2ff7ee-verification.json](screenshots/provider-public-b2ff7ee-verification.json). No automatic retry. Historical successful execution on `03497a4` remains recorded, but does not establish current successful execution or Gemini attribution. Keep the live-provider release gate open.
