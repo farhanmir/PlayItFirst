@@ -1169,6 +1169,8 @@ function CharacterFace({ y = 1.42, office = false }: { y?: number; office?: bool
       {[-0.065, 0.065].map((x) => (
         <group key={x} position={[x, 0.015, 0.164]}>
           <mesh><sphereGeometry args={[0.023, 8, 8]} /><meshStandardMaterial color="#302b29" /></mesh>
+          <mesh position={[-0.006, 0.007, 0.02]}><sphereGeometry args={[0.007, 5, 5]} /><meshBasicMaterial color="#fff5df" /></mesh>
+          <mesh position={[0, 0.048, -0.006]} rotation={[0, 0, Math.PI / 2 + (x < 0 ? -0.12 : 0.12)]}><capsuleGeometry args={[0.008, 0.035, 2, 5]} /><meshStandardMaterial color="#574034" /></mesh>
           {office ? <mesh><torusGeometry args={[0.048, 0.008, 5, 12]} /><meshStandardMaterial color="#71523b" /></mesh> : null}
         </group>
       ))}
@@ -1180,37 +1182,64 @@ function CharacterFace({ y = 1.42, office = false }: { y?: number; office?: bool
   );
 }
 
+/** Original toy-like silhouettes; deterministic variation survives reconnects. */
+function characterStyle(seed: string) {
+  const n = Array.from(seed).reduce((sum, c) => sum + c.charCodeAt(0), 0);
+  return { skin: ["#efc9a5", "#c28a65", "#87563e", "#dba57c"][n % 4],
+    hair: ["#3a2924", "#654332", "#302b32", "#b57c43"][n % 4], variant: n % 3 };
+}
+
+function CharacterHead({ seed, y, office = false }: { seed: string; y: number; office?: boolean }) {
+  const { skin, hair, variant } = characterStyle(seed);
+  return <group position={[0, y, 0]}>
+    <mesh castShadow scale={[1, 1.08, 0.94]}><sphereGeometry args={[0.19, 16, 12]} /><meshStandardMaterial color={skin} roughness={0.8} /></mesh>
+    {[-1, 1].map((side) => <group key={side}>
+      <mesh position={[side * 0.185, -0.015, 0]} scale={[0.65, 1, 0.75]}><sphereGeometry args={[0.055, 8, 8]} /><meshStandardMaterial color={skin} roughness={0.8} /></mesh>
+      <mesh position={[side * 0.115, -0.045, 0.147]} scale={[1, 0.55, 0.18]}><sphereGeometry args={[0.045, 8, 8]} /><meshStandardMaterial color="#ce8c77" roughness={0.9} /></mesh>
+    </group>)}
+    <CharacterFace y={0} office={office} />
+    <mesh position={[0, 0.065, -0.02]} scale={[1.08, 1, 1.04]} castShadow><sphereGeometry args={[0.185, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2]} /><meshStandardMaterial color={hair} roughness={0.95} /></mesh>
+    {[0, 1, 2].map((i) => <mesh key={i} position={[-0.105 + i * 0.085, 0.105 - i * 0.023, 0.125]} rotation={[0, 0, -0.35]} scale={[1.2, 0.65, 0.65]} castShadow><sphereGeometry args={[0.074, 8, 8]} /><meshStandardMaterial color={hair} roughness={0.95} /></mesh>)}
+    {variant === 1 && <mesh position={[0, 0.145, -0.17]} castShadow><sphereGeometry args={[0.105, 10, 8]} /><meshStandardMaterial color={hair} roughness={0.95} /></mesh>}
+    {variant === 2 && [-1, 1].map((side) => <mesh key={side} position={[side * 0.16, 0.005, -0.06]} scale={[0.6, 1.3, 1]} castShadow><sphereGeometry args={[0.09, 8, 8]} /><meshStandardMaterial color={hair} roughness={0.95} /></mesh>)}
+  </group>;
+}
+
 function CustomerMesh({ customer }: { customer: Customer }) {
   const angry = customer.state === "angry" || customer.patience < 20;
   const waiting = customer.state === "waiting" || customer.state === "ordering" || customer.state === "queue";
-  const moving = customer.state === "entering" || customer.state === "leaving" || customer.state === "queue";
   const body = angry ? PALETTE.angry : personaColor(customer.persona);
+  const { skin } = characterStyle(customer.id);
   const root = useRef<Group>(null);
   const bob = useRef<Group>(null);
   const leftLeg = useRef<Group>(null);
   const rightLeg = useRef<Group>(null);
   const arms = useRef<Group>(null);
+  const gait = useRef(0);
   const orderLabel = customer.order ?? customer.preference;
   const target = useRef({ x: customer.x, z: customer.z });
   target.current = { x: customer.x, z: customer.z };
 
   useFrame(({ clock }, dt) => {
+    let moving = false;
     if (root.current) {
       const k = 1 - Math.exp(-9 * dt);
       const nx = MathUtils.lerp(root.current.position.x, target.current.x, k);
       const nz = MathUtils.lerp(root.current.position.z, target.current.z, k);
       const dx = target.current.x - root.current.position.x;
       const dz = target.current.z - root.current.position.z;
+      moving = Math.hypot(dx, dz) > 0.035;
       if (Math.hypot(dx, dz) > 0.02) root.current.rotation.y = Math.atan2(dx, dz);
       root.current.position.x = nx;
       root.current.position.z = nz;
     }
     const t = clock.elapsedTime;
+    gait.current = MathUtils.damp(gait.current, moving ? 1 : 0, 10, dt);
     const phase = customer.x * 2.3 + customer.z;
     if (bob.current) {
-      bob.current.position.y = moving ? Math.abs(Math.sin(t * 7 + phase)) * 0.05 : Math.sin(t * 1.35 + phase) * 0.018;
+      bob.current.position.y = Math.abs(Math.sin(t * 7 + phase)) * 0.045 * gait.current + Math.sin(t * 1.35 + phase) * 0.012;
     }
-    const swing = moving ? Math.sin(t * 8 + phase) * 0.45 : 0;
+    const swing = Math.sin(t * 8 + phase) * 0.45 * gait.current;
     if (leftLeg.current) leftLeg.current.rotation.x = swing;
     if (rightLeg.current) rightLeg.current.rotation.x = -swing;
     if (arms.current) arms.current.rotation.z = Math.sin(t * (moving ? 7 : 1.8) + phase) * (moving ? 0.06 : 0.02);
@@ -1219,30 +1248,22 @@ function CustomerMesh({ customer }: { customer: Customer }) {
   return (
     <group ref={root} position={[customer.x, 0, customer.z]}>
       <group ref={bob}>
-        <mesh position={[0, 0.95, 0]} castShadow>
-          <capsuleGeometry args={[0.22, 0.55, 4, 10]} />
-          <meshStandardMaterial color={body} roughness={0.62} />
+        <mesh position={[0, 0.92, 0]} castShadow>
+          <capsuleGeometry args={[0.22, 0.38, 4, 12]} />
+          <meshStandardMaterial color={body} roughness={0.9} />
         </mesh>
-        <mesh position={[0, 1.42, 0]} castShadow>
-          <sphereGeometry args={[0.18, 12, 12]} />
-          <meshStandardMaterial color="#f0dcc8" roughness={0.68} />
-        </mesh>
-        <CharacterFace office={customer.persona === "office"} />
+        <CharacterHead seed={customer.id} y={1.46} office={customer.persona === "office"} />
+        <mesh position={[0, 1.235, 0]} rotation={[Math.PI / 2, 0, 0]}><torusGeometry args={[0.105, 0.025, 5, 12]} /><meshStandardMaterial color={PALETTE.foam} roughness={0.9} /></mesh>
+        {customer.persona === "office" ? [0.82, 0.95, 1.08].map((y) => <mesh key={y} position={[0, y, 0.223]}><sphereGeometry args={[0.017, 6, 6]} /><meshStandardMaterial color="#c9b59a" metalness={0.3} roughness={0.5} /></mesh>) : <mesh position={[0, 0.94, 0.22]}><boxGeometry args={[0.28, 0.055, 0.018]} /><meshStandardMaterial color={PALETTE.foam} roughness={0.9} /></mesh>}
+        {customer.persona === "student" && <group position={[0, 0.94, -0.22]}><mesh castShadow><boxGeometry args={[0.31, 0.32, 0.15]} /><meshStandardMaterial color="#b7764a" roughness={0.9} /></mesh><mesh position={[0, -0.045, -0.08]}><boxGeometry args={[0.22, 0.13, 0.025]} /><meshStandardMaterial color="#d6aa75" roughness={0.9} /></mesh></group>}
         <group ref={arms} position={[0, 1.06, 0]}>
           {[-1, 1].map((side) => (
             <group key={side} position={[side * 0.26, 0, 0]} rotation={[0, 0, side * 0.12]}>
               <mesh position={[0, -0.1, 0]} castShadow><capsuleGeometry args={[0.065, 0.3, 3, 8]} /><meshStandardMaterial color={body} /></mesh>
-              <mesh position={[0, -0.32, 0.02]} castShadow><sphereGeometry args={[0.067, 8, 8]} /><meshStandardMaterial color="#e5bc9e" /></mesh>
+              <mesh position={[0, -0.32, 0.02]} castShadow><sphereGeometry args={[0.067, 8, 8]} /><meshStandardMaterial color={skin} roughness={0.8} /></mesh>
             </group>
           ))}
         </group>
-        <mesh position={[0, 1.52, -0.02]}>
-          <sphereGeometry args={[0.16, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
-          <meshStandardMaterial
-            color={customer.persona === "office" ? "#2a2430" : customer.persona === "student" ? "#4a3428" : "#5c4030"}
-            roughness={0.85}
-          />
-        </mesh>
         <group ref={leftLeg} position={[-0.1, 0.55, 0]}>
           <mesh position={[0, -0.46, 0.05]} castShadow><boxGeometry args={[0.14, 0.1, 0.25]} /><meshStandardMaterial color="#e6d5b8" /></mesh>
           <mesh position={[0, -0.22, 0]} castShadow>
@@ -1312,6 +1333,9 @@ function PlayerMesh({
   const root = useRef<Group>(null);
   const leftLeg = useRef<Group>(null);
   const rightLeg = useRef<Group>(null);
+  const leftArm = useRef<Group>(null);
+  const rightArm = useRef<Group>(null);
+  const { skin } = characterStyle(player.id);
   const target = useRef({ x: player.x, z: player.z });
   const last = useRef({ x: player.x, z: player.z });
   target.current = { x: player.x, z: player.z };
@@ -1331,6 +1355,8 @@ function PlayerMesh({
     const swing = speed > 0.4 ? Math.sin(clock.elapsedTime * 9) * 0.5 : 0;
     if (leftLeg.current) leftLeg.current.rotation.x = swing;
     if (rightLeg.current) rightLeg.current.rotation.x = -swing;
+    if (leftArm.current) leftArm.current.rotation.x = -swing * 0.65;
+    if (rightArm.current) rightArm.current.rotation.x = drink || brewing ? -0.65 : swing * 0.65;
   });
 
   if (hideBody) {
@@ -1343,13 +1369,11 @@ function PlayerMesh({
 
   return (
     <group ref={root} position={[player.x, 0, player.z]}>
-      <mesh position={[0, 1.05, 0]} castShadow>
-        <capsuleGeometry args={[0.24, 0.7, 4, 10]} />
+      <mesh position={[0, 1.02, 0]} castShadow>
+        <capsuleGeometry args={[0.24, 0.46, 4, 12]} />
         <meshStandardMaterial
           color={player.color}
-          emissive={isYou ? player.color : "#000000"}
-          emissiveIntensity={isYou ? 0.18 : 0}
-          roughness={0.55}
+          roughness={0.9}
         />
       </mesh>
       {/* Apron */}
@@ -1357,37 +1381,29 @@ function PlayerMesh({
         <boxGeometry args={[0.38, 0.55, 0.06]} />
         <meshStandardMaterial color={PALETTE.foam} roughness={0.85} />
       </mesh>
-      <mesh position={[0, 1.62, 0]} castShadow>
-        <sphereGeometry args={[0.19, 12, 12]} />
-        <meshStandardMaterial color="#f0e0d0" roughness={0.65} />
-      </mesh>
-      <CharacterFace y={1.62} />
+      <CharacterHead seed={player.id} y={1.62} />
       <mesh position={[0, 1.02, 0.193]}><boxGeometry args={[0.23, 0.15, 0.018]} /><meshStandardMaterial color="#c6bca1" /></mesh>
       {[-0.12, 0.12].map((x) => <mesh key={x} position={[x, 1.28, 0.155]}><boxGeometry args={[0.045, 0.23, 0.02]} /><meshStandardMaterial color={PALETTE.foam} /></mesh>)}
-      <mesh position={[0, 1.72, -0.02]}>
-        <sphereGeometry args={[0.17, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
-        <meshStandardMaterial color="#3a2a22" roughness={0.85} />
-      </mesh>
-      <mesh position={[0, 1.35, 0]}>
+      <mesh position={[0, 1.35, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <torusGeometry args={[0.2, 0.035, 6, 16]} />
         <meshStandardMaterial color={PALETTE.foam} roughness={0.6} />
       </mesh>
       {/* Arms */}
-      <mesh position={[-0.32, 1.05, 0.05]} rotation={[0.2, 0, 0.35]} castShadow>
-        <capsuleGeometry args={[0.07, 0.28, 3, 8]} />
-        <meshStandardMaterial color={player.color} roughness={0.6} />
-      </mesh>
-      <mesh position={[0.32, 1.05, 0.05]} rotation={[0.2, 0, -0.35]} castShadow>
-        <capsuleGeometry args={[0.07, 0.28, 3, 8]} />
-        <meshStandardMaterial color={player.color} roughness={0.6} />
-      </mesh>
+      {[-1, 1].map((side) => <group key={side} ref={side < 0 ? leftArm : rightArm} position={[side * 0.29, 1.23, 0]}>
+        <group rotation={[0, 0, side * 0.12]}>
+          <mesh position={[0, -0.16, 0]} castShadow><capsuleGeometry args={[0.075, 0.23, 3, 8]} /><meshStandardMaterial color={player.color} roughness={0.9} /></mesh>
+          <mesh position={[0, -0.34, 0.02]} castShadow><sphereGeometry args={[0.075, 8, 8]} /><meshStandardMaterial color={skin} roughness={0.8} /></mesh>
+        </group>
+      </group>)}
       <group ref={leftLeg} position={[-0.12, 0.55, 0]}>
+        <mesh position={[0, -0.46, 0.055]} castShadow><boxGeometry args={[0.17, 0.12, 0.28]} /><meshStandardMaterial color="#e4d2b8" roughness={0.9} /></mesh>
         <mesh position={[0, -0.24, 0]} castShadow>
           <capsuleGeometry args={[0.08, 0.32, 3, 8]} />
           <meshStandardMaterial color="#2f241c" roughness={0.8} />
         </mesh>
       </group>
       <group ref={rightLeg} position={[0.12, 0.55, 0]}>
+        <mesh position={[0, -0.46, 0.055]} castShadow><boxGeometry args={[0.17, 0.12, 0.28]} /><meshStandardMaterial color="#e4d2b8" roughness={0.9} /></mesh>
         <mesh position={[0, -0.24, 0]} castShadow>
           <capsuleGeometry args={[0.08, 0.32, 3, 8]} />
           <meshStandardMaterial color="#2f241c" roughness={0.8} />

@@ -2,6 +2,12 @@
 
 Tracking https://github.com/farhanmir/PlayItFirst/issues/2. Work directly on `main` under AGENTS.md.
 
+## Character polish — first pass
+
+Improved the original procedural characters with consistent toy-like proportions, varied skin/hair silhouettes, ears, cheeks, eye highlights and brows, collars, buttons, sweater trim and student backpacks. Baristas now have articulated shoulder pivots, visible hands/shoes and a carrying pose. Removed the player's emissive shirt; fabrics use softer roughness. Customer walking/bobbing now follows actual interpolated movement and eases to rest instead of walking in place throughout queue state. These are inexpensive original meshes; no downloaded character assets or simulation changes.
+
+Verified the rebuilt production game locally in Edge with WebGL: one keyboard-driven americano order produced one $9 sales receipt, consumed one cup/bean and left milk unchanged. Two browser clients shared a plant placement, with zero page/console errors or failed requests. Evidence: [gameplay](screenshots/character-gameplay.png), [served](screenshots/character-served.png), [build](screenshots/character-build.png), [phone-sized viewport](screenshots/character-phone.png), [assertions](screenshots/character-verification.json). This is a first visual pass, not a claim of a completed art overhaul or physical-phone performance testing. Public screenshots in the following section show the previously deployed appearance; this pass still needs deployment confirmation.
+
 ## Public Render browser verification and sponsor handoff
 
 **Actual URL: https://playitfirst.onrender.com/**. Read issue #6 and posted coordination for Hrudai (`hssannidhi80`), who retains deployment ownership. The deployed SHA is **not yet established**: the current health response has no commit field and Render Events/dashboard access is unavailable. Added `/api/health.commit` from Render's `RENDER_GIT_COMMIT` for subsequent deploys; never infer the deployed SHA from local main. Free plan and restart/cold-start behavior still need dashboard/physical-device confirmation.

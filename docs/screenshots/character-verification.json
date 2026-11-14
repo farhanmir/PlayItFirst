@@ -1,0 +1,58 @@
+{
+  "origin": "http://localhost:5192",
+  "property": "hou-midtown-1204",
+  "source": "costar-mock",
+  "canvas": {
+    "width": 1438,
+    "height": 898,
+    "webgl": true
+  },
+  "served": 1,
+  "sale": {
+    "id": "1fa85a5d-96a1-4214-9bff-547def712385",
+    "label": "americano · Chris",
+    "amount": 9,
+    "category": "sales",
+    "at": 1794695059750
+  },
+  "before": {
+    "milk": 24,
+    "cups": 40,
+    "beans": 30
+  },
+  "after": {
+    "milk": 24,
+    "cups": 39,
+    "beans": 29
+  },
+  "players": 2,
+  "furniture": 10,
+  "errors": [],
+  "consoleErrors": [],
+  "failed": [],
+  "sockets": [
+    "ws://localhost:5192/ws"
+  ],
+  "insecureRequests": [
+    "http://localhost:5192/?demo=1",
+    "http://localhost:5192/assets/index-KKQoZbAC.js",
+    "http://localhost:5192/assets/index-DEXZzBEi.css",
+    "http://localhost:5192/api/integrations",
+    "http://localhost:5192/api/properties",
+    "http://localhost:5192/api/rooms",
+    "http://localhost:5192/favicon.svg",
+    "http://localhost:5192/favicon.svg",
+    "http://localhost:5192/api/rooms/8f42ad/qr",
+    "http://localhost:5192/api/integrations",
+    "http://localhost:5192/favicon.svg",
+    "http://localhost:5192/?room=8f42ad",
+    "http://localhost:5192/assets/index-KKQoZbAC.js",
+    "http://localhost:5192/assets/index-DEXZzBEi.css",
+    "http://localhost:5192/api/integrations",
+    "http://localhost:5192/api/properties",
+    "http://localhost:5192/favicon.svg",
+    "http://localhost:5192/api/rooms/8f42ad/qr",
+    "http://localhost:5192/api/integrations",
+    "http://localhost:5192/api/matterport/hou-midtown-1204"
+  ]
+}
