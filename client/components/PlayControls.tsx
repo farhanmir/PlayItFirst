@@ -31,6 +31,11 @@ export function PlayControls({ snapshot }: { snapshot: RoomSnapshot }) {
       if (k === "f") act("make_coffee");
       if (k === "r") act("serve");
       if (k === "q") act("restock");
+      if (k === " " || k === "enter") {
+        e.preventDefault();
+        const next = suggestedAction(useApp.getState().snapshot ?? snapshot, useApp.getState().you);
+        if (next) act(next);
+      }
     };
     const onUp = (e: KeyboardEvent) => keys.delete(e.key.toLowerCase());
     window.addEventListener("keydown", onDown);
@@ -101,7 +106,9 @@ export function PlayControls({ snapshot }: { snapshot: RoomSnapshot }) {
         </p>
       )}
       <p className="hint">
-        {mobile ? "Tap actions · drag pad to move" : "WASD move · E order · F brew · R serve · Q restock"}
+        {mobile
+          ? "Tap highlighted action · drag pad to move"
+          : "WASD move · Space next action · E order · F brew · R serve · Q restock"}
       </p>
       <div className="action-grid">
         {actions.map((a) => (
