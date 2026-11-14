@@ -1,67 +1,23 @@
-# Play It First — Implementation Alignment Report
+# Play It First — current alignment
 
-Living audit against the HackPrinceton product vision. Former names: **SoftOpen** / **PlayFirst** (storage keys still migrate).
+See [MASTER_PLAN.md](MASTER_PLAN.md) for the full original vision, detailed specifications, all nine prize targets, evidence and remaining acceptance gates. Audit baseline: main 02219b7, November 14, 2026. Latest recorded full tests: 82 JS + typecheck/build before Render-only cleanup; earlier 3 Python converter tests. No fresh run for this docs audit.
 
----
-
-## A. Current implementation
-
-### Architecture
-| Layer | Path | Role |
+| Area | Current evidence | Remaining |
 | --- | --- | --- |
-| Entry | `server/main.ts` | Single-port HTTP + Vite middleware + `/ws` |
-| Rooms | `server/rooms.ts` | Authoritative room state, 20 Hz snapshots, resume tokens |
-| Sim | `server/simulation.ts` | Customers, interact, layout, blueprint |
-| Contracts | `shared/types.ts`, `shared/stations.ts` | Shared DTOs + nearest-station hints |
-| Client | `client/App.tsx` → Landing / PropertySelect / Game | Zustand + R3F café |
-| Cameras | `client/components/CafeScene.tsx`, `client/lib/look.ts` | First / third / monitor / dollhouse |
+| Core gameplay | Real keyboard orders, brew, carry, serve, receipt; local and public browser | Latest build, physical phone touch, polished interactions |
+| Multiplayer | Public WSS, two clients, edit and resume | Physical QR, current SHA, restart |
+| Real property | Local authorized CoStar extract and measured Matterport single-floor reconstruction | Public data file/credentials, permission, walkthrough and real-floor public test |
+| Geometry | 12 rooms, 66 walls, 11 doors, 4 windows; collisions and routes tested | Actual shared counter move and measured outcome in public real suite |
+| Visuals | Original procedural café, improved character pass | Commercial-quality silhouettes/animation, lighting, camera, HUD and phone performance |
+| Build | Grid, ghosts, move/rotate, server validation | Direct drag/full ghosts, show causal route change |
+| Business manager | Real Deepagents graph, four tools, owner authorization, idempotency, local proof | Live Gemini plan/approve/execute/observe; authorization for sponsor context |
+| Messaging/voice | Local UI and WebRTC | Actual Photon providers and verified identity/approval |
+| Banking | Local validated ledger, legacy sandbox adapter | Real sandbox reconcile/provision/mirror receipts |
+| Director | Local operational events | Verify effects match choices, no metric manipulation |
+| Rival/timeline | Labeled heuristics | Reproducible A/B optional, no fake outcomes |
+| Blueprint | Downloadable Markdown | Real session evidence, assumptions and actionable export |
+| WebXR | Optional session entry/dollhouse | Actual headset testing, not required |
+| Hosting | Existing Render full stack; Vercel removed | Confirm active deployment and sponsor config |
+| Submission | Nine targets; ChatOverflow dropped | Eligibility, public repo audit, deadline, rehearsed demo |
 
-### User journey
-1. **Landing** — Play It First brand · Open Your Business / Join a Business / Judge demo  
-2. **Property** — CoStar-shaped listings; rent/size/traffic shown  
-3. **Game** — Build + Play + Ops/Table/Future/Plan  
-4. **Demo** `/?demo=1` — Midtown, open doors, rush boost  
-
-### Branding
-Product: **Play It First**. Tagline: *Play your business before you pay for it.*  
-Compat: `softopen.*` localStorage + legacy `playfirst.*` dual-write.
-
----
-
-## B. Requirement alignment
-
-| Requirement | Status | Notes |
-| --- | --- | --- |
-| Attractive playable café | **Full** | Procedural R3F interior |
-| First-person / character control | **Full** | FPS + third + monitor |
-| CoStar data layers | **Partial** | Live/mock; issue #2: matched real listing |
-| Matterport → layout | **Partial** | Embed + dims reconstruction; issue #2: matched scan |
-| Order lifecycle | **Full** | Station gates + brew timer |
-| Autonomous customers | **Full** | Personas + patience |
-| Finance from gameplay | **Full** | Sales/rent/equipment/inventory |
-| Multiplayer shared room | **Full** | WS authoritative |
-| Build mode | **Full** | Click-to-place + tabletop |
-| Live layout while playing | **Full** | Editor + tabletop |
-| Deepagents director | **Partial** | Local rules + LLM JSON; issue #2: real tools |
-| Photon 2.0 messaging | **Missing** | In-app chat/WebRTC only; issue #2 |
-| Launch blueprint | **Full** | Provenance labels |
-| Timeline / rival honesty | **Partial** | Issue #2: fix units / labels |
-
----
-
-## C. Decisions to retain
-
-1. Single-port Node + Vite + WS  
-2. Deterministic sim + optional LLM director  
-3. On-screen tabletop (reliable wow)  
-4. Property-dimension procedural café until authorized meshes  
-5. Optimistic client move + server snapshots  
-6. Café-only MVP  
-
----
-
-## D–F. Gaps & execution
-
-See **GitHub issue #2** and `docs/PROGRESS.md` for the P0 vertical-slice plan (real property pairing, causal director, Photon/Deepagents honesty).
-
-Current product name: **Play It First**, implemented directly on `main`. Repository: `farhanmir/PlayItFirst`. Legacy storage keys and hosting identifiers remain compatible.
+Prior public proof is [public-verification.json](screenshots/public-verification.json) (mock property). Local manager proof is [manager-verification.json](screenshots/manager-verification.json) (providerVerified false). Do not treat source configuration or prior test evidence as proof of current production. See [PROGRESS.md](PROGRESS.md) for chronology, [DEPLOY.md](DEPLOY.md) for exact verification and [HACKATHON.md](HACKATHON.md) for demo. Current architecture/decisions are specified in MASTER_PLAN; old reports are retained as historical evidence.
