@@ -1,0 +1,24 @@
+{
+  "oneWayLatencyMs": 150,
+  "roundTripLatencyMs": 300,
+  "moves": 18,
+  "regressions": 0,
+  "first": {
+    "t": "player_move",
+    "x": 2.524321993654133,
+    "z": 3.0433346180745033,
+    "seq": 2
+  },
+  "last": {
+    "t": "player_move",
+    "x": 4.000521346421869,
+    "z": 1.1830898729417483,
+    "seq": 19
+  },
+  "authoritative": {
+    "x": 4.000521346421869,
+    "z": 1.1830898729417483,
+    "moveAck": 19
+  },
+  "converged": true
+}

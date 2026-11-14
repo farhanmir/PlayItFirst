@@ -107,3 +107,13 @@ The same Render origin serves `manifest.webmanifest`, app icons and `sw.js`; no 
 The standalone game uses the phone viewport and safe areas. Movement and camera touch surfaces prevent browser panning; management panels retain their own vertical scrolling. The service worker caches only the public offline explanation, never rooms, API responses or gameplay pages. Internet is required. An update waits for old app tabs to close instead of reloading an active multiplayer shift.
 
 Verify physical iOS and Android installation, QR join, simultaneous joystick/look/action touches, release/cancel, rotation and safe areas before claiming real-phone acceptance. Chromium installability and device emulation are useful checks but do not replace this gate.
+
+## Corrected scan coordinates and room metadata
+
+Legacy private extracts produced by this repository are corrected at load time only when their exact old provenance and matching Matterport model ID identify the old importer. The Model API uses Z-up coordinates; the game uses Y-up, so the correct mapping is x/-y into game x/z. The version marker `matterport-api-x-neg-y-v1` prevents a second reflection. No manual edit to the existing Render secret file is required for this migration. New imports use the corrected convention directly.
+
+Existing server-side Matterport credentials optionally enrich that same model with room labels, room heights and opening elevations. Exact source IDs must match. Requests are bounded and cached, including failures; failed enrichment retains the corrected footprint. `floorPlan.metadataSource` and `metadataFetchedAt` identify successful source retrieval. Labels distinguish user labels from a single unambiguous detected classification. Missing or conflicting labels do not justify invented room functions.
+
+Fresh measured rooms distribute existing equipment to a verified Kitchen/Storage and dining destinations only if safe placement and routes exist. Otherwise the starter layout remains unchanged. Costs and item counts are preserved. Redeploy clears ephemeral rooms, so test in a fresh room.
+
+This is still a reconstruction. The file does not include original furnishing locations, textured mesh, ceiling beams or duct runs. Finish colors/patterns approximate the inspected walkthrough; missing vertical measurements use explicit estimates. Near-exact visual reproduction requires authorized additional source data; do not describe the game as an exact scan replica.
