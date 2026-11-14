@@ -19,6 +19,11 @@ await loadProperties();
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const production = process.env.NODE_ENV === "production";
 const port = Number(process.env.PORT || 5173);
+/** Comma-separated browser origins allowed to call this API/WS when frontends are split. */
+const allowedOrigins = (process.env.CORS_ORIGINS || process.env.FRONTEND_ORIGIN || "")
+  .split(",")
+  .map((value) => value.trim())
+  .filter(Boolean);
 
 const server = http.createServer();
 const wss = new WebSocketServer({ noServer: true, maxPayload: 1 * 1024 * 1024 });
@@ -66,6 +71,40 @@ function originFor(req: IncomingMessage): string {
   return requestOrigin(req.headers.host, req.headers["x-forwarded-proto"], encrypted);
 }
 
+function joinOrigin(req: IncomingMessage, bodyOrigin?: string): string {
+  const header = req.headers["x-softopen-public-origin"];
+  const fromHeader = Array.isArray(header) ? header[0] : header;
+  const candidate = (bodyOrigin || fromHeader || "").trim();
+  if (/^https?:\/\//i.test(candidate)) return candidate.replace(/\/+$/, "");
+  return originFor(req);
+}
+
+function applyCors(req: IncomingMessage, res: ServerResponse) {
+  const origin = req.headers.origin;
+  if (!origin) return;
+  if (allowedOrigins.length === 0 || allowedOrigins.includes(origin) || allowedOrigins.includes("*")) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
+    res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-SoftOpen-Public-Origin");
+  }
+}
+
+function readJson(req: IncomingMessage): Promise<Record<string, unknown>> {
+  return new Promise((resolveBody) => {
+    const chunks: Buffer[] = [];
+    req.on("data", (chunk) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
+    req.on("end", () => {
+      try {
+        resolveBody(JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}") as Record<string, unknown>);
+      } catch {
+        resolveBody({});
+      }
+    });
+    req.on("error", () => resolveBody({}));
+  });
+}
+
 function json(res: ServerResponse, status: number, data: unknown) {
   res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
   res.end(JSON.stringify(data));
@@ -99,6 +138,12 @@ async function serveDist(pathname: string, req: IncomingMessage, res: ServerResp
 
 server.on("request", (req, res) => {
   void (async () => {
+    applyCors(req, res);
+    if (req.method === "OPTIONS") {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
     const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
 
     if (url.pathname === "/api/properties") {
@@ -140,8 +185,9 @@ server.on("request", (req, res) => {
     }
 
     if (url.pathname === "/api/rooms" && req.method === "POST") {
+      const body = await readJson(req);
       const created = rooms.createRoom();
-      const join = rooms.joinUrl(originFor(req), created.code);
+      const join = rooms.joinUrl(joinOrigin(req, typeof body.publicOrigin === "string" ? body.publicOrigin : undefined), created.code);
       json(res, 200, {
         code: created.code,
         url: join,
@@ -157,7 +203,7 @@ server.on("request", (req, res) => {
         json(res, 404, { error: "Room not found" });
         return;
       }
-      const join = rooms.joinUrl(originFor(req), code);
+      const join = rooms.joinUrl(joinOrigin(req), code);
       json(res, 200, { code, url: join, qrSvg: qrSvg(join) });
       return;
     }

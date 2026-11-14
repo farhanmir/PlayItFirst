@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { PropertyListing } from "../../shared/types";
+import { apiUrl } from "../lib/api";
 
 interface MatterportModel {
   propertyId: string;
@@ -19,7 +20,7 @@ export function MatterportPanel({ property }: { property: PropertyListing }) {
   useEffect(() => {
     let cancelled = false;
     setError(null);
-    void fetch(`/api/matterport/${encodeURIComponent(property.id)}`)
+    void fetch(apiUrl(`/api/matterport/${encodeURIComponent(property.id)}`))
       .then(async (r) => {
         if (!r.ok) throw new Error("Matterport lookup failed");
         return (await r.json()) as MatterportModel;

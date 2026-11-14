@@ -3,6 +3,7 @@
  * adapted from Gitzilla's client/app/net.ts pattern for SoftOpen.
  */
 import type { ClientMsg, PlayerRole, ServerMsg } from "../../shared/types";
+import { wsUrl } from "./api";
 import { getResumeToken, setResumeToken } from "./storage";
 
 export type ConnStatus = "connecting" | "open" | "closed";
@@ -30,8 +31,7 @@ export function connect(room: string, name: string, role?: PlayerRole): Conn {
     if (closed) return;
     if (ws && (ws.readyState === 0 || ws.readyState === 1)) return;
     setStatus("connecting");
-    const proto = location.protocol === "https:" ? "wss:" : "ws:";
-    const sock = new WebSocket(`${proto}//${location.host}/ws`);
+    const sock = new WebSocket(wsUrl());
     ws = sock;
     sock.onopen = () => {
       retry = 0;

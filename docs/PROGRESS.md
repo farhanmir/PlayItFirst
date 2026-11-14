@@ -3,35 +3,40 @@
 Tracking **P0: Prove real-property playable vertical slice and replace sponsor stand-ins**  
 https://github.com/farhanmir/SoftOpen/issues/2
 
-Branch: `cursor/softopen-rebrand-078f` (also carries SoftOpen rebrand).
+Also following **AGENTS.md game-first direction** committed at `65cfb6f`.
+
+Branch: `main` (direct commits per owner request).
 
 ## Done this session
 
 | Item | Status |
 | --- | --- |
-| Rebrand PlayFirst → SoftOpen | ✅ Separate commit `refactor: rebrand PlayFirst to SoftOpen` |
-| Director choices mutate ops state (place machine, menuReduced, rushBoost, charges) instead of inventing queue/wait metrics | ✅ |
-| Prevent double-resolving director charges | ✅ |
-| TimelineCompare units + illustrative labeling | ✅ |
-| Photon / Deepagents badges honest (not Photon 2.0 / tool runtime partial) | ✅ |
-| photon_reply “stop large orders” uses menuReduced/rushBoost | ✅ |
-| Property cards label CoStar mock vs live + Matterport stand-in | ✅ |
+| Economy / navigation defects from QA PR #5 | ✅ Merged to main (`serve` needs a drink + ticket, no clock auto-sales, collect does not mint cash, restock/wages need funds, station clearance + sealed-path reject) |
+| Immersive full-viewport game shell | ✅ Canvas fills the viewport; manage panels live in an Esc drawer |
+| Contextual E / Space interact | ✅ One primary action prompt; desktop action grid hidden during immersive play |
+| Daylight café look + character polish | ✅ Warmer lighting/sky windows, walking legs, larger order bubbles, held cup / steam |
+| Sims build overlay (Tab) | ✅ Local editor camera + catalog; room can stay open for other players |
+| Judge demo no longer auto-plays the first order | ✅ Parks the host at the counter; player takes the order |
+| Vercel + Railway split config | ✅ `vercel.json`, `.env.example`, `docs/DEPLOY.md`, `VITE_API_BASE_URL` / `VITE_WS_URL` / `VITE_PUBLIC_ORIGIN`, CORS + public-origin QR |
+| Vertical-slice regression tests | ✅ 58 passing (includes former todos) |
 
-## Still blocked / needs team or sponsor access
+## Still blocked / needs team or owner
 
 | Item | Blocker |
 | --- | --- |
-| Matched CoStar listing + Matterport scan for demo property | Need authorized event toolkit credentials / dataset; bundled `data/properties.json` remains **costar-mock** with showcase stand-in model IDs |
-| Real LangChain Deepagents tool runtime | Need `DEEPAGENTS_*` / package wiring beyond LLM JSON; current path is local rules + optional hosted JSON |
-| Photon 2.0 iMessage / provider messaging | Need Photon provisioned channel + secrets — escalate; keep crew WebRTC separate |
-| Judge phone join over public HTTPS/WSS | Need deployed SoftOpen URL (not localhost); LAN IP works for same Wi‑Fi demos |
+| Matched CoStar listing + Matterport scan | Event toolkit credentials unset |
+| Hosted Deepagents runtime | No `DEEPAGENTS_*` / model keys; local `getCafeState` / `reorderSupplies` / `adjustStaffing` tools exist |
+| Photon 2.0 messaging | No provider token; crew WebRTC + in-app chat remain labeled |
+| Public HTTPS/WSS URL | Needs owner Vercel + Railway projects; configs are ready |
+| Physical phone playtest | Not run in this cloud environment |
 
 ## Acceptance checklist
 
-- [x] `npm test` / `typecheck` / `build` green after rebrand + causal director
-- [ ] Two real clients (desktop + phone) paid order + shared layout edit — needs deploy/LAN
+- [x] `npm test` / `typecheck` / `build` green after economy + immersive UI
+- [ ] Two real clients on a public HTTPS/WSS origin
 - [ ] Documented real property source IDs once toolkit available
 - [x] Illustrative timeline/rival clearly labeled
+- [ ] Browser screenshots of immersive play + build mode captured in this run
 
 ## SoftOpen
 

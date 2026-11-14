@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { apiUrl } from "../lib/api";
 
 interface Integrations {
   costar: string;
@@ -14,7 +15,7 @@ export function IntegrationsBadge() {
   const [info, setInfo] = useState<Integrations | null>(null);
 
   useEffect(() => {
-    void fetch("/api/integrations")
+    void fetch(apiUrl("/api/integrations"))
       .then((r) => r.json())
       .then((d: Integrations) => setInfo(d))
       .catch(() => undefined);
