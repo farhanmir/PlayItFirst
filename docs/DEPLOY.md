@@ -73,3 +73,29 @@ In the old hosting dashboard, confirm the project is linked to farhanmir/PlayItF
 - [ ] Furniture move on one client appears on the other
 - [ ] One paid order updates cash and inventory once
 - [ ] No secrets in the client bundle (`VITE_*` only)
+
+
+## Nessie V2 business banking
+
+Use the existing Render service Environment or ignored local `.env`:
+
+```dotenv
+NESSIE_KEY=
+NESSIE_URL=https://v2-prod-api.nessieisreal.com
+```
+
+Keep the actual key out of Git, browser variables, issue comments, screenshots and client bundles. Authentication uses a server-side Bearer header. The contract is the sponsor's [current OpenAPI](https://v2.nessieisreal.com/openapi.yaml). Account/transaction amounts use integer cents; bill amounts use dollars. No key means the local simulated ledger only.
+
+The room owns one sandbox checking-account session. Opening funds already include the game’s opening rent and equipment deductions; those historical charges are not sent again. Accepted sales become deposits, supplies/equipment become merchant purchases, and other operating costs become withdrawals. A future rent bill records the selected property's monthly asking rent as a simulated recurring obligation. It is not paid automatically by the game and does not charge opening rent again. No lease or real-money payment is created.
+
+Reconciliation retrieves provider account, transaction and bill records. The finance menu and Jamie distinguish local cash from the last retrieved sandbox balance, available funds, pending receipts, failures, unconfirmed writes, and upcoming obligations. Local approval and inventory safeguards remain authoritative; a recommendation is not an authorization to spend.
+
+### Acceptance when a sandbox key is available
+
+1. Configure the key on the server and start a fresh synthetic-property room. Confirm the provider account reflects the room's opening cash, including cents.
+2. Manually serve one coffee. Approve exactly one $35 supply delivery through the existing manager. Repeat the same approval ID and verify only one local charge and one provider purchase.
+3. Retrieve the provider account, matching transaction IDs/descriptions and future rent bill. Wait for provider settlement; compare posted and available balances with local cash and explain any pending holds or discrepancy. HTTP acceptance alone is not settlement.
+4. Reconnect a second browser to the same room and compare local receipts and external statuses. Test insufficient local funds, explicit provider rejection and an ambiguous timeout. Never automatically replay an unknown external write.
+5. Record the deployed commit and actual redacted provider receipts in PROGRESS.md/issue #10. Mocked tests do not satisfy live sandbox acceptance.
+
+Rooms and reconciliation queues remain in memory. Reconnecting to a surviving room retains its synchronization state. Restart/redeploy loses the room and its pending queue; a new room creates a separate sandbox session and does not automatically relink or replay the old account. Inspect old provider records manually before any recovery action. This is not durable banking recovery.

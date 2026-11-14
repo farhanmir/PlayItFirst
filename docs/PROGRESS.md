@@ -204,3 +204,18 @@ At 23:07:49 UTC, actual keyboard service on the public measured floor passed: ta
 Physical-phone QR/touch/performance, public measured counter-rerouting, current successful Gemini attribution, actual Photon/Nessie receipts, sponsor permissions and final human visual-quality acceptance remain open. No complete release claim.
 
 Public SHA clarification: health immediately after the successful 23:07:49 service run reported `0b6dcd7d0fc9ffb3e4b56352335929d17c43f5f8`. The service script did not record its starting SHA. `b2ff7ee` belongs to the earlier smoke/render check; do not assign it to the later service run. These intervening commits changed tests/evidence only.
+
+
+## Nessie business context completion — live key deferred
+
+Safely fetched and fast-forwarded through `07e55e5`, `c3b53ae` and `aad93c5`, retaining teammate game fixes, safe manager diagnostics, explicit dollar units and recorded public Gemini proof. The newest canonical plan puts Nessie LAST. Completed the already-requested bounded pass without adding reserve/loan scope; no live banking calls or configuration were attempted, per the owner's instruction to ignore the key.
+
+- Existing V2 account/deposit/withdrawal adapter is preserved. Added documented merchant purchases for inventory/equipment, fetched available funds and bills, and a next-calendar-month recurring rent bill. Bill API uses dollars; purchases use integer cents. Opening rent/equipment are already deducted from the initial account balance, and no automatic rent payment is added.
+- Retained stable local receipt IDs, bounded queue, explicit rejected/unknown states and no automatic replay. Reconciliation compares against current local cash even when a sale occurs during asynchronous reads. Unsupported provider pagination fails visibly rather than claiming a complete reconciliation.
+- Existing Jamie inspect/outcome tools now include local cashflow, actual retrieved bank state, freshness/errors, upcoming obligations and receipt states. All monetary tool values are USD dollars, including converted provider cents. Approvals and authoritative local affordability remain unchanged; local success is not called bank settlement.
+- Existing finance menu shows exact cents, local versus retrieved cash/available balance, bill details, provider receipt IDs and simulated-only/pending/confirmed/failed/unknown states. No separate banking dashboard.
+- Owner-only property selection, duplicate-selection no-op and resumed-socket ownership preserve an existing banking session across reconnects. Restart remains ephemeral: no automatic relink/replay, no durable banking-recovery claim.
+
+Verification: `npm test` **132 tests across24 files passed**, `npm run typecheck` passed, `npm run build` passed with the existing bundle-size warning. Finance tests include merchant contracts, dollar/cents units, opening funds, insufficient provider funds, declined settlement, duplicates, ambiguous timeout, capacity and concurrent reconciliation. WebSocket tests cover duplicate selection, guest rejection and reconnect preservation. Actual Chromium production-build menu rendered $11,690.00 and exact opening expenses with explicit simulated-only status and zero page errors. Provider-state UI used synthetic rendering assertions; no actual Nessie account, sale, purchase or bill is verified.
+
+Configuration and future acceptance steps are in DEPLOY.md and .env.example. Nessie key/live settlement remain deferred; core game, Photon and submission retain the canonical priority.

@@ -22,6 +22,63 @@ function setup(options: ConstructorParameters<typeof CafeManager>[1] = {}) {
 }
 
 describe("room-scoped manager consent and transactions", () => {
+  it("gives the existing tools retrieved sandbox funds, bills and receipt status without claiming settlement", async () => {
+    const observations: any[] = [];
+    const { manager, change } = setup({ configured: () => true, now: () => 100_000,
+      runner: async ({ tools, approvedId }) => {
+        observations.push(tools.inspect());
+        if (approvedId) tools.execute(approvedId);
+        else tools.propose("reorder_supplies", "Inspect available funds and upcoming rent before approval.");
+        observations.push(tools.outcome());
+        return "Reviewed the recorded financial evidence.";
+      } });
+    change((state) => ({ ...state, finance: { ...state.finance, balance: 100,
+      nessieSync: { status: "ready", openingCents: 10000, accountId: "sandbox-account", checkedAt: 99_000,
+        remoteBalanceCents: 12500, remoteAvailableCents: 9000, differenceCents: 2500,
+        billSetupStatus: "confirmed", billsCheckedAt: 99_000,
+        bills: [
+          { id: "rent", payee: "Cafe rent", amountCents: 12000, dueDate: "2026-12-14", status: "recurring" },
+          { id: "old", payee: "Old bill", amountCents: 5000, dueDate: "2026-11-01", status: "completed" },
+        ], records: [{ localId: "sale", remoteId: "provider-sale", amountCents: 700, status: "pending" }] } } }));
+    const plan = await manager.request(owner, "Inspect cash flow and bills");
+    const financial = observations[0].financialContext;
+    expect(financial.local.operatingCashUSD).toBe(100);
+    expect(financial.monetaryUnit).toContain("already been converted");
+    expect(financial.sandbox.bills[0].amountUSD).toBe(120);
+    expect(financial.sandbox.receipts[0].amountUSD).toBe(7);
+    expect(JSON.stringify(financial)).not.toMatch(/"[^"]*Cents"\s*:/);
+    expect(financial.sandbox).toMatchObject({ balanceUSD: 125, availableUSD: 90, differenceFromLocalUSD: 25,
+      freshness: "recent", outstandingScheduledBillsUSD: 120, localCashAfterRecordedBillsUSD: -20 });
+    expect(financial.sandbox.receipts[0]).toMatchObject({ remoteId: "provider-sale", status: "pending" });
+    expect(financial.sandbox.interpretation).toContain("not confirmed settlement");
+    expect(observations[1].current.financialContext).toEqual(financial);
+    // Provider state is observational. A stale/incorrect remote balance cannot
+    // bypass the authoritative game budget, even with an approved proposal.
+    change((state) => ({ ...state, finance: { ...state.finance, balance: 10 } }));
+    const result = await manager.approve(owner, plan.proposals[0].id);
+    expect(result.proposals[0].status).toBe("failed");
+    expect(observations.at(-1).current.financialContext.local.operatingCashUSD).toBe(10);
+  });
+
+  it("marks unfetched and stale banking evidence explicitly in tool and local recommendations", async () => {
+    const observations: any[] = [];
+    const captured = setup({ configured: () => true, now: () => 100_000, runner: async ({ tools }) => {
+      observations.push(tools.inspect()); return "Inspected";
+    } });
+    await captured.manager.request(owner, "Inspect funds");
+    expect(observations[0].financialContext.sandbox).toMatchObject({ status: "simulated-only", freshness: "not-fetched", availableUSD: null });
+    captured.change((state) => ({ ...state, finance: { ...state.finance, nessieSync: {
+      status: "ready", openingCents: 10000, checkedAt: 1, remoteBalanceCents: 10000, remoteAvailableCents: 8000,
+      records: [], error: "Sandbox reconciliation failed; local funds are unchanged.",
+    } } }));
+    await captured.manager.request(owner, "Inspect funds again");
+    expect(observations[1].financialContext.sandbox).toMatchObject({ freshness: "stale", availableUSD: 80 });
+    expect(observations[1].financialContext.sandbox.error).toContain("failed");
+    const local = setup();
+    expect((await local.manager.request(owner, "Inspect budget")).summary).toContain("Nessie available funds have not been fetched");
+    expect(local.manager.getView().summary).toContain("absence is not proof");
+  });
+
   it.each([
     [{ statusCode: 429 }, "rate limit or quota"],
     [{ cause: { status: 400 } }, "tool schema"],

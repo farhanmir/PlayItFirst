@@ -1,10 +1,65 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createServer } from "node:http";
 import { WebSocketServer, WebSocket } from "ws";
 import { CafeRoomServer } from "./rooms.ts";
 import { seedDemoCrowd } from "./simulation.ts";
 
 describe("multiplayer room smoke", () => {
+  it("preserves the banking session on duplicate selection and owner resume", async () => {
+    vi.stubEnv("NESSIE_KEY", "");
+    const httpServer = createServer();
+    const wss = new WebSocketServer({ server: httpServer });
+    const rooms = new CafeRoomServer(wss);
+    const created = rooms.createRoom();
+    const room = rooms.getRoom(created.code)!;
+    const clients: WebSocket[] = [];
+    try {
+      await new Promise<void>((resolve) => httpServer.listen(0, resolve));
+      const port = (httpServer.address() as { port: number }).port;
+      const owner = await connectClient(port, created.code, "Owner", "owner");
+      clients.push(owner.ws);
+      const propertyId = rooms.listProperties()[0].id;
+      const selected = waitForSnapshot(owner.ws, (s) => s.property?.id === propertyId);
+      owner.ws.send(JSON.stringify({ t: "select_property", propertyId }));
+      await selected;
+      clearInterval(room.stepTimer); clearInterval(room.snapshotTimer); clearInterval(room.directorTimer);
+      const finance = room.snapshot.finance;
+      // A pending external receipt must remain the SAME session object; creating
+      // another finance session would permit duplicate account provisioning.
+      const sync = finance.nessieSync = { status: "ready", accountId: "sandbox-test-account", openingCents: Math.round(finance.balance * 100), records: [] };
+      const duplicate = waitForSnapshot(owner.ws, () => true);
+      owner.ws.send(JSON.stringify({ t: "select_property", propertyId }));
+      await duplicate;
+      expect(room.snapshot.finance).toBe(finance);
+      expect(room.snapshot.finance.nessieSync).toBe(sync);
+
+      const guest = await connectClient(port, created.code, "Guest", "barista");
+      clients.push(guest.ws);
+      const denied = waitFor(guest.ws, (m) => m.t === "error");
+      guest.ws.send(JSON.stringify({ t: "select_property", propertyId }));
+      expect((await denied).message).toMatch(/Only the owner/);
+      expect(room.snapshot.finance).toBe(finance);
+
+      const resumed = await connectClient(port, created.code, "Owner", "owner", owner.welcome.token);
+      clients.push(resumed.ws);
+      expect(resumed.welcome.you).toBe(owner.welcome.you);
+      owner.ws.terminate();
+      // Deliver the old socket close after the replacement has taken ownership.
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      const afterResume = waitForSnapshot(resumed.ws, () => true);
+      resumed.ws.send(JSON.stringify({ t: "select_property", propertyId }));
+      await afterResume;
+      expect(room.snapshot.finance).toBe(finance);
+      expect(room.snapshot.finance.nessieSync).toBe(sync);
+      expect(room.snapshot.finance.transactions).toEqual(finance.transactions);
+    } finally {
+      clearInterval(room.stepTimer); clearInterval(room.snapshotTimer); clearInterval(room.directorTimer);
+      clients.forEach((ws) => ws.terminate()); wss.close();
+      await new Promise<void>((resolve, reject) => httpServer.close((err) => err ? reject(err) : resolve()));
+      vi.unstubAllEnvs();
+    }
+  }, 15000);
+
   it("exports an owner's blueprint without interrupting another player's order", async () => {
     const httpServer = createServer();
     const wss = new WebSocketServer({ server: httpServer });
@@ -95,14 +150,14 @@ describe("multiplayer room smoke", () => {
   }, 15000);
 });
 
-async function connectClient(port: number, room: string, name: string, role: string) {
+async function connectClient(port: number, room: string, name: string, role: string, resume?: string) {
   const ws = new WebSocket(`ws://127.0.0.1:${port}`);
   await new Promise<void>((resolve, reject) => {
     ws.once("open", () => resolve());
     ws.once("error", reject);
   });
   const welcomeP = waitFor(ws, (m) => m.t === "welcome");
-  ws.send(JSON.stringify({ t: "hello", room, name, role }));
+  ws.send(JSON.stringify({ t: "hello", room, name, role, resume }));
   const welcome = await welcomeP;
   return { ws, welcome };
 }
