@@ -71,3 +71,78 @@ describe("Nessie v2 mirroring", () => {
     expect(finance.nessieSync?.overflow).toBe(true);
   });
 });
+
+describe("business banking resources", () => {
+  it("uses merchant purchases for supply/equipment and does not provision a merchant twice", async () => {
+    vi.stubEnv("NESSIE_KEY", "nsk_test");
+    const calls: { url: string; body: any }[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (url, options) => {
+      const body = JSON.parse(options.body ?? "{}"); calls.push({ url, body });
+      if (url.endsWith("/customers")) return response({ id: "customer" });
+      if (url.endsWith("/accounts")) return response({ id: "account" });
+      if (url.endsWith("/merchants")) return response({ id: `merchant-${body.category}` });
+      return response({ id: `purchase-${calls.length}`, amount_cents: body.amount_cents, status: "pending" });
+    }));
+    let f = createFinance(5000); attachNessieAccount(f); await flush();
+    f = applyTransaction(f, "Supply", -35, "inventory"); await flush();
+    f = applyTransaction(f, "Supply", -35, "inventory"); await flush();
+    f = applyTransaction(f, "Machine", -1800, "equipment"); await flush();
+    expect(calls.filter(c => c.url.endsWith("/merchants"))).toHaveLength(2);
+    const purchases = calls.filter(c => c.url.endsWith("/purchases"));
+    expect(purchases.map(c => c.body.amount_cents)).toEqual([3500, 3500, 180000]);
+    expect(purchases[0].body.merchant_id).toBe("merchant-inventory");
+    expect(f.nessieSync?.records.every(r => r.kind === "purchase" && r.status === "pending")).toBe(true);
+  });
+  it("creates upcoming recurring rent in dollars without a payment or second local rent charge", async () => {
+    vi.stubEnv("NESSIE_KEY", "nsk_test");
+    const fetcher = vi.fn().mockImplementationOnce(() => response({id:"customer"})).mockImplementationOnce(() => response({id:"account"}))
+      .mockImplementationOnce((_url, options) => { const b=JSON.parse(options.body); return response({id:"rent",account_id:"account",payee:b.payee,payment_amount:b.payment_amount,upcoming_payment_date:b.payment_date,status:b.status}); });
+    vi.stubGlobal("fetch",fetcher);
+    const f=createFinance(4842.50); attachNessieAccount(f,()=>{},{monthlyRent:11047.50}); await flush();
+    expect(fetcher).toHaveBeenCalledTimes(3);
+    expect(JSON.parse(fetcher.mock.calls[2][1].body)).toMatchObject({payment_amount:11047.50,recurring_date:1,status:"recurring"});
+    expect(f.balance).toBe(4842.50); expect(f.transactions).toHaveLength(0);
+    expect(f.nessieSync?.bills?.[0].amountCents).toBe(1104750);
+    expect(f.nessieSync?.bills?.[0].dueDate).toBe(new Date(Date.UTC(new Date().getUTCFullYear(),new Date().getUTCMonth()+1,1)).toISOString().slice(0,10));
+  });
+  it("fetches actual upcoming bills and available funds without paying them", async () => {
+    vi.stubEnv("NESSIE_KEY","nsk_test");
+    const f=createFinance(100); f.nessieSync={status:"ready",openingCents:10000,accountId:"account",records:[],billSetupStatus:"confirmed"};
+    const fetcher=vi.fn().mockImplementationOnce(()=>response({balance_cents:10000,available_cents:6500})).mockImplementationOnce(()=>response({items:[]}))
+      .mockImplementationOnce(()=>response({items:[{id:"bill",account_id:"account",payee:"Rent",payment_amount:1500.25,upcoming_payment_date:"2026-12-01",status:"recurring"}]}));
+    vi.stubGlobal("fetch",fetcher); await reconcileNessie(f);
+    expect(f.nessieSync.remoteAvailableCents).toBe(6500); expect(f.nessieSync.bills?.[0].amountCents).toBe(150025);
+    expect(f.nessieSync.billsCheckedAt).toBeGreaterThan(0); expect(fetcher.mock.calls.every(([,o])=>o.method==="GET")).toBe(true);
+  });
+  it("rejects non-sandbox URLs before sending credentials", async () => {
+    vi.stubEnv("NESSIE_KEY","nsk_test"); vi.stubEnv("NESSIE_URL","https://example.com");
+    const fetcher=vi.fn(); vi.stubGlobal("fetch",fetcher); const f=createFinance(100); attachNessieAccount(f); await flush();
+    expect(fetcher).not.toHaveBeenCalled(); expect(f.nessieSync?.status).toBe("unknown");
+  });
+  it("does not recreate an attached account after repeated attach or simulate restart recovery", async () => {
+    vi.stubEnv("NESSIE_KEY","nsk_test"); const fetcher=vi.fn();vi.stubGlobal("fetch",fetcher);
+    const f=createFinance(100);f.nessieSync={status:"unknown",openingCents:10000,records:[]};
+    attachNessieAccount(f); attachNessieAccount(f); await flush(); expect(fetcher).not.toHaveBeenCalled();
+  });
+});
+
+describe("purchase safety", () => {
+  it.each(["insufficient", "declined"])("preserves local purchase and reports %s provider funds outcome", async (outcome) => {
+    vi.stubEnv("NESSIE_KEY","nsk_test");
+    const fetcher=vi.fn().mockImplementationOnce(()=>response({id:"customer"})).mockImplementationOnce(()=>response({id:"account"}))
+      .mockImplementationOnce(()=>response({id:"supplier"})).mockImplementationOnce(()=>outcome === "insufficient" ? Promise.resolve(new Response("{}",{status:422})) : response({id:"purchase",amount_cents:3500,status:"declined"}));
+    vi.stubGlobal("fetch",fetcher);let f=createFinance(100);attachNessieAccount(f);await flush();
+    f=applyTransaction(f,"Approved supply",-35,"inventory");await flush();
+    expect(f.balance).toBe(65);expect(f.nessieSync?.records[0].status).toBe("failed");expect(fetcher).toHaveBeenCalledTimes(4);
+  });
+  it("compares against latest local funds when a sale arrives during a read", async () => {
+    vi.stubEnv("NESSIE_KEY","nsk_test");
+    let release!: (r: Response) => void;
+    const fetcher=vi.fn().mockImplementationOnce(()=>response({id:"customer"})).mockImplementationOnce(()=>response({id:"account"}));
+    vi.stubGlobal("fetch",fetcher);let f=createFinance(100);attachNessieAccount(f);await flush();
+    fetcher.mockImplementationOnce(()=>new Promise<Response>(resolve=>{release=resolve;})).mockImplementationOnce(()=>response({items:[]}))
+      .mockImplementationOnce(()=>response({id:"sale",amount_cents:700,status:"pending"}));
+    const check=reconcileNessie(f);f=applyTransaction(f,"Coffee",7,"sales");release(new Response(JSON.stringify({balance_cents:10000,available_cents:10000})));await check;
+    expect(f.nessieSync?.differenceCents).toBe(-700);
+  });
+});

@@ -123,9 +123,15 @@ export interface NessieSync {
   error?: string;
   overflow?: boolean;
   remoteBalanceCents?: number;
+  remoteAvailableCents?: number;
+  merchantIds?: Partial<Record<"inventory" | "equipment", string>>;
+  billSetupStatus?: "pending" | "confirmed" | "failed" | "unknown";
+  billError?: string;
+  billsCheckedAt?: number;
+  bills?: { id: string; payee: string; amountCents: number; dueDate: string; status: string }[];
   differenceCents?: number;
   checkedAt?: number;
-  records: { localId: string; amountCents: number; status: "queued" | "pending" | "confirmed" | "failed" | "unknown"; remoteId?: string }[];
+  records: { localId: string; amountCents: number; category?: Transaction["category"]; kind?: "deposit" | "withdrawal" | "purchase"; status: "queued" | "pending" | "confirmed" | "failed" | "unknown"; remoteId?: string }[];
 }
 
 export interface FinanceState {
