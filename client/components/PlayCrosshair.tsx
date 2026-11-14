@@ -17,11 +17,12 @@ export function PlayCrosshair({
   const label = stationLabel(station);
   const prompt = useMemo(() => actionPrompt(snapshot, you), [snapshot, you]);
 
-  if (mode !== "first" && mode !== "third") return null;
+  // Third-person already has the bottom contextual prompt — keep the reticle for FP only.
+  if (mode !== "first") return null;
 
   return (
-    <div className={`play-crosshair ${mode}`} aria-hidden={mode !== "first"}>
-      {mode === "first" ? <span className="reticle" /> : null}
+    <div className={`play-crosshair ${mode}`}>
+      <span className="reticle" />
       <div className="crosshair-prompt">
         <strong>{label ?? "Café floor"}</strong>
         <span>{prompt}</span>

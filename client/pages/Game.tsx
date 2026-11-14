@@ -77,7 +77,7 @@ export function Game() {
           const next = !open;
           play("ui", 0.25);
           if (next) {
-            setDrawerOpen(true);
+            setDrawerOpen(false);
             setDrawerTab("build");
             setViewMode("monitor");
             setUserPickedView(true);
@@ -129,7 +129,7 @@ export function Game() {
   const enterBuild = () => {
     play("ui", 0.25);
     setBuildMode(true);
-    setDrawerOpen(true);
+    setDrawerOpen(false);
     setDrawerTab("build");
     setViewMode("monitor");
     setUserPickedView(true);
@@ -187,12 +187,17 @@ export function Game() {
         </div>
 
         {buildMode ? (
-          <div className="build-banner" role="status">
-            <strong>Build mode</strong>
-            <span>
-              {buildKind ? "Click the floor to place · drag pieces live for everyone" : "Pick furniture · others keep serving"}
-            </span>
-          </div>
+          <>
+            <div className="build-banner" role="status">
+              <strong>Build mode</strong>
+              <span>
+                {buildKind ? "Click the floor to place · syncs live for everyone" : "Pick furniture · others keep serving"}
+              </span>
+            </div>
+            <aside className="build-catalog" aria-label="Furniture catalog">
+              <BuildPanel snapshot={snapshot} liveEdit />
+            </aside>
+          </>
         ) : null}
       </div>
 
@@ -214,7 +219,11 @@ export function Game() {
               onClick={() => {
                 play("ui", 0.2);
                 setDrawerTab(id);
-                if (id === "build") enterBuild();
+                if (id === "build") {
+                  enterBuild();
+                  return;
+                }
+                setBuildMode(false);
               }}
             >
               {label}

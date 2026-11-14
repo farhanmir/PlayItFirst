@@ -25,22 +25,20 @@ export function OrderRail({
       </div>
       <div className="order-rail-scroll">
         {active.length === 0 && <p className="order-empty">Waiting for the next guest…</p>}
-        {active.slice(0, compact ? 4 : 8).map((c) => (
+        {active.slice(0, compact ? 3 : 8).map((c) => (
           <article key={c.id} className={`ticket persona-${c.persona} state-${c.state}`}>
             <header>
               <strong>{c.name}</strong>
-              <span>{PERSONA[c.persona].label}</span>
+              {!compact ? <span>{PERSONA[c.persona].label}</span> : <span>{c.state}</span>}
             </header>
             <p className="order-line">{c.order ? titleCase(c.order) : titleCase(c.preference)}</p>
             {!compact ? (
               <div className="ticket-meta">
                 <span>{PERSONA[c.persona].hint}</span>
-                <span className="patience">Wait {Math.max(0, Math.round(c.patience))}</span>
+                <span className="patience">{patienceLabel(c.patience)}</span>
               </div>
-            ) : (
-              <span className="patience">Wait {Math.max(0, Math.round(c.patience))}</span>
-            )}
-            <div className="ticket-bar">
+            ) : null}
+            <div className="ticket-bar" title={patienceLabel(c.patience)}>
               <i style={{ width: `${Math.min(100, Math.round((c.patience / 280) * 100))}%` }} />
             </div>
           </article>
@@ -52,4 +50,11 @@ export function OrderRail({
 
 function titleCase(s: string) {
   return s.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function patienceLabel(patience: number) {
+  if (patience > 180) return "Calm";
+  if (patience > 90) return "Waiting";
+  if (patience > 35) return "Impatient";
+  return "Leaving soon";
 }

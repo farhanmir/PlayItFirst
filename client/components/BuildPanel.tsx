@@ -66,27 +66,33 @@ export function BuildPanel({
         ))}
       </div>
       <div className="build-actions">
-        <button
-          className="btn"
-          type="button"
-          onClick={() => {
-            play("open");
-            set({ buildKind: null });
-            conn?.send({ t: "open_cafe" });
-          }}
-        >
-          Open for business
-        </button>
-        <button
-          className="btn btn-ghost"
-          type="button"
-          onClick={() => {
-            set({ buildKind: null });
-            conn?.send({ t: "set_phase", phase: "play" });
-          }}
-        >
-          Preview play camera
-        </button>
+        {!snapshot.open ? (
+          <button
+            className="btn"
+            type="button"
+            onClick={() => {
+              play("open");
+              set({ buildKind: null });
+              conn?.send({ t: "open_cafe" });
+            }}
+          >
+            Open for business
+          </button>
+        ) : (
+          <p className="build-place-hint muted">Doors are open — edits sync live while the floor keeps serving.</p>
+        )}
+        {!liveEdit ? (
+          <button
+            className="btn btn-ghost"
+            type="button"
+            onClick={() => {
+              set({ buildKind: null });
+              conn?.send({ t: "set_phase", phase: "play" });
+            }}
+          >
+            Preview play camera
+          </button>
+        ) : null}
       </div>
       {snapshot.layout && (
         <ul className="placed-list">
