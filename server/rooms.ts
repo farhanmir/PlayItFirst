@@ -229,9 +229,17 @@ export class CafeRoomServer {
         this.broadcast(room);
         break;
       }
-      case "player_move":
+      case "player_move": {
+        const player = room.snapshot.players.find((p) => p.id === member.id);
+        if (msg.seq !== undefined && (!Number.isSafeInteger(msg.seq) || msg.seq <= (player?.moveAck ?? 0))) break;
         room.snapshot = movePlayer(room.snapshot, member.id, msg.x, msg.z);
+        // A rejection is acknowledged too, so prediction cannot hide collisions.
+        if (msg.seq !== undefined) room.snapshot = {
+          ...room.snapshot,
+          players: room.snapshot.players.map((p) => p.id === member.id ? { ...p, moveAck: msg.seq } : p),
+        };
         break;
+      }
       case "interact":
         room.snapshot = interact(room.snapshot, member.id, msg.action);
         this.broadcast(room);
@@ -366,6 +374,7 @@ export class CafeRoomServer {
     }
 
     this.sessions.set(socket, { room, member });
+    room.snapshot = { ...room.snapshot, players: room.snapshot.players.map((p) => p.id === member.id ? { ...p, moveAck: p.moveAck ?? 0 } : p) };
     send(socket, { t: "welcome", token: member.token, you: member.id, snapshot: room.snapshot });
     this.broadcast(room);
   }

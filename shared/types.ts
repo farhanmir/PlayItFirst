@@ -98,6 +98,8 @@ export interface Customer {
 }
 
 export interface PlayerState {
+  /** Last processed client movement sequence, including rejected moves. */
+  moveAck?: number;
   id: string;
   name: string;
   role: PlayerRole;
@@ -223,7 +225,7 @@ export type ClientMsg =
   | { t: "move_furniture"; id: string; x: number; z: number; rotation?: number }
   | { t: "remove_furniture"; id: string }
   | { t: "tabletop_sync"; markers: { kind: FurnitureKind; x: number; z: number; rotation?: number }[] }
-  | { t: "player_move"; x: number; z: number }
+  | { t: "player_move"; x: number; z: number; seq?: number }
   | { t: "interact"; action: "take_order" | "make_coffee" | "serve" | "restock" | "collect" }
   | { t: "open_cafe" }
   | { t: "director_choice"; eventId: string; choiceId: string }

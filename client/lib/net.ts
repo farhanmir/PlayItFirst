@@ -3,6 +3,7 @@
  * adapted from Gitzilla's client/app/net.ts pattern for SoftOpen.
  */
 import type { ClientMsg, PlayerRole, ServerMsg } from "../../shared/types";
+import { createMovementPrediction } from "./movementPrediction";
 import { wsUrl } from "./api";
 import { getResumeToken, setResumeToken } from "./storage";
 
@@ -23,6 +24,8 @@ export function connect(room: string, name: string, role?: PlayerRole): Conn {
   let retry = 0;
   let retryTimer: ReturnType<typeof setTimeout> | null = null;
   const queue: ClientMsg[] = [];
+  const prediction = createMovementPrediction();
+  let you: string | null = null;
 
   const setStatus = (s: ConnStatus) => statusFns.forEach((f) => f(s));
 
@@ -55,12 +58,18 @@ export function connect(room: string, name: string, role?: PlayerRole): Conn {
       } catch {
         return;
       }
-      if (m.t === "welcome" && m.token) setResumeToken(room, m.token);
+      if (m.t === "welcome") {
+        if (m.token) setResumeToken(room, m.token);
+        you = m.you;
+        prediction.reset(m.snapshot.players.find((p) => p.id === you)?.moveAck ?? 0);
+      }
+      if (m.t === "snapshot" && you) m = { ...m, snapshot: prediction.reconcile(m.snapshot, you) };
       for (const f of msgFns) f(m);
     };
     sock.onclose = () => {
       if (ws !== sock) return;
       ws = null;
+      prediction.reset();
       setStatus("closed");
       if (closed) return;
       retry++;
@@ -78,7 +87,10 @@ export function connect(room: string, name: string, role?: PlayerRole): Conn {
 
   return {
     send(m) {
-      if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(m));
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        if (m.t === "player_move") m = { ...m, ...prediction.record(m.x, m.z) };
+        ws.send(JSON.stringify(m));
+      }
       else if (m.t !== "player_move") queue.push(m);
     },
     onMessage(fn) {
