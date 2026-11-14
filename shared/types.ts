@@ -166,6 +166,10 @@ export interface RoomSnapshot {
   /** Soft difficulty modifier from director choices */
   rushBoost?: number;
   menuReduced?: boolean;
+  /** simTime of last human interact — AI barista helps when stale or queue is long */
+  lastHumanInteractAt?: number;
+  /** NPC barista helper holding state (Jamie AI) */
+  aiBarista?: { holding: string | null };
 }
 
 export type ClientMsg =

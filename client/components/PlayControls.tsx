@@ -1,7 +1,9 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import type { RoomSnapshot } from "../../shared/types";
+import { nearestStation } from "../../shared/stations";
 import { useApp } from "../lib/store";
 import { play } from "../lib/audio";
+import { suggestedAction, stationLabel, type PlayAction } from "../lib/suggestAction";
 
 export function PlayControls({ snapshot }: { snapshot: RoomSnapshot }) {
   const conn = useApp((s) => s.conn);
@@ -10,6 +12,14 @@ export function PlayControls({ snapshot }: { snapshot: RoomSnapshot }) {
   const mobile = useApp((s) => s.mobile);
   const meRef = useRef(me);
   meRef.current = me;
+
+  const station = useMemo(() => (you ? nearestStation(snapshot, you) : null), [snapshot, you]);
+  const suggest = useMemo(() => suggestedAction(snapshot, you), [snapshot, you]);
+  const nearLabel = stationLabel(station);
+  const jamieHelping =
+    !!snapshot.aiBarista?.holding ||
+    (snapshot.metrics.queueLength >= 3 &&
+      snapshot.simTime - (snapshot.lastHumanInteractAt ?? 0) >= 4);
 
   useEffect(() => {
     if (!conn) return;
@@ -46,7 +56,7 @@ export function PlayControls({ snapshot }: { snapshot: RoomSnapshot }) {
     };
   }, [conn]);
 
-  const act = (action: "take_order" | "make_coffee" | "serve" | "restock" | "collect") => {
+  const act = (action: PlayAction) => {
     conn?.send({ t: "interact", action });
     if (action === "take_order") play("order");
     if (action === "make_coffee") play("brew");
@@ -66,6 +76,14 @@ export function PlayControls({ snapshot }: { snapshot: RoomSnapshot }) {
         : me.holding
     : "Hands empty";
 
+  const actions: { id: PlayAction; label: string }[] = [
+    { id: "take_order", label: "Take order" },
+    { id: "make_coffee", label: "Make coffee" },
+    { id: "serve", label: "Serve" },
+    { id: "restock", label: "Restock" },
+    { id: "collect", label: "Collect $" },
+  ];
+
   return (
     <div
       className={`play-controls panel ${mobile ? "mobile" : ""}`}
@@ -76,23 +94,28 @@ export function PlayControls({ snapshot }: { snapshot: RoomSnapshot }) {
         <span className="tag">Holding</span>
         <strong>{holding}</strong>
       </div>
-      <p className="hint">{mobile ? "Tap actions · drag pad to move" : "WASD move · E order · F brew · R serve · Q restock"}</p>
+      {(nearLabel || jamieHelping) && (
+        <p className="station-hint" aria-live="polite">
+          {nearLabel ? <span>{nearLabel}</span> : null}
+          {jamieHelping ? <em>Jamie (AI) covering the line</em> : null}
+        </p>
+      )}
+      <p className="hint">
+        {mobile ? "Tap actions · drag pad to move" : "WASD move · E order · F brew · R serve · Q restock"}
+      </p>
       <div className="action-grid">
-        <button type="button" aria-label="Take order" onClick={() => act("take_order")}>
-          Take order
-        </button>
-        <button type="button" aria-label="Make coffee" onClick={() => act("make_coffee")}>
-          Make coffee
-        </button>
-        <button type="button" aria-label="Serve drink" onClick={() => act("serve")}>
-          Serve
-        </button>
-        <button type="button" aria-label="Restock supplies" onClick={() => act("restock")}>
-          Restock
-        </button>
-        <button type="button" aria-label="Collect payment" onClick={() => act("collect")}>
-          Collect $
-        </button>
+        {actions.map((a) => (
+          <button
+            key={a.id}
+            type="button"
+            className={suggest === a.id ? "suggested" : undefined}
+            aria-label={a.label}
+            aria-current={suggest === a.id ? "true" : undefined}
+            onClick={() => act(a.id)}
+          >
+            {a.label}
+          </button>
+        ))}
         <button
           type="button"
           aria-label="Switch to build phase"

@@ -15,7 +15,17 @@ import type {
   RoomSnapshot,
 } from "../shared/types.ts";
 import { FURNITURE_CATALOG } from "../shared/types.ts";
+import { nearestStation } from "../shared/stations.ts";
 import { applyTransaction, createFinance } from "./finance.ts";
+
+export { nearestStation };
+export type { StationHint } from "../shared/stations.ts";
+
+const AI_PLAYER_ID = "__jamie_ai__";
+/** Help when no human interact for this many sim-seconds. */
+const AI_IDLE_SEC = 5;
+/** Act every N ticks so players still matter (~2s at 20 Hz). */
+const AI_PERIOD_TICKS = 40;
 
 const NAMES = ["Ava", "Ben", "Chris", "Dana", "Eli", "Faye", "Gus", "Hana", "Ivan", "Jade", "Kai", "Lina"];
 const ORDERS = ["latte", "americano", "cappuccino", "cold brew", "mocha", "espresso"];
@@ -42,6 +52,8 @@ export function createRoomSnapshot(code: string, startingBudget = 20_000): RoomS
     eventLog: ["Room created. Choose a property to begin."],
     rushBoost: 0,
     menuReduced: false,
+    lastHumanInteractAt: 0,
+    aiBarista: { holding: null },
   };
 }
 
@@ -232,6 +244,7 @@ export function interact(
   snapshot: RoomSnapshot,
   playerId: string,
   action: "take_order" | "make_coffee" | "serve" | "restock" | "collect",
+  opts?: { ai?: boolean },
 ): RoomSnapshot {
   const player = snapshot.players.find((p) => p.id === playerId);
   if (!player) return snapshot;
@@ -264,14 +277,24 @@ export function interact(
   if (action === "make_coffee") {
     if (inventory.beans <= 0 || inventory.cups <= 0) {
       log.unshift(`${player.name} can’t brew — out of beans or cups`);
-      return { ...snapshot, eventLog: log.slice(0, 30) };
+      return {
+        ...snapshot,
+        inventory,
+        eventLog: log.slice(0, 30),
+        lastHumanInteractAt: opts?.ai ? snapshot.lastHumanInteractAt : snapshot.simTime,
+      };
     }
     const ticketOrder = player.holding?.startsWith("ticket:") ? player.holding.slice(7) : undefined;
     const waiting = customers.find((c) => c.state === "waiting");
     const order = ticketOrder || waiting?.order || "espresso";
     if (needsMilk(order) && inventory.milk <= 0) {
       log.unshift(`${player.name} needs milk for a ${order}`);
-      return { ...snapshot, eventLog: log.slice(0, 30) };
+      return {
+        ...snapshot,
+        inventory,
+        eventLog: log.slice(0, 30),
+        lastHumanInteractAt: opts?.ai ? snapshot.lastHumanInteractAt : snapshot.simTime,
+      };
     }
     inventory.beans -= 1;
     inventory.cups -= 1;
@@ -322,7 +345,52 @@ export function interact(
     log.unshift(`${player.name} collected payments`);
   }
 
-  return { ...snapshot, customers, finance, metrics, inventory, players, eventLog: log.slice(0, 30) };
+  return {
+    ...snapshot,
+    customers,
+    finance,
+    metrics,
+    inventory,
+    players,
+    eventLog: log.slice(0, 30),
+    lastHumanInteractAt: opts?.ai ? snapshot.lastHumanInteractAt : snapshot.simTime,
+  };
+}
+
+/** NPC barista — one action per call; keeps holding across ticks. */
+export function runAiBaristaAssist(snapshot: RoomSnapshot): RoomSnapshot {
+  const holding = snapshot.aiBarista?.holding ?? null;
+  const hasQueue = snapshot.customers.some((c) => c.state === "queue" || c.state === "ordering");
+  const hasWaiting = snapshot.customers.some((c) => c.state === "waiting");
+
+  let action: "take_order" | "make_coffee" | "serve" | null = null;
+  if (holding?.startsWith("drink:") && hasWaiting) action = "serve";
+  else if (holding?.startsWith("ticket:")) action = "make_coffee";
+  else if (hasQueue) action = "take_order";
+  else if (hasWaiting && !holding) action = "make_coffee";
+  else if (holding?.startsWith("drink:")) action = "serve";
+  else return snapshot;
+
+  const jamie: PlayerState = {
+    id: AI_PLAYER_ID,
+    name: "Jamie (AI)",
+    role: "barista",
+    x: 0,
+    z: 0,
+    holding,
+    score: 0,
+    color: "#6b7280",
+  };
+
+  const withJamie = { ...snapshot, players: [...snapshot.players, jamie] };
+  const after = interact(withJamie, AI_PLAYER_ID, action, { ai: true });
+  const jamieAfter = after.players.find((p) => p.id === AI_PLAYER_ID);
+
+  return {
+    ...after,
+    players: after.players.filter((p) => p.id !== AI_PLAYER_ID),
+    aiBarista: { holding: jamieAfter?.holding ?? null },
+  };
 }
 
 export function stepSimulation(snapshot: RoomSnapshot, dt: number): RoomSnapshot {
@@ -462,7 +530,7 @@ export function stepSimulation(snapshot: RoomSnapshot, dt: number): RoomSnapshot
     finance = applyTransaction(finance, "Staff wages", -wages, "wages");
   }
 
-  return {
+  let next: RoomSnapshot = {
     ...snapshot,
     customers,
     finance,
@@ -472,6 +540,15 @@ export function stepSimulation(snapshot: RoomSnapshot, dt: number): RoomSnapshot
     tick: snapshot.tick + 1,
     simTime: snapshot.simTime + dt,
   };
+
+  // Jamie (AI) barista: help on long queues or when humans go idle — paced so players still matter
+  const humanIdle = next.simTime - (next.lastHumanInteractAt ?? 0) >= AI_IDLE_SEC;
+  const needsHelp = queueLength >= 3 || humanIdle;
+  if (needsHelp && next.tick % AI_PERIOD_TICKS === 0) {
+    next = runAiBaristaAssist(next);
+  }
+
+  return next;
 }
 
 function spawnCustomer(property: PropertyListing, qx: number, qz: number): Customer {

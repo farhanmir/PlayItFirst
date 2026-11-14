@@ -1,7 +1,8 @@
 /**
- * Lightweight café WebAudio — inspired by Gitzilla's synth approach,
- * specialized for PlayFirst SFX (no Gitzilla combat themes).
+ * Café WebAudio — Gitzilla-inspired synth patches + phone unlock lifecycle
+ * (see client/lib/phoneAudio.ts from Gitzilla phone.ts patterns).
  */
+import { createPhoneAudio } from "./phoneAudio";
 
 type Sfx = "ui" | "open" | "order" | "brew" | "serve" | "coin" | "rush" | "ping" | "sad" | "place";
 
@@ -10,10 +11,16 @@ let master: GainNode | null = null;
 let muted = false;
 const last = new Map<string, number>();
 
+const phone = createPhoneAudio({
+  muted: () => muted,
+  onRunning: () => undefined,
+});
+
 function ensure() {
   if (typeof window === "undefined") return null;
   if (!ctx) {
     const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    phone.prepare();
     ctx = new AC();
     master = ctx.createGain();
     master.gain.value = 0.55;
@@ -27,22 +34,33 @@ function ensure() {
   return ctx;
 }
 
+/** Unlock AudioContext inside a user gesture (iOS-safe). */
 export async function unlockAudio() {
   const c = ensure();
   if (!c) return;
-  if (c.state === "suspended") await c.resume();
+  try {
+    await phone.unlock(c);
+  } catch {
+    if (c.state === "suspended") await c.resume().catch(() => undefined);
+  }
   play("ui", 0.2);
 }
 
 export function setMuted(v: boolean) {
   muted = v;
   if (master && ctx) master.gain.setTargetAtTime(v ? 0 : 0.55, ctx.currentTime, 0.02);
+  phone.mutedChanged();
 }
 
 export function play(name: Sfx, gain = 0.45) {
   if (muted) return;
   const c = ensure();
-  if (!c || !master || c.state !== "running") return;
+  if (!c || !master) return;
+  if (c.state !== "running") {
+    void phone.unlock(c).catch(() => undefined);
+    // Re-read state after unlock attempt (TS narrows away "running" above)
+    if ((c.state as AudioContextState) !== "running") return;
+  }
   const now = c.currentTime;
   const prev = last.get(name) ?? 0;
   if (now - prev < 0.05) return;
@@ -131,7 +149,10 @@ function patchesFor(name: Sfx): Patch[] {
         { at: 0.12, dur: 0.2, f0: 294, f1: 220, type: "sine", gain: 0.3 },
       ];
     case "place":
-      return [{ at: 0, dur: 0.07, f0: 240, f1: 160, type: "triangle", gain: 0.35 }, { at: 0, dur: 0.05, noise: true, gain: 0.15 }];
+      return [
+        { at: 0, dur: 0.07, f0: 240, f1: 160, type: "triangle", gain: 0.35 },
+        { at: 0, dur: 0.05, noise: true, gain: 0.15 },
+      ];
     default:
       return [{ at: 0, dur: 0.08, f0: 440, type: "sine", gain: 0.3 }];
   }
