@@ -153,12 +153,144 @@ export function placeFurniture(
     furniture: [...snapshot.layout.furniture, item],
     budgetSpent: snapshot.layout.budgetSpent + catalog.cost,
   };
+  if (!servicePathOpen({ ...snapshot, layout })) {
+    return {
+      ...snapshot,
+      eventLog: [`Can't place ${catalog.label} — it would block the service path`, ...snapshot.eventLog].slice(0, 30),
+    };
+  }
 
   return {
     ...snapshot,
     layout,
     finance: applyTransaction(snapshot.finance, catalog.label, -catalog.cost, "equipment"),
     eventLog: [`Placed ${catalog.label}`, ...snapshot.eventLog].slice(0, 30),
+  };
+}
+
+/** Guest clearance around stations, tables, and chairs. */
+export const STATION_CLEARANCE = 0.75;
+export const RESTOCK_COST = 35;
+
+const BLOCKING_KINDS = new Set<FurnitureKind>([
+  "counter",
+  "coffee_machine",
+  "pickup",
+  "fridge",
+  "table",
+  "chair",
+]);
+
+interface Circle {
+  x: number;
+  z: number;
+  r: number;
+}
+
+function blockingCircles(layout: CafeLayout): Circle[] {
+  return layout.furniture
+    .filter((item) => BLOCKING_KINDS.has(item.kind))
+    .map((item) => ({ x: item.x, z: item.z, r: STATION_CLEARANCE }));
+}
+
+function pointSegmentDistance(x1: number, z1: number, x2: number, z2: number, cx: number, cz: number): number {
+  const dx = x2 - x1;
+  const dz = z2 - z1;
+  const len2 = dx * dx + dz * dz;
+  const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((cx - x1) * dx + (cz - z1) * dz) / len2));
+  return Math.hypot(x1 + t * dx - cx, z1 + t * dz - cz);
+}
+
+/** True when this step would enter a station the guest is not already leaving. */
+function moveBlocked(x1: number, z1: number, x2: number, z2: number, circles: Circle[]): boolean {
+  return circles.some((circle) => {
+    const startDist = Math.hypot(x1 - circle.x, z1 - circle.z);
+    if (startDist < circle.r) return Math.hypot(x2 - circle.x, z2 - circle.z) < startDist;
+    return pointSegmentDistance(x1, z1, x2, z2, circle.x, circle.z) < circle.r - 1e-4;
+  });
+}
+
+function moveWithClearance(
+  x: number,
+  z: number,
+  tx: number,
+  tz: number,
+  factor: number,
+  circles: Circle[],
+  bounds?: { minX: number; maxX: number; minZ: number; maxZ: number },
+): { x: number; z: number } {
+  const contain = (px: number, pz: number) =>
+    bounds
+      ? {
+          x: Math.max(bounds.minX, Math.min(bounds.maxX, px)),
+          z: Math.max(bounds.minZ, Math.min(bounds.maxZ, pz)),
+        }
+      : { x: px, z: pz };
+  const direct = contain(x + (tx - x) * factor, z + (tz - z) * factor);
+  if (!moveBlocked(x, z, direct.x, direct.z, circles)) return direct;
+
+  const dx = tx - x;
+  const dz = tz - z;
+  const len = Math.hypot(dx, dz) || 1;
+  const px = -dz / len;
+  const pz = dx / len;
+  let best: { x: number; z: number } | null = null;
+  let bestDist = Infinity;
+  for (const side of [1, -1]) {
+    for (const mag of [STATION_CLEARANCE + 0.15, STATION_CLEARANCE + 0.7]) {
+      const candidate = contain(x + px * side * mag, z + pz * side * mag);
+      if (Math.hypot(candidate.x - x, candidate.z - z) < 0.04) continue;
+      if (moveBlocked(x, z, candidate.x, candidate.z, circles)) continue;
+      const dist = Math.hypot(candidate.x - tx, candidate.z - tz);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = candidate;
+      }
+    }
+  }
+  return best ?? { x, z };
+}
+
+/** Entrance can still reach the counter queue. A sealed floor is rejected. */
+function servicePathOpen(snapshot: RoomSnapshot): boolean {
+  if (!snapshot.layout || !snapshot.property) return true;
+  const counter = snapshot.layout.furniture.find((item) => item.kind === "counter");
+  const goal = counter
+    ? { x: counter.x + 0.2, z: Math.max(0.8, counter.z - 1.2) }
+    : { x: 2, z: 2 };
+  const circles = blockingCircles(snapshot.layout);
+  const bounds = {
+    minX: 0.35,
+    maxX: snapshot.property.width - 0.35,
+    minZ: 0.35,
+    maxZ: snapshot.property.depth - 0.35,
+  };
+  let x = 0.4;
+  let z = Math.min(snapshot.property.depth - 0.4, 1);
+  for (let i = 0; i < 48; i++) {
+    if (Math.hypot(x - goal.x, z - goal.z) <= 0.6) return true;
+    const next = moveWithClearance(x, z, goal.x, goal.z, 0.8, circles, bounds);
+    if (Math.hypot(next.x - x, next.z - z) < 0.04) return false;
+    x = next.x;
+    z = next.z;
+  }
+  return Math.hypot(x - goal.x, z - goal.z) <= 1;
+}
+
+/** Shared restock rule: one priced delivery, refused when the balance cannot cover it. */
+export function applyRestock(snapshot: RoomSnapshot, label = "Milk & cups restock"): { ok: boolean; snapshot: RoomSnapshot } {
+  if (snapshot.finance.balance < RESTOCK_COST) return { ok: false, snapshot };
+  return {
+    ok: true,
+    snapshot: {
+      ...snapshot,
+      finance: applyTransaction(snapshot.finance, label, -RESTOCK_COST, "inventory"),
+      inventory: {
+        milk: snapshot.inventory.milk + 12,
+        cups: snapshot.inventory.cups + 20,
+        beans: snapshot.inventory.beans + 15,
+      },
+    },
   };
 }
 
@@ -174,7 +306,14 @@ export function moveFurniture(snapshot: RoomSnapshot, id: string, x: number, z: 
         }
       : f,
   );
-  return { ...snapshot, layout: { ...snapshot.layout, furniture } };
+  const candidate: RoomSnapshot = { ...snapshot, layout: { ...snapshot.layout, furniture } };
+  if (!servicePathOpen(candidate)) {
+    return {
+      ...snapshot,
+      eventLog: ["Can't move that — it would block the service path", ...snapshot.eventLog].slice(0, 30),
+    };
+  }
+  return candidate;
 }
 
 export function removeFurniture(snapshot: RoomSnapshot, id: string): RoomSnapshot {
@@ -347,11 +486,20 @@ export function interact(
           lastHumanInteractAt: opts?.ai ? snapshot.lastHumanInteractAt : snapshot.simTime,
         };
       }
-      const ticketOrder = player.holding?.startsWith("ticket:") ? player.holding.slice(7) : undefined;
+      const ticketOrder = player.holding?.startsWith("ticket:") ? player.holding.slice("ticket:".length) : undefined;
       const waiting =
-        customers.find((c) => c.state === "waiting" && c.ticketHolder === playerId) ||
-        customers.find((c) => c.state === "waiting");
-      const order = ticketOrder || waiting?.order || "espresso";
+        customers.find((c) => c.state === "waiting" && c.order && c.ticketHolder === playerId) ||
+        customers.find((c) => c.state === "waiting" && c.order && c.ticketHolder == null);
+      const order = ticketOrder || waiting?.order;
+      if (!order) {
+        log.unshift(`${player.name} — no open ticket to brew`);
+        return {
+          ...snapshot,
+          inventory,
+          eventLog: log.slice(0, 30),
+          lastHumanInteractAt: opts?.ai ? snapshot.lastHumanInteractAt : snapshot.simTime,
+        };
+      }
       if (needsMilk(order) && inventory.milk <= 0) {
         log.unshift(`${player.name} needs milk for a ${order}`);
         return {
@@ -383,24 +531,24 @@ export function interact(
   }
 
   if (action === "serve") {
-    const holdingDrink = player.holding?.startsWith("drink:");
-    const drinkOrder = holdingDrink ? player.holding!.slice(6) : undefined;
-    const ready =
-      customers.find(
-        (c) =>
-          c.state === "waiting" &&
-          holdingDrink &&
-          (c.ticketHolder === playerId || c.order === drinkOrder) &&
-          (c.progress >= 0.4 || holdingDrink),
-      ) ||
-      customers.find((c) => c.state === "waiting" && (c.progress >= 0.45 || holdingDrink));
-    if (ready) {
+    const drinkOrder = player.holding?.startsWith("drink:") ? player.holding.slice("drink:".length) : undefined;
+    const ready = drinkOrder
+      ? customers.find((c) => c.state === "waiting" && c.order === drinkOrder && c.ticketHolder === playerId) ||
+        customers.find((c) => c.state === "waiting" && c.order === drinkOrder && c.ticketHolder == null)
+      : undefined;
+    if (!ready) {
+      log.unshift(
+        drinkOrder
+          ? `${player.name} — no open ${drinkOrder} ticket to serve`
+          : `${player.name} — brew a drink before serving`,
+      );
+    } else {
       const tip = ready.persona === "office" ? 4 : ready.persona === "regular" ? 3 : 1;
-      const matchBonus = holdingDrink && player.holding === `drink:${ready.order}` ? 1.5 : 0;
+      const matchBonus = 1.5;
       const price = 4.5 + tip + matchBonus;
       finance = applyTransaction(finance, `${ready.order ?? "coffee"} · ${ready.name}`, price, "sales");
       metrics.customersServed += 1;
-      metrics.satisfaction = Math.min(100, metrics.satisfaction + (matchBonus ? 4 : 2));
+      metrics.satisfaction = Math.min(100, metrics.satisfaction + 4);
       metrics.revenuePerHour = Math.round(
         (metrics.customersServed / Math.max(1, snapshot.simTime / 3600)) * price,
       );
@@ -415,19 +563,24 @@ export function interact(
   }
 
   if (action === "restock") {
-    finance = applyTransaction(finance, "Milk & cups restock", -35, "inventory");
-    inventory = {
-      milk: inventory.milk + 12,
-      cups: inventory.cups + 20,
-      beans: inventory.beans + 15,
-    };
+    const restocked = applyRestock({ ...snapshot, finance, inventory });
+    if (!restocked.ok) {
+      log.unshift(`${player.name} — need $${RESTOCK_COST} to restock`);
+      return {
+        ...snapshot,
+        eventLog: log.slice(0, 30),
+        lastHumanInteractAt: opts?.ai ? snapshot.lastHumanInteractAt : snapshot.simTime,
+      };
+    }
+    finance = restocked.snapshot.finance;
+    inventory = restocked.snapshot.inventory;
     metrics.satisfaction = Math.min(100, metrics.satisfaction + 1);
-    log.unshift(`${player.name} restocked supplies (−$35)`);
+    log.unshift(`${player.name} restocked supplies (−$${RESTOCK_COST})`);
   }
 
   if (action === "collect") {
-    finance = applyTransaction(finance, "Register sweep", 12, "sales");
-    log.unshift(`${player.name} collected payments`);
+    // Serve already posts the sale. Collect must not mint a second one.
+    log.unshift(`${player.name} — nothing unposted to collect`);
   }
 
   return {
@@ -545,6 +698,26 @@ export function stepSimulation(snapshot: RoomSnapshot, dt: number): RoomSnapshot
   }
 
   const queue: Customer[] = [];
+  const circles = blockingCircles(layout);
+  const roomBounds = {
+    minX: 0.35,
+    maxX: property.width - 0.35,
+    minZ: 0.35,
+    maxZ: property.depth - 0.35,
+  };
+  const stepToward = (guest: Customer, rate: number, stayInside: boolean) => {
+    const moved = moveWithClearance(
+      guest.x,
+      guest.z,
+      guest.targetX,
+      guest.targetZ,
+      Math.min(1, dt * rate),
+      circles,
+      stayInside ? roomBounds : undefined,
+    );
+    guest.x = moved.x;
+    guest.z = moved.z;
+  };
   customers = customers.map((c, index) => {
     let next = { ...c };
     // Softer drain — office still impatient, but demo rushes stay recoverable
@@ -553,10 +726,12 @@ export function stepSimulation(snapshot: RoomSnapshot, dt: number): RoomSnapshot
     next.patience -= dt * Math.max(1.2, (baseDrain - ambience * 0.2) * rushEase);
     const brewRate = snapshot.menuReduced ? 0.14 : 0.1;
     next.progress = Math.min(1, next.progress + dt * brewRate * throughput);
+    if (next.state === "queue" || next.state === "ordering" || next.state === "waiting") {
+      next.waitSec = (next.waitSec ?? 0) + dt;
+    }
 
     if (next.state === "entering") {
-      next.x += (next.targetX - next.x) * Math.min(1, dt * 2);
-      next.z += (next.targetZ - next.z) * Math.min(1, dt * 2);
+      stepToward(next, 2, true);
       if (Math.hypot(next.x - next.targetX, next.z - next.targetZ) < 0.2) next.state = "queue";
     }
 
@@ -565,8 +740,7 @@ export function stepSimulation(snapshot: RoomSnapshot, dt: number): RoomSnapshot
       const slot = queue.length - 1;
       next.targetX = queueAnchor.x + 0.2;
       next.targetZ = Math.max(0.8, queueAnchor.z - 1.2 - slot * 0.7);
-      next.x += (next.targetX - next.x) * Math.min(1, dt * 3);
-      next.z += (next.targetZ - next.z) * Math.min(1, dt * 3);
+      stepToward(next, 3, true);
       if (slot === 0 && next.state === "queue") next.state = "ordering";
     }
 
@@ -574,17 +748,7 @@ export function stepSimulation(snapshot: RoomSnapshot, dt: number): RoomSnapshot
       const dest = pickup ?? queueAnchor;
       next.targetX = dest.x + 0.8;
       next.targetZ = dest.z;
-      next.x += (next.targetX - next.x) * Math.min(1, dt * 2);
-      next.z += (next.targetZ - next.z) * Math.min(1, dt * 2);
-      // AI auto-serve assist when players are idle
-      if (next.progress >= 1 && Math.random() < 0.22 * dt * throughput) {
-        const price = next.persona === "office" ? 7.5 : next.persona === "regular" ? 6.25 : 4.75;
-        finance = applyTransaction(finance, `${next.order ?? "coffee"} · ${next.name}`, price, "sales");
-        metrics.customersServed += 1;
-        metrics.satisfaction = Math.min(100, metrics.satisfaction + 2.2);
-        next.state = "happy";
-        next.progress = 1;
-      }
+      stepToward(next, 2, true);
     }
 
     if (next.patience <= 0 && next.state !== "happy" && next.state !== "leaving" && next.state !== "angry") {
@@ -601,15 +765,14 @@ export function stepSimulation(snapshot: RoomSnapshot, dt: number): RoomSnapshot
     }
 
     if (next.state === "leaving") {
-      next.x += (next.targetX - next.x) * Math.min(1, dt * 2);
-      next.z += (next.targetZ - next.z) * Math.min(1, dt * 2);
+      stepToward(next, 2, false);
     }
 
-    // Light seating use
+    // Light seating use — stand beside the table, not inside its clearance.
     if (next.state === "waiting" && seats > 0 && index % 3 === 0) {
       const table = layout.furniture.find((f) => f.kind === "table");
       if (table) {
-        next.targetX = table.x;
+        next.targetX = table.x + STATION_CLEARANCE + 0.2;
         next.targetZ = table.z;
       }
     }
@@ -624,7 +787,7 @@ export function stepSimulation(snapshot: RoomSnapshot, dt: number): RoomSnapshot
   const avgWait =
     waiting.length === 0
       ? metrics.avgWaitSec * 0.95
-      : waiting.reduce((s, c) => s + (Date.now() - c.joinedAt) / 1000, 0) / waiting.length;
+      : waiting.reduce((s, c) => s + (c.waitSec ?? 0), 0) / waiting.length;
 
   // Overlap penalty: counter and pickup too close near entrance
   if (counter && pickup) {
@@ -650,7 +813,8 @@ export function stepSimulation(snapshot: RoomSnapshot, dt: number): RoomSnapshot
   // Wage drip (~every ~15s at 20 Hz)
   if (snapshot.tick > 0 && snapshot.tick % 300 === 0 && snapshot.players.length) {
     const wages = snapshot.players.length * 8;
-    finance = applyTransaction(finance, "Staff wages", -wages, "wages");
+    if (finance.balance >= wages) finance = applyTransaction(finance, "Staff wages", -wages, "wages");
+    else log.unshift("Skipped wages — balance too low");
   }
 
   let next: RoomSnapshot = {

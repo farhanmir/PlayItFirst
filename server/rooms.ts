@@ -67,6 +67,22 @@ function roomCode() {
   return randomBytes(3).toString("hex");
 }
 
+/**
+ * Public join origin. Honors a proxy's X-Forwarded-Proto so an HTTPS deployment
+ * prints https (and the page then opens wss). Local requests stay http.
+ */
+export function requestOrigin(
+  host: string | string[] | undefined,
+  forwardedProto: string | string[] | undefined,
+  encrypted = false,
+): string {
+  const hostname = (Array.isArray(host) ? host[0] : host)?.trim() || "localhost";
+  const raw = (Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto)?.split(",")[0]?.trim().toLowerCase();
+  const proto =
+    raw === "https" || raw === "wss" ? "https" : raw === "http" || raw === "ws" ? "http" : encrypted ? "https" : "http";
+  return `${proto}://${hostname}`;
+}
+
 export class CafeRoomServer {
   private rooms = new Map<string, Room>();
   private sessions = new WeakMap<WebSocket, { room: Room; member: Member }>();

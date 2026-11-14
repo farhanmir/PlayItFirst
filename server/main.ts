@@ -8,7 +8,7 @@ import { stat } from "node:fs/promises";
 import { dirname, extname, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { WebSocketServer } from "ws";
-import { CafeRoomServer } from "./rooms.ts";
+import { CafeRoomServer, requestOrigin } from "./rooms.ts";
 import { qrSvg } from "./qr.ts";
 import { loadProperties, getCachedProperties } from "./costar.ts";
 import { resolveMatterport } from "./matterport.ts";
@@ -60,6 +60,11 @@ const mime: Record<string, string> = {
   ".jpg": "image/jpeg",
   ".map": "application/json",
 };
+
+function originFor(req: IncomingMessage): string {
+  const encrypted = Boolean((req.socket as { encrypted?: boolean } | undefined)?.encrypted);
+  return requestOrigin(req.headers.host, req.headers["x-forwarded-proto"], encrypted);
+}
 
 function json(res: ServerResponse, status: number, data: unknown) {
   res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
@@ -136,8 +141,7 @@ server.on("request", (req, res) => {
 
     if (url.pathname === "/api/rooms" && req.method === "POST") {
       const created = rooms.createRoom();
-      const base = `${url.protocol}//${url.host}`;
-      const join = rooms.joinUrl(base, created.code);
+      const join = rooms.joinUrl(originFor(req), created.code);
       json(res, 200, {
         code: created.code,
         url: join,
@@ -153,8 +157,7 @@ server.on("request", (req, res) => {
         json(res, 404, { error: "Room not found" });
         return;
       }
-      const base = `${url.protocol}//${url.host}`;
-      const join = rooms.joinUrl(base, code);
+      const join = rooms.joinUrl(originFor(req), code);
       json(res, 200, { code, url: join, qrSvg: qrSvg(join) });
       return;
     }
