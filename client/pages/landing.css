@@ -252,7 +252,8 @@
   color: var(--muted);
 }
 
-.name-input:focus {
+.name-input:focus-visible {
+  outline: none;
   border-color: rgba(201, 166, 107, 0.55);
   box-shadow: 0 0 0 3px var(--crema-soft);
 }
@@ -301,6 +302,52 @@
 
   .cafe-hero-visual {
     align-items: end;
+  }
+
+  .landing-cta {
+    max-width: none;
+    width: 100%;
+  }
+}
+
+@media (max-width: 420px) {
+  .landing-content {
+    padding: 1.25rem 1rem 1.5rem;
+  }
+
+  .landing-copy .brand {
+    font-size: clamp(2.65rem, 15vw, 3.25rem);
+    margin-bottom: 0.75rem;
+  }
+
+  .landing-copy h1 {
+    font-size: 1.15rem;
+    margin-bottom: 0.65rem;
+  }
+
+  .landing-copy .lede {
+    font-size: 0.95rem;
+    margin-bottom: 1.25rem;
+    max-width: none;
+  }
+
+  .landing-cta {
+    gap: 0.6rem;
+  }
+
+  .landing-cta .btn,
+  .landing-cta .name-input,
+  .mode-toggle button {
+    min-height: 48px;
+    width: 100%;
+  }
+
+  .mode-toggle {
+    width: 100%;
+  }
+
+  .cafe-facade {
+    height: min(28vh, 220px);
   }
 }
 
