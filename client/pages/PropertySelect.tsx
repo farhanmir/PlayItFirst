@@ -61,6 +61,7 @@ export function PropertySelect() {
                   <p>Rent: ${(p.monthlyRent / p.sqft).toFixed(2)} per sqft per month. Simulated foot traffic: {Math.round(p.footTraffic * 100)}%.</p>
                   {p.provenance && <p>{p.provenance.geometry} · Asking rent excludes additional charges. Café use and capacity require verification.</p>}
                   <p>{p.matterportHint}</p>
+                  {plan && <p>The layout is measured. Café equipment is your proposed fit-out. Finishes are reconstructed; use the walkthrough to inspect the original interior.</p>}
                   <p>{p.matterportModelId ? "Matterport model available." : "Matterport showcase stand-in; not a matched property tour."}</p>
                 </details>
                 <div className="property-actions">

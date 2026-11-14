@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import type { RoomSnapshot } from "../../shared/types";
 import { BREW_SECONDS, nearestStation } from "../../shared/stations";
 import { furnitureMoveClear } from "../../shared/movement";
-import { floorMoveClear } from "../../shared/floorplan";
+import { floorMoveClear, pointInPolygon } from "../../shared/floorplan";
 import { useApp } from "../lib/store";
 import { play } from "../lib/audio";
 import { moveFromKeys, moveFromAxes, stickAxes, walkingDistance } from "../lib/look";
@@ -64,6 +64,16 @@ export function PlayControls({
   const prompt = useMemo(() => actionPrompt(snapshot, you), [snapshot, you]);
   const nearLabel = stationLabel(station);
   const jamieHelping = !!snapshot.aiBarista?.holding;
+  const destination = useMemo(() => {
+    if (!me || suggest || me.holding?.startsWith("brewing:")) return null;
+    const waiting = snapshot.customers.some(c => c.state === "waiting" && c.order && (c.ticketHolder === me.id || c.ticketHolder == null));
+    const kind = me.holding?.startsWith("drink:") ? "pickup" : me.holding?.startsWith("ticket:") || waiting ? "coffee_machine" : "counter";
+    const target = snapshot.layout?.furniture.filter(f => f.kind === kind)
+      .sort((a, b) => Math.hypot(a.x - me.x, a.z - me.z) - Math.hypot(b.x - me.x, b.z - me.z))[0];
+    if (!target) return null;
+    const room = snapshot.property?.floorPlan?.rooms.find(r => pointInPolygon(target.x, target.z, r.polygon));
+    return `${room?.label ? `${room.label} · ` : ""}${target.label} · ${Math.ceil(Math.hypot(target.x - me.x, target.z - me.z))} m away`;
+  }, [snapshot.property, snapshot.layout, snapshot.customers, me, suggest]);
 
   useEffect(() => {
     if (!conn || !enabled) return;
@@ -143,9 +153,9 @@ export function PlayControls({
           <span className="tag">Holding</span>
           <strong>{holding}</strong>
         </div>
-        {(nearLabel || jamieHelping) && (
+        {(destination || nearLabel || jamieHelping) && (
           <p className="station-hint" aria-live="polite">
-            {nearLabel ? <span>{nearLabel}</span> : null}
+            {destination || nearLabel ? <span>{destination || nearLabel}</span> : null}
             {jamieHelping ? <em>Jamie covering the line</em> : null}
           </p>
         )}

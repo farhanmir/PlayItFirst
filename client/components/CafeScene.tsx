@@ -10,6 +10,7 @@ import { createTouchLookTracker } from "../lib/touchLook";
 import { play } from "../lib/audio";
 import { useApp } from "../lib/store";
 import { CafeCharacter } from "./CafeCharacter";
+import { MeasuredShell } from "./MeasuredShell";
 
 const STATION_KIND: Record<string, FurnitureItem["kind"]> = {
   counter: "counter",
@@ -64,6 +65,10 @@ export function CafeScene({ snapshot, viewMode = "monitor", buildMode = false }:
   const buildMovingId = useApp((s) => s.buildMovingId);
   const [hover, setHover] = useState<{ x: number; z: number } | null>(null);
   const me = snapshot.players.find((p) => p.id === you);
+  const appearances = useRef(new Map<string, number>());
+  for (const customer of snapshot.customers) {
+    if (!appearances.current.has(customer.id)) appearances.current.set(customer.id, appearances.current.size);
+  }
   const serviceLine = snapshot.customers
     .filter((customer) => ["queue", "ordering", "waiting"].includes(customer.state))
     .sort((a, b) => a.joinedAt - b.joinedAt);
@@ -164,7 +169,7 @@ export function CafeScene({ snapshot, viewMode = "monitor", buildMode = false }:
           <PlacementGhost snapshot={snapshot} kind={buildKind} x={hover.x} z={hover.z} rotation={buildRotation} movingId={buildMovingId} />
         ) : null}
         {snapshot.customers.map((c) => (
-          <CustomerMesh key={c.id} customer={c} featured={c.id === featuredCustomer?.id}
+          <CustomerMesh key={c.id} customer={c} appearance={appearances.current.get(c.id)!} featured={c.id === featuredCustomer?.id}
             yourTicket={c.ticketHolder === you} queuePosition={queuedCustomers.findIndex((customer) => customer.id === c.id) + 1} />
         ))}
         {snapshot.players.map((p) => (
@@ -549,99 +554,10 @@ function MeasuredCafeRoom({ property, furniture, overhead, showRooms, highlightK
   property: PropertyListing; furniture: FurnitureItem[]; overhead: boolean; showRooms: boolean; highlightKind?: FurnitureKind | null;
   placeEnabled: boolean; onFloorPlace?: (x: number, z: number) => void; onFloorHover?: (x: number, z: number) => void;
 }) {
-  // Scan topology is immutable for a selected model; WS snapshots clone its DTO.
-  const plan = useMemo(() => property.floorPlan!, [property.floorPlan!.modelId, property.floorPlan!.floorId]);
-  const shapes = useMemo(() => plan.rooms.map((room) => {
-    const shape = new Shape();
-    room.polygon.forEach((p, i) => i === 0 ? shape.moveTo(p.x, -p.z) : shape.lineTo(p.x, -p.z));
-    shape.closePath();
-    return shape;
-  }), [plan]);
-  const wood = useMemo(() => {
-    const canvas = document.createElement("canvas"); canvas.width = 512; canvas.height = 512;
-    const ctx = canvas.getContext("2d")!;
-    let seed = 31;
-    const random = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
-    for (let i = 0; i < 8; i++) {
-      ctx.fillStyle = ["#9a7351", "#ac825b", "#99704d", "#b28a62"][i % 4]; ctx.fillRect(i * 64, 0, 64, 512);
-      ctx.fillStyle = "#5d402b"; ctx.fillRect(i * 64, 0, 2, 512);
-      ctx.fillRect(i * 64, (i % 3) * 145 + 30, 64, 2);
-      for (let j = 0; j < 50; j++) { ctx.fillStyle = "#63452a18"; ctx.fillRect(i * 64 + random() * 60, random() * 512, 1, 40 + random() * 120); }
-    }
-    const texture = new CanvasTexture(canvas); texture.wrapS = texture.wrapT = RepeatWrapping; texture.repeat.set(0.25, 0.25); texture.colorSpace = SRGBColorSpace;
-    return texture;
-  }, []);
-  useEffect(() => () => wood.dispose(), [wood]);
-  const height = overhead ? 1.05 : 2.8;
-  const origin = plan.serviceOrigin;
-  return <group>
-    {shapes.map((shape, i) => <mesh key={plan.rooms[i].id} rotation={[-Math.PI / 2, 0, 0]} receiveShadow
-      onPointerMove={(e) => { if (placeEnabled) onFloorHover?.(e.point.x, e.point.z); }}
-      onClick={(e) => { if (placeEnabled) { e.stopPropagation(); onFloorPlace?.(e.point.x, e.point.z); } }}>
-      <shapeGeometry args={[shape]} /><meshStandardMaterial map={wood} color="#f1dfc5" roughness={0.9} side={DoubleSide} />
-    </mesh>)}
-    {plan.walls.map((wall) => {
-      const length = Math.hypot(wall.b.x - wall.a.x, wall.b.z - wall.a.z);
-      const angle = -Math.atan2(wall.b.z - wall.a.z, wall.b.x - wall.a.x);
-      const spans: ReactNode[] = [];
-      const block = (a: number, b: number, y: number, h: number, color: string, key: string) => {
-        if (b - a < 0.01 || h <= 0) return;
-        spans.push(<mesh key={key} position={[a + (b - a) / 2 - length / 2, y + h / 2, 0]} castShadow receiveShadow>
-          <boxGeometry args={[b - a, h, wall.thickness]} /><meshStandardMaterial color={color} roughness={0.88} /></mesh>);
-        if (y === 0 && h >= 0.7) {
-          spans.push(<mesh key={`${key}-panel`} position={[a + (b - a) / 2 - length / 2, 0.36, 0]} receiveShadow>
-            <boxGeometry args={[b - a, 0.72, wall.thickness + 0.012]} /><meshStandardMaterial color="#71826c" roughness={0.85} /></mesh>);
-          spans.push(<mesh key={`${key}-rail`} position={[a + (b - a) / 2 - length / 2, 0.74, 0]}>
-            <boxGeometry args={[b - a, 0.045, wall.thickness + 0.035]} /><meshStandardMaterial color="#c3c3a6" roughness={0.7} /></mesh>);
-          spans.push(<mesh key={`${key}-skirting`} position={[a + (b - a) / 2 - length / 2, 0.045, 0]}>
-            <boxGeometry args={[b - a, 0.09, wall.thickness + 0.025]} /><meshStandardMaterial color={PALETTE.woodDark} roughness={0.75} /></mesh>);
-        }
-      };
-      let from = 0;
-      for (const o of [...wall.openings].sort((a, b) => a.center - b.center)) {
-        const start = Math.max(from, o.center * length - o.width / 2), end = Math.min(length, o.center * length + o.width / 2);
-        block(from, start, 0, height, PALETTE.wall, `${o.id}-wall`);
-        if (o.type !== "doorway") block(start, end, 0, Math.min(0.7, height), "#728971", `${o.id}-sill`);
-        block(start, end, 2.2, height - 2.2, PALETTE.wall, `${o.id}-header`);
-        if (o.type === "window") spans.push(<mesh key={`${o.id}-glass`} position={[(start + end) / 2 - length / 2, overhead ? 0.82 : 1.45, 0]}>
-          <boxGeometry args={[end - start, overhead ? 0.25 : 1.45, 0.035]} /><meshStandardMaterial color="#b9d8ce" emissive="#b5cbb7" emissiveIntensity={0.18} transparent opacity={0.55} /></mesh>);
-        if (o.type === "doorway") spans.push(<AnimatedMeasuredDoor key={`${o.id}-door`} x={start - length / 2} width={end - start}
-          height={overhead ? 0.9 : 2.05} worldX={wall.a.x + (wall.b.x - wall.a.x) * o.center}
-          worldZ={wall.a.z + (wall.b.z - wall.a.z) * o.center} />);
-        from = Math.max(from, end);
-      }
-      block(from, length, 0, height, PALETTE.wall, "end");
-      return <group key={wall.id} position={[(wall.a.x + wall.b.x) / 2, 0, (wall.a.z + wall.b.z) / 2]} rotation={[0, angle, 0]}>{spans}</group>;
-    })}
-    {showRooms && plan.rooms.map((room, i) => {
-      const center = room.polygon.reduce((a, p) => ({ x: a.x + p.x / room.polygon.length, z: a.z + p.z / room.polygon.length }), { x: 0, z: 0 });
-      return <Text key={room.id} position={[center.x, 0.025, center.z]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.16} color="#4e5d43">{`ROOM ${i + 1}`}</Text>;
-    })}
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[origin.x + 3.2, 0.012, origin.z + 3.4]} receiveShadow>
-      <planeGeometry args={[5.8, 5.8]} /><meshStandardMaterial color="#637255" roughness={1} />
-    </mesh>
-
-    {!overhead && <PendantLight position={[origin.x + 1, 2.55, origin.z + 2]} />}
-    {!overhead && <PendantLight position={[origin.x + 4.5, 2.55, origin.z + 4.8]} />}
-    <pointLight position={[plan.entry.x, 2, plan.entry.z]} color="#f4c98b" intensity={2} distance={7} />
-    <Billboard position={[plan.entry.x, 1.7, plan.entry.z]}><Text fontSize={0.13} color="#4a6e4b">WELCOME IN</Text></Billboard>
+  return <MeasuredShell property={property} overhead={overhead} cutaway={showRooms} placeEnabled={placeEnabled}
+    onFloorPlace={onFloorPlace} onFloorHover={onFloorHover}>
     {furniture.map((f) => <FurnitureMesh key={f.id} item={f} highlight={highlightKind === f.kind} />)}
-  </group>;
-}
-
-function AnimatedMeasuredDoor({ x, width, height, worldX, worldZ }: { x: number; width: number; height: number; worldX: number; worldZ: number }) {
-  const hinge = useRef<Group>(null);
-  useFrame((_, dt) => {
-    const state = useApp.getState().snapshot;
-    const near = state && [...state.players, ...state.customers].some((p) => Math.hypot(p.x - worldX, p.z - worldZ) < 1.7);
-    if (hinge.current) hinge.current.rotation.y = MathUtils.lerp(hinge.current.rotation.y, near ? -Math.PI / 2 : 0, 1 - Math.exp(-7 * dt));
-  });
-  return <group ref={hinge} position={[x + 0.025, 0, 0]}>
-    <mesh position={[width / 2 - 0.025, height / 2, 0]} castShadow>
-      <boxGeometry args={[Math.max(0.1, width - 0.05), height, 0.045]} /><meshStandardMaterial color="#738c72" roughness={0.8} />
-    </mesh>
-    <mesh position={[width - 0.13, Math.min(0.85, height * 0.65), 0.04]}><sphereGeometry args={[0.035, 8, 8]} /><meshStandardMaterial color="#d8b477" metalness={0.35} roughness={0.4} /></mesh>
-  </group>;
+  </MeasuredShell>;
 }
 
 function PlacementGhost({ snapshot, kind, x, z, rotation, movingId }: {
@@ -1207,14 +1123,15 @@ function CharacterHead({ seed, y, office = false }: { seed: string; y: number; o
 const SHIRT_PROFILE = [new Vector2(0, -0.3), new Vector2(0.19, -0.3), new Vector2(0.18, -0.12), new Vector2(0.22, 0.16), new Vector2(0.25, 0.22), new Vector2(0.11, 0.3), new Vector2(0, 0.3)];
 const BARISTA_PROFILE = [new Vector2(0, -0.34), new Vector2(0.21, -0.34), new Vector2(0.19, -0.1), new Vector2(0.25, 0.2), new Vector2(0.28, 0.25), new Vector2(0.12, 0.34), new Vector2(0, 0.34)];
 
-function CustomerMesh({ customer, featured, yourTicket, queuePosition }: {
-  customer: Customer; featured: boolean; yourTicket: boolean; queuePosition: number;
+function CustomerMesh({ customer, appearance, featured, yourTicket, queuePosition }: {
+  appearance: number; customer: Customer; featured: boolean; yourTicket: boolean; queuePosition: number;
 }) {
   const angry = customer.state === "angry" || customer.patience < 20;
   const waiting = customer.state === "waiting" || customer.state === "ordering" || customer.state === "queue";
   const body = angry ? PALETTE.angry : characterStyle(customer.id).shirt;
   const { skin } = characterStyle(customer.id);
   const root = useRef<Group>(null);
+  const initialPosition = useRef<[number, number, number]>([customer.x, 0, customer.z]);
   const bob = useRef<Group>(null);
   const leftLeg = useRef<Group>(null);
   const rightLeg = useRef<Group>(null);
@@ -1233,7 +1150,11 @@ function CustomerMesh({ customer, featured, yourTicket, queuePosition }: {
       const dx = target.current.x - root.current.position.x;
       const dz = target.current.z - root.current.position.z;
       moving = Math.hypot(dx, dz) > 0.035;
-      if (Math.hypot(dx, dz) > 0.02) root.current.rotation.y = Math.atan2(dx, dz);
+      if (Math.hypot(dx, dz) > 0.02) {
+        const desired = Math.atan2(dx, dz);
+        const shortest = Math.atan2(Math.sin(desired - root.current.rotation.y), Math.cos(desired - root.current.rotation.y));
+        root.current.rotation.y += shortest * (1 - Math.exp(-12 * dt));
+      }
       root.current.position.x = nx;
       root.current.position.z = nz;
     }
@@ -1250,8 +1171,8 @@ function CustomerMesh({ customer, featured, yourTicket, queuePosition }: {
   });
 
   return (
-    <group ref={root} position={[customer.x, 0, customer.z]}>
-      <CafeCharacter seed={customer.id} fallback={
+    <group ref={root} position={initialPosition.current}>
+      <CafeCharacter seed={customer.id} appearance={appearance} fallback={
       <group ref={bob}>
         <mesh position={[0, 0.92, 0]} castShadow>
           <latheGeometry args={[SHIRT_PROFILE, 12]} />
@@ -1348,6 +1269,7 @@ function PlayerMesh({
   followLook?: boolean;
 }) {
   const root = useRef<Group>(null);
+  const initialPosition = useRef<[number, number, number]>([player.x, 0, player.z]);
   const leftLeg = useRef<Group>(null);
   const rightLeg = useRef<Group>(null);
   const leftArm = useRef<Group>(null);
@@ -1359,6 +1281,13 @@ function PlayerMesh({
   target.current = { x: player.x, z: player.z };
   const drink = player.holding?.startsWith("drink:");
   const brewing = player.holding?.startsWith("brewing:");
+  useEffect(() => {
+    // A first-person view model uses camera coordinates; reset when restoring the world avatar.
+    if (!hideBody && root.current) {
+      root.current.position.set(target.current.x, 0, target.current.z);
+      last.current = { ...target.current };
+    }
+  }, [hideBody]);
 
   useFrame(({ clock }, dt) => {
     if (!root.current) return;
@@ -1372,13 +1301,19 @@ function PlayerMesh({
     const k = 1 - Math.exp(-14 * dt);
     const nx = MathUtils.lerp(root.current.position.x, target.current.x, k);
     const nz = MathUtils.lerp(root.current.position.z, target.current.z, k);
-    const speed = Math.hypot(nx - last.current.x, nz - last.current.z) / Math.max(dt, 0.001);
+    const dx = nx - last.current.x, dz = nz - last.current.z;
+    const speed = Math.hypot(dx, dz) / Math.max(dt, 0.001);
     last.current = { x: nx, z: nz };
     root.current.position.x = nx;
     root.current.position.z = nz;
     root.current.rotation.x = 0;
     root.current.rotation.z = 0;
     if (followLook) root.current.rotation.y = Math.PI + getLook().yaw;
+    else if (speed > .1) {
+      const desired = Math.atan2(dx, dz);
+      const shortest = Math.atan2(Math.sin(desired - root.current.rotation.y), Math.cos(desired - root.current.rotation.y));
+      root.current.rotation.y += shortest * (1 - Math.exp(-12 * dt));
+    }
     const swing = speed > 0.4 ? Math.sin(clock.elapsedTime * 9) * 0.5 : 0;
     if (leftLeg.current) leftLeg.current.rotation.x = swing;
     if (rightLeg.current) rightLeg.current.rotation.x = -swing;
@@ -1388,14 +1323,14 @@ function PlayerMesh({
 
   if (hideBody) {
     return drink || brewing ? (
-      <group ref={root} position={[player.x, 0, player.z]}>
+      <group ref={root} position={initialPosition.current}>
         <HeldCup drink={!!drink} brewing={!!brewing} firstPerson />
       </group>
     ) : null;
   }
 
   return (
-    <group ref={root} position={[player.x, 0, player.z]}>
+    <group ref={root} position={initialPosition.current}>
       <CafeCharacter seed={player.id} fallback={<group>
       <mesh position={[0, 1.02, 0]} castShadow>
         <latheGeometry args={[BARISTA_PROFILE, 12]} />
