@@ -1,4 +1,5 @@
 import type { FurnitureKind, RoomSnapshot } from "./types.ts";
+import { floorMoveClear } from "./floorplan.ts";
 
 export const BREW_SECONDS = 1.6;
 
@@ -17,7 +18,8 @@ const NEAR_RADIUS = 2.4;
 export function nearStation(snapshot: RoomSnapshot, playerId: string, kinds: FurnitureKind[]): boolean {
   const player = snapshot.players.find((p) => p.id === playerId);
   return !!player && !!snapshot.layout?.furniture.some((item) =>
-    kinds.includes(item.kind) && Math.hypot(item.x - player.x, item.z - player.z) <= NEAR_RADIUS,
+    kinds.includes(item.kind) && Math.hypot(item.x - player.x, item.z - player.z) <= NEAR_RADIUS &&
+    (!snapshot.property?.floorPlan || floorMoveClear(snapshot.property.floorPlan, player, item, .05)),
   );
 }
 
@@ -35,6 +37,7 @@ export function nearestStation(snapshot: RoomSnapshot, playerId: string): Statio
   for (const { kind, station } of STATION_MAP) {
     for (const item of snapshot.layout.furniture) {
       if (item.kind !== kind) continue;
+      if (snapshot.property?.floorPlan && !floorMoveClear(snapshot.property.floorPlan, player, item, .05)) continue;
       const dist = Math.hypot(item.x - player.x, item.z - player.z);
       if (dist < bestDist) {
         bestDist = dist;

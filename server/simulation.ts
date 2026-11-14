@@ -1,3 +1,5 @@
+import { distributeStarterLayout } from "./starterLayout.ts";
+import { seatingTargets } from "./seating.ts";
 import { furnitureMoveClear } from "../shared/movement.ts";
 /**
  * Authoritative café simulation — customers, queues, orders, layout throughput.
@@ -94,7 +96,7 @@ export function addPlayer(snapshot: RoomSnapshot, id: string, name: string, role
 }
 
 export function selectProperty(snapshot: RoomSnapshot, property: PropertyListing): RoomSnapshot {
-  const starter: FurnitureItem[] = [
+  let starter: FurnitureItem[] = [
     { id: randomUUID(), kind: "counter", label: "Service Counter", x: 2, z: 4, rotation: 0, cost: 450 },
     { id: randomUUID(), kind: "coffee_machine", label: "Espresso Machine", x: 1, z: 5.5, rotation: 0, cost: 1800, throughput: 2 },
     { id: randomUUID(), kind: "pickup", label: "Pickup Station", x: Math.min(6.5, property.width - 1.5), z: 5.2, rotation: 0, cost: 300 },
@@ -109,6 +111,7 @@ export function selectProperty(snapshot: RoomSnapshot, property: PropertyListing
     const origin = property.floorPlan.serviceOrigin;
     const positions = [[1, 2], [3, 2], [5, 2], [2, 5], [5, 5], [1.2, 5], [2.8, 5], [0.5, 0.5], [3, 4]];
     starter.forEach((f, i) => { f.x = origin.x + positions[i][0]; f.z = origin.z + positions[i][1]; });
+    starter = distributeStarterLayout(property, starter);
   }
   const spent = starter.reduce((s, f) => s + f.cost, 0);
   let finance = snapshot.finance;
@@ -710,7 +713,7 @@ export function stepSimulation(snapshot: RoomSnapshot, dt: number): RoomSnapshot
 
   const machines = layout.furniture.filter((f) => f.kind === "coffee_machine").length;
   const throughput = Math.max(1, machines);
-  const seats = layout.furniture.reduce((s, f) => s + (f.seats ?? 0), 0);
+  const seating = seatingTargets(property, layout);
   const counter = layout.furniture.find((f) => f.kind === "counter");
   const pickup = layout.furniture.find((f) => f.kind === "pickup");
   const queueAnchor = counter ?? { x: 2, z: 3 };
@@ -806,9 +809,10 @@ export function stepSimulation(snapshot: RoomSnapshot, dt: number): RoomSnapshot
     }
 
     if (next.state === "waiting") {
+      const seat = index % 3 === 0 && seating.length ? seating[Math.floor(index / 3) % seating.length] : null;
       const dest = pickup ?? queueAnchor;
-      next.targetX = dest.x + 0.8;
-      next.targetZ = dest.z;
+      next.targetX = seat?.x ?? dest.x + 0.8;
+      next.targetZ = seat?.z ?? dest.z;
       stepToward(next, 2, true);
     }
 
@@ -827,15 +831,6 @@ export function stepSimulation(snapshot: RoomSnapshot, dt: number): RoomSnapshot
 
     if (next.state === "leaving") {
       stepToward(next, 2, false);
-    }
-
-    // Light seating use — stand beside the table, not inside its clearance.
-    if (next.state === "waiting" && seats > 0 && index % 3 === 0) {
-      const table = layout.furniture.find((f) => f.kind === "table");
-      if (table) {
-        next.targetX = table.x + STATION_CLEARANCE + 0.2;
-        next.targetZ = table.z;
-      }
     }
 
     return next;
