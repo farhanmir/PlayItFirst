@@ -14,6 +14,13 @@ const STATION_MAP: { kind: FurnitureKind; station: StationHint }[] = [
 /** Max distance (world units) to count as "near" a station. */
 const NEAR_RADIUS = 2.4;
 
+export function nearStation(snapshot: RoomSnapshot, playerId: string, kinds: FurnitureKind[]): boolean {
+  const player = snapshot.players.find((p) => p.id === playerId);
+  return !!player && !!snapshot.layout?.furniture.some((item) =>
+    kinds.includes(item.kind) && Math.hypot(item.x - player.x, item.z - player.z) <= NEAR_RADIUS,
+  );
+}
+
 /**
  * Nearest interactive station for a player, or null if none are in range.
  * Used for client action hints (`nearStation`).

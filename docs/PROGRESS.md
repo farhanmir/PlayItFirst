@@ -2,6 +2,12 @@
 
 Tracking https://github.com/farhanmir/PlayItFirst/issues/2. Work directly on `main` under AGENTS.md.
 
+## Interaction recovery — November 14
+
+Fixed the stuck held-drink path reported during the public playtest. When a customer leaves before pickup, the player can clear the unclaimed drink at the counter or pickup with E/Space, with no sale or inventory refund; then the next order can be taken. Station actions now accept any matching station within reach even if another station is slightly closer. Taking another ticket or brewing again cannot overwrite a held drink. The HUD names the clear action and prompts the player to move to a service station when out of range.
+
+Regression coverage includes expired espresso recovery and serving from a valid counter that is not the nearest station. **81 tests passed across 18 files** after the Gemini dependency update; typecheck and production build were rerun. The precise phone interaction reported by the player still needs rechecking on the deployed build after this commit is pushed.
+
 ## Gemini provider and public transport verification (November 14)
 
 Read the latest issue #8 comment. Added official `@langchain/google@0.2.10` `ChatGoogle` to the existing Deepagents manager; its peer range accepts our unchanged `@langchain/core@1.3.7`, and `npm ls` confirms one shared core instance. Google AI Studio uses `GOOGLE_API_KEY`, then `GEMINI_API_KEY` as an alias, ahead of existing OpenAI/Anthropic providers. `DEEPAGENTS_MODEL` remains configurable; Gemini defaults to tool-capable `gemini-3.6-flash`. Google calls have no retries, a bounded 2048-token output and low thinking; the existing four-turn/20-second deadline, four business tools, owner authorization, proposal expiry and idempotent execution remain intact. No second agent architecture or background polling.

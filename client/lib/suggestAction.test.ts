@@ -48,6 +48,16 @@ describe("suggestedAction", () => {
     expect(suggestedAction(s, "u")).toBe("serve");
   });
 
+  it("prompts to clear an expired drink at a service station and blocks serving while far away", () => {
+    const player = { id: "u", name: "U", role: "barista" as const, x: 0, z: 0, holding: "drink:espresso", score: 0, color: "#fff" };
+    const near = snap({ players: [player] });
+    expect(suggestedAction(near, "u")).toBe("serve");
+    expect(actionPrompt(near, "u")).toMatch(/Clear unclaimed espresso/);
+    const far = snap({ players: [{ ...player, x: 8, z: 8 }] });
+    expect(suggestedAction(far, "u")).toBeNull();
+    expect(actionPrompt(far, "u")).toMatch(/Carry your drink to pickup/);
+  });
+
   it("suggests brew when holding a ticket", () => {
     const s = snap({
       players: [{ id: "u", name: "U", role: "barista", x: 0, z: 0, holding: "ticket:latte", score: 0, color: "#fff" }],

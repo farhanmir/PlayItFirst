@@ -15,7 +15,7 @@ import type {
   RoomSnapshot,
 } from "../shared/types.ts";
 import { FURNITURE_CATALOG } from "../shared/types.ts";
-import { BREW_SECONDS, nearestStation } from "../shared/stations.ts";
+import { BREW_SECONDS, nearestStation, nearStation } from "../shared/stations.ts";
 import { placementIssue } from "../shared/placement.ts";
 import { floorMoveClear, floorPositionClear } from "../shared/floorplan.ts";
 import { measuredGrid, measuredRoute } from "./navigation.ts";
@@ -422,11 +422,10 @@ function stationOk(
   action: "take_order" | "make_coffee" | "serve" | "restock" | "collect",
 ): boolean {
   if (action === "collect") return true;
-  const station = nearestStation(snapshot, playerId);
-  if (action === "take_order") return station === "counter";
-  if (action === "make_coffee") return station === "machine";
-  if (action === "serve") return station === "pickup" || station === "counter";
-  if (action === "restock") return station === "fridge";
+  if (action === "take_order") return nearStation(snapshot, playerId, ["counter"]);
+  if (action === "make_coffee") return nearStation(snapshot, playerId, ["coffee_machine"]);
+  if (action === "serve") return nearStation(snapshot, playerId, ["pickup", "counter"]);
+  if (action === "restock") return nearStation(snapshot, playerId, ["fridge"]);
   return true;
 }
 
@@ -463,6 +462,11 @@ export function interact(
       eventLog: log.slice(0, 30),
       lastHumanInteractAt: snapshot.simTime,
     };
+  }
+
+  if (player.holding?.startsWith("drink:") && (action === "take_order" || action === "make_coffee")) {
+    log.unshift(`${player.name} is carrying a drink — serve or clear it first`);
+    return { ...snapshot, eventLog: log.slice(0, 30), lastHumanInteractAt: opts?.ai ? snapshot.lastHumanInteractAt : snapshot.simTime };
   }
 
   if (action === "take_order") {
@@ -563,11 +567,12 @@ export function interact(
         customers.find((c) => c.state === "waiting" && c.order === drinkOrder && c.ticketHolder == null)
       : undefined;
     if (!ready) {
-      log.unshift(
-        drinkOrder
-          ? `${player.name} — no open ${drinkOrder} ticket to serve`
-          : `${player.name} — brew a drink before serving`,
-      );
+      if (drinkOrder) {
+        players = players.map((p) => p.id === playerId ? { ...p, holding: null } : p);
+        log.unshift(`${player.name} cleared an unclaimed ${drinkOrder} — no sale recorded`);
+      } else {
+        log.unshift(`${player.name} — brew a drink before serving`);
+      }
     } else {
       const tip = ready.persona === "office" ? 4 : ready.persona === "regular" ? 3 : 1;
       const matchBonus = 1.5;
