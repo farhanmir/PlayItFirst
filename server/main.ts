@@ -10,6 +10,11 @@ import { fileURLToPath } from "node:url";
 import { WebSocketServer } from "ws";
 import { CafeRoomServer } from "./rooms.ts";
 import { qrSvg } from "./qr.ts";
+import { loadProperties, getCachedProperties } from "./costar.ts";
+import { resolveMatterport } from "./matterport.ts";
+import { deepagentsConfigured } from "./deepagents.ts";
+
+await loadProperties();
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const production = process.env.NODE_ENV === "production";
@@ -92,7 +97,38 @@ server.on("request", (req, res) => {
     const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
 
     if (url.pathname === "/api/properties") {
-      json(res, 200, rooms.listProperties());
+      if (url.searchParams.get("refresh") === "1") await rooms.refreshProperties();
+      const bundle = getCachedProperties();
+      res.writeHead(200, {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-PlayFirst-CoStar": bundle.source,
+      });
+      res.end(JSON.stringify(rooms.listProperties()));
+      return;
+    }
+
+    if (url.pathname === "/api/integrations") {
+      json(res, 200, {
+        costar: getCachedProperties().source,
+        costarDetail: getCachedProperties().detail,
+        matterport: !!(process.env.MATTERPORT_TOKEN || process.env.MATTERPORT_SDK_TOKEN),
+        nessie: !!process.env.NESSIE_KEY,
+        deepagents: deepagentsConfigured(),
+        photonVoice: "webrtc-signaling",
+        webxr: "client",
+      });
+      return;
+    }
+
+    if (url.pathname.startsWith("/api/matterport/")) {
+      const propertyId = decodeURIComponent(url.pathname.slice("/api/matterport/".length));
+      const listing = rooms.listProperties().find((p) => p.id === propertyId);
+      if (!listing) {
+        json(res, 404, { error: "Unknown property" });
+        return;
+      }
+      const model = await resolveMatterport(listing);
+      json(res, 200, model);
       return;
     }
 

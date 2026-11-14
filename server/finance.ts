@@ -33,13 +33,34 @@ export function applyTransaction(
   const balance = finance.balance + amount;
   const revenue = amount > 0 ? finance.revenue + amount : finance.revenue;
   const expenses = amount < 0 ? finance.expenses + Math.abs(amount) : finance.expenses;
-  return {
+  const next = {
     ...finance,
     balance,
     revenue,
     expenses,
     transactions: [tx, ...finance.transactions].slice(0, 40),
   };
+  // Fire-and-forget mirror into Nessie sandbox when a real account id is present
+  void mirrorNessieTransaction(next.nessieAccountId, label, amount).catch(() => undefined);
+  return next;
+}
+
+async function mirrorNessieTransaction(accountId: string, label: string, amount: number) {
+  const key = process.env.NESSIE_KEY;
+  if (!key || !accountId || accountId.startsWith("sim-")) return;
+  const path = amount >= 0 ? "deposits" : "withdrawals";
+  await fetch(`${NESSIE_BASE}/accounts/${accountId}/${path}?key=${key}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      medium: "balance",
+      transaction_date: new Date().toISOString().slice(0, 10),
+      status: "completed",
+      amount: Math.abs(amount),
+      description: label.slice(0, 80),
+    }),
+    signal: AbortSignal.timeout(5000),
+  });
 }
 
 /** Optional live Nessie create — fails soft so demos never block. */

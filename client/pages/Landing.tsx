@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { IntegrationsBadge } from "../components/IntegrationsBadge";
 import "./landing.css";
 
 interface Props {
@@ -43,6 +44,7 @@ export function Landing({ onStart, onJoin, onJudgeDemo, demoBusy }: Props) {
           <p className="lede rise-delay">
             Practice ownership inside a real storefront — layout, queues, cash — then leave with a launch blueprint, not a burned lease.
           </p>
+          <IntegrationsBadge />
           <div className="landing-cta rise-delay-2">
             <input
               className="name-input"

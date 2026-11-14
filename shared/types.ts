@@ -33,6 +33,12 @@ export interface PropertyListing {
   costarId: string;
   imageTone: string;
   description: string;
+  /** Matterport model id for showcase / Model API */
+  matterportModelId?: string;
+  matterportEmbedUrl?: string;
+  /** costar-live when COSTAR_API_URL answered; otherwise mock */
+  source?: "costar-live" | "costar-mock" | "local";
+  liveFetchedAt?: number;
 }
 
 export interface FurnitureItem {
@@ -187,7 +193,9 @@ export type ClientMsg =
   | { t: "photon_reply"; body: string }
   | { t: "request_blueprint" }
   /** Judge-demo: seed rush customers + director event + Photon ping */
-  | { t: "demo_boost" };
+  | { t: "demo_boost" }
+  /** Photon Voice WebRTC signaling (relayed peer-to-peer) */
+  | { t: "voice_signal"; to?: string; kind: "offer" | "answer" | "ice" | "hangup"; sdp?: string; candidate?: string };
 
 export type ServerMsg =
   | { t: "welcome"; token: string; you: string; snapshot: RoomSnapshot }
@@ -195,7 +203,15 @@ export type ServerMsg =
   | { t: "qr"; svg: string; url: string }
   | { t: "blueprint"; markdown: string }
   | { t: "error"; message: string }
-  | { t: "photon_ping"; message: PhotonMessage };
+  | { t: "photon_ping"; message: PhotonMessage }
+  | {
+      t: "voice_signal";
+      from: string;
+      fromName: string;
+      kind: "offer" | "answer" | "ice" | "hangup";
+      sdp?: string;
+      candidate?: string;
+    };
 
 export const FURNITURE_CATALOG: CatalogItem[] = [
   {

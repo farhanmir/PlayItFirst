@@ -21,34 +21,33 @@ Manual path:
 
 1. Enter your name → **Host café**
 2. Pick a Houston or LA storefront (rent/size/traffic become the rules)
-3. **Build** furniture or drag the **Table** markers → Sync layout
-4. **Open for business** → WASD + Take order / Make coffee / Serve (`E` / `F` / `R`)
-5. Answer the AI director + message Jamie in **Ops** / Photon
-6. Check **Future** for the rival café race + alternate timelines, then **Plan** → generate blueprint
-7. Friends scan the HUD QR to join as baristas
+3. **Build** furniture or drag the **Table** markers → live layout sync
+4. Open **Matterport** walkthrough on Build; **Photon Voice** on Ops; **WebXR** on Table
+5. **Open for business** → WASD + Take order / Make coffee / Serve (`E` / `F` / `R` / Space)
+6. Answer the AI director + message Jamie in **Ops** / Photon
+7. Check **Future** for the rival café race + alternate timelines, then **Plan** → generate blueprint
+8. Friends scan the HUD QR to join as baristas (then start a live voice call)
 
 ## What works
 
 | Area | Status |
 | --- | --- |
-| CoStar-style property selection (Houston / LA) | ✅ Mock listings + Matterport-shaped constraints |
-| Playable 3D café (Three.js / R3F) | ✅ Warm procedural interior, props, lighting |
-| Desktop orbit + mobile follow-cam play | ✅ |
-| Real-time multiplayer + QR join | ✅ Gitzilla-inspired rooms/WS/QR |
-| Customers, personas, tickets, queues | ✅ |
-| Inventory (milk / cups / beans) | ✅ |
-| Build mode + live layout changes | ✅ |
-| Tabletop marker sync | ✅ |
-| AI game director | ✅ State-changing choices |
-| Nessie finance ledger | ✅ Local + optional `NESSIE_KEY` |
-| Photon manager chat | ✅ Natural-language actions |
-| Business time machine | ✅ Alternate future compare |
-| Rival café race | ✅ Simulated competitor score on Future |
-| Judge demo (`/?demo=1`) | ✅ One-click Midtown auto-host |
-| Launch blueprint | ✅ From gameplay session |
-| WebAudio café SFX | ✅ Unlock on first gesture |
-
-Stretch: live CoStar/Matterport APIs, Photon voice, Vision Pro, hosted Deepagents.
+| CoStar property selection | ✅ Live when `COSTAR_API_URL` set · else stamped mock |
+| Matterport twin | ✅ Showcase embed + Model API when `MATTERPORT_TOKEN` set |
+| Playable 3D café (Three.js / R3F) | ✅ Warm procedural interior |
+| Desktop orbit + mobile follow-cam | ✅ |
+| Real-time multiplayer + QR join | ✅ |
+| Customers, tickets, inventory | ✅ |
+| Live tabletop marker sync | ✅ Pitch wow |
+| AI game director | ✅ Local rules · hosted Deepagents when keyed |
+| Nessie finance ledger | ✅ Local + optional `NESSIE_KEY` (mirrors txs) |
+| Photon manager chat | ✅ NL actions |
+| Photon Voice | ✅ WebRTC over room signaling |
+| Vision Pro / WebXR | ✅ Immersive VR/AR entry + dollhouse fallback |
+| Rival café + time machine | ✅ |
+| Judge demo (`/?demo=1`) | ✅ |
+| Launch blueprint | ✅ |
+| WebAudio café SFX | ✅ iOS-safe unlock |
 
 ## Architecture
 
@@ -60,8 +59,8 @@ Reuses battle-tested ideas from [Gitzilla](https://github.com/gfhdhytghd/Gitzill
 
 ```
 shared/   contracts
-server/   rooms, simulation, director, finance, QR
-client/   React UI + R3F café + audio
+server/   rooms, simulation, director, costar, matterport, deepagents, finance, QR
+client/   React UI + R3F café + WebRTC voice + WebXR
 data/     property listings
 ```
 
@@ -69,12 +68,21 @@ data/     property listings
 
 ```sh
 npm run dev        # game server + client
-npm test           # sim + multiplayer smoke
+npm test           # sim + multiplayer smoke + integrations
 npm run typecheck
 npm run build
 ```
 
 ## Env (optional)
 
-- `PORT` — default `5173`
-- `NESSIE_KEY` — Capital One Nessie sandbox key
+Copy `.env.example`. Demo runs fully without keys.
+
+| Var | Purpose |
+| --- | --- |
+| `NESSIE_KEY` | Capital One Nessie sandbox |
+| `COSTAR_API_URL` / `COSTAR_API_KEY` | Live CoStar listings JSON |
+| `MATTERPORT_TOKEN` | Matterport Model API |
+| `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `DEEPAGENTS_*` | Hosted Deepagents director |
+| `PORT` | Default `5173` |
+
+Integration status is exposed at `/api/integrations` and on the landing/game badges.

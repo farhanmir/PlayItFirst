@@ -23,6 +23,10 @@ import { WebXRHint } from "../components/WebXRHint";
 import { CrewBoard } from "../components/CrewBoard";
 import { MiniMap } from "../components/MiniMap";
 import { ServeToast } from "../components/ServeToast";
+import { MatterportPanel } from "../components/MatterportPanel";
+import { PhotonVoice } from "../components/PhotonVoice";
+import { WebXRSession } from "../components/WebXRSession";
+import { IntegrationsBadge } from "../components/IntegrationsBadge";
 import type { CafeViewMode } from "../components/CafeScene";
 import { play } from "../lib/audio";
 import { startAmbient, stopAmbient } from "../lib/ambient";
@@ -68,6 +72,7 @@ export function Game() {
   return (
     <main className="game">
       <Hud snapshot={snapshot} />
+      <IntegrationsBadge />
       <HelpOverlay />
       <div className="game-stage">
         <CafeCanvasFallback>
@@ -78,7 +83,7 @@ export function Game() {
           />
         </CafeCanvasFallback>
         {!mobile && <DollhouseToggle mode={viewMode} onChange={setViewMode} />}
-        <WebXRHint />
+        <WebXRHint onOpenTable={() => setTab("table")} />
         <MiniMap snapshot={snapshot} />
         <TutorialTips snapshot={snapshot} />
         <DirectorPanel snapshot={snapshot} />
@@ -118,17 +123,28 @@ export function Game() {
           ))}
         </div>
         <div className="rail-body">
-          {tab === "build" && <BuildPanel snapshot={snapshot} />}
+          {tab === "build" && (
+            <>
+              <BuildPanel snapshot={snapshot} />
+              {snapshot.property ? <MatterportPanel property={snapshot.property} /> : null}
+            </>
+          )}
           {tab === "ops" && (
             <>
               <PhotonChat snapshot={snapshot} />
+              <PhotonVoice snapshot={snapshot} />
               <CrewBoard snapshot={snapshot} />
               <FinanceLedger snapshot={snapshot} />
               <InventoryCard snapshot={snapshot} />
               <EventLog lines={snapshot.eventLog} />
             </>
           )}
-          {tab === "table" && <Tabletop snapshot={snapshot} />}
+          {tab === "table" && (
+            <>
+              <Tabletop snapshot={snapshot} />
+              <WebXRSession onEnterDollhouse={() => setViewMode("dollhouse")} />
+            </>
+          )}
           {tab === "future" && (
             <>
               <RivalCafePanel snapshot={snapshot} />

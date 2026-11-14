@@ -12,11 +12,13 @@ import type {
   RoomSnapshot,
   ServerMsg,
 } from "../shared/types.ts";
-import properties from "../data/properties.json";
 import type { PropertyListing } from "../shared/types.ts";
 import { qrSvg } from "./qr.ts";
 import { applyDirectorChoice, forceDemoRushEvent, maybeSpawnDirectorEvent } from "./director.ts";
 import { provisionNessieAccount } from "./finance.ts";
+import { getCachedProperties, loadProperties } from "./costar.ts";
+import { withMatterportDefaults } from "./matterport.ts";
+import { deepagentsConfigured, planDirectorEvent } from "./deepagents.ts";
 import {
   addPlayer,
   buildBlueprint,
@@ -52,7 +54,10 @@ interface Room {
 
 const TICK_HZ = 20;
 const SNAPSHOT_HZ = 10;
-const listings = properties as PropertyListing[];
+
+function listings(): PropertyListing[] {
+  return withMatterportDefaults(getCachedProperties().listings);
+}
 
 function send(ws: WebSocket | null, message: ServerMsg) {
   if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(message));
@@ -71,7 +76,12 @@ export class CafeRoomServer {
   }
 
   listProperties() {
-    return listings;
+    return listings();
+  }
+
+  async refreshProperties() {
+    await loadProperties(true);
+    return listings();
   }
 
   createRoom(): { code: string; snapshot: RoomSnapshot } {
@@ -126,7 +136,7 @@ export class CafeRoomServer {
 
     switch (msg.t) {
       case "select_property": {
-        const property = listings.find((p) => p.id === msg.propertyId);
+        const property = listings().find((p) => p.id === msg.propertyId);
         if (!property) {
           send(socket, { t: "error", message: "Unknown property" });
           return;
@@ -303,6 +313,26 @@ export class CafeRoomServer {
         this.broadcast(room);
         break;
       }
+      case "voice_signal": {
+        const payload: ServerMsg = {
+          t: "voice_signal",
+          from: member.id,
+          fromName: member.name,
+          kind: msg.kind,
+          sdp: msg.sdp,
+          candidate: msg.candidate,
+        };
+        if (msg.to) {
+          const target = room.members.get(msg.to);
+          send(target?.socket ?? null, payload);
+        } else {
+          for (const m of room.members.values()) {
+            if (m.id === member.id) continue;
+            send(m.socket, payload);
+          }
+        }
+        break;
+      }
     }
   }
 
@@ -372,11 +402,14 @@ export class CafeRoomServer {
     }, 1000 / SNAPSHOT_HZ);
 
     room.directorTimer = setInterval(() => {
-      if (room.snapshot.phase !== "play") return;
-      // Don't stack events while one is unresolved.
-      if (room.snapshot.director && !room.snapshot.director.resolved) return;
-      const event = maybeSpawnDirectorEvent(room.snapshot, Date.now());
-      if (event && event.id !== room.snapshot.director?.id) {
+      void (async () => {
+        if (room.snapshot.phase !== "play") return;
+        if (room.snapshot.director && !room.snapshot.director.resolved) return;
+        const now = Date.now();
+        let event = deepagentsConfigured() ? await planDirectorEvent(room.snapshot, now) : null;
+        if (!event) event = maybeSpawnDirectorEvent(room.snapshot, now);
+        if (!event || event.id === room.snapshot.director?.id) return;
+        const hosted = deepagentsConfigured();
         room.snapshot = {
           ...room.snapshot,
           director: event,
@@ -385,7 +418,9 @@ export class CafeRoomServer {
               id: randomUUID(),
               from: "Jamie",
               role: "Café Manager",
-              body: `hey — ${event.title.toLowerCase()}. check the director panel.`,
+              body: hosted
+                ? `deepagents ping — ${event.title.toLowerCase()}. director panel has your options.`
+                : `hey — ${event.title.toLowerCase()}. check the director panel.`,
               at: Date.now(),
               actionable: true,
             },
@@ -393,7 +428,7 @@ export class CafeRoomServer {
           ].slice(0, 20),
         };
         this.broadcast(room);
-      }
+      })().catch(() => undefined);
     }, 14000);
   }
 }

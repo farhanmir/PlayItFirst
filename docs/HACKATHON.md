@@ -6,10 +6,12 @@ Play your business before you pay for it — a multiplayer café sim inside real
 ## Tracks / sponsors to hit in the demo
 | Sponsor | Show this |
 | --- | --- |
-| CoStar | Property cards with listing IDs, rent, sqft, Matterport-shaped notes driving layout size |
-| LangChain / Deepagents | AI Game Director events + Future tab alternate strategies |
-| Photon | Jamie manager chat that changes inventory/staffing |
-| Capital One Nessie | Live ledger + account id in HUD / Ops |
+| CoStar | Live `/api/properties` when `COSTAR_API_URL` set · else stamped mock IDs |
+| Matterport | Build-tab walkthrough embed + Model API when `MATTERPORT_TOKEN` set |
+| LangChain / Deepagents | Hosted LLM director when keyed · else local Deepagents-shaped rules |
+| Photon | Jamie chat + **WebRTC Photon Voice** crew channel |
+| Capital One Nessie | Ledger + optional sandbox account + mirrored deposits/withdrawals |
+| Vision Pro | Table-tab WebXR VR/AR entry + dollhouse fallback |
 | Amazon / Best Overall | Fun multiplayer + social-good entrepreneurship education |
 | SpaceXSI / Cursor | Built with agents; Gitzilla patterns reused |
 
