@@ -1,0 +1,15 @@
+# Free hackathon demo: one Node service serves Vite and the authoritative WS game.
+services:
+  - type: web
+    name: softopen
+    runtime: node
+    plan: free
+    branch: main
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
