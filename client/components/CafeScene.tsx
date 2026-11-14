@@ -153,11 +153,11 @@ function CafeRoom({
         <meshStandardMaterial color="#3f5240" roughness={0.95} />
       </mesh>
 
-      {/* Walls */}
-      <Wall length={w} position={[w / 2, 1.45, 0]} />
-      <Wall length={w} position={[w / 2, 1.45, d]} />
-      <Wall length={d} position={[0, 1.45, d / 2]} rotation={Math.PI / 2} />
-      <Wall length={d} position={[w, 1.45, d / 2]} rotation={Math.PI / 2} />
+      {/* Walls — tinted by property listing tone */}
+      <Wall length={w} position={[w / 2, 1.45, 0]} color={property.imageTone} />
+      <Wall length={w} position={[w / 2, 1.45, d]} color={property.imageTone} />
+      <Wall length={d} position={[0, 1.45, d / 2]} rotation={Math.PI / 2} color={property.imageTone} />
+      <Wall length={d} position={[w, 1.45, d / 2]} rotation={Math.PI / 2} color={property.imageTone} />
 
       {/* Baseboard trim */}
       <mesh position={[w / 2, 0.08, 0.1]} castShadow>
@@ -202,11 +202,21 @@ function CafeRoom({
   );
 }
 
-function Wall({ length, position, rotation = 0 }: { length: number; position: [number, number, number]; rotation?: number }) {
+function Wall({
+  length,
+  position,
+  rotation = 0,
+  color = PALETTE.wall,
+}: {
+  length: number;
+  position: [number, number, number];
+  rotation?: number;
+  color?: string;
+}) {
   return (
     <mesh position={position} rotation={[0, rotation, 0]} castShadow receiveShadow>
       <boxGeometry args={[length, 2.9, 0.2]} />
-      <meshStandardMaterial color={PALETTE.wall} roughness={0.92} />
+      <meshStandardMaterial color={color} roughness={0.92} />
     </mesh>
   );
 }

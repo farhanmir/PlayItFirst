@@ -18,9 +18,26 @@ export function BlueprintPanel({ markdown }: { markdown: string | null }) {
       ) : (
         <>
           <pre className="blueprint-md">{markdown}</pre>
-          <button className="btn btn-ghost" type="button" onClick={() => set({ blueprint: null })}>
-            Close
-          </button>
+          <div className="build-actions">
+            <button
+              className="btn"
+              type="button"
+              onClick={() => {
+                const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "playfirst-launch-blueprint.md";
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+            >
+              Download .md
+            </button>
+            <button className="btn btn-ghost" type="button" onClick={() => set({ blueprint: null })}>
+              Close
+            </button>
+          </div>
         </>
       )}
     </aside>

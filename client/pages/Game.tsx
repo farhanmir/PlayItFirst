@@ -14,6 +14,7 @@ import { TutorialTips } from "../components/TutorialTips";
 import { TimelineCompare } from "../components/TimelineCompare";
 import { RivalCafePanel } from "../components/RivalCafePanel";
 import { RolePicker } from "../components/RolePicker";
+import { HelpOverlay } from "../components/HelpOverlay";
 import { play } from "../lib/audio";
 import "./game.css";
 
@@ -47,6 +48,7 @@ export function Game() {
   return (
     <main className="game">
       <Hud snapshot={snapshot} />
+      <HelpOverlay />
       <div className="game-stage">
         <CafeScene snapshot={snapshot} firstPerson={!!firstPerson && snapshot.phase !== "build"} />
         <TutorialTips snapshot={snapshot} />
