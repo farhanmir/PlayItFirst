@@ -1,6 +1,18 @@
 # SoftOpen public deploy
 
-Keep local single-port `npm run dev` for development. For a public demo, split the static Vite frontend and the authoritative Node/WebSocket server.
+Use the free **single-service Render Blueprint** first. It serves the built Vite game, API and authoritative WebSocket rooms together. No Vercel project or cross-origin configuration is required.
+
+## Render (preferred, free)
+
+1. In Render, create a Blueprint from `farhanmir/SoftOpen`, branch `main`, using the existing `render.yaml`. Confirm the service plan is **Free**.
+2. The blueprint sets Node 22, `npm ci --include=dev && npm run build`, `npm start`, and health check `/api/health`. Keep development dependencies during build/runtime because `tsx` runs the server.
+3. Leave `VITE_API_BASE_URL`, `VITE_WS_URL`, `VITE_PUBLIC_ORIGIN`, `FRONTEND_ORIGIN` and `CORS_ORIGINS` unset for this same-origin deployment. Put optional sponsor secrets only in the service dashboard.
+4. Open the assigned `https://<service>.onrender.com/?demo=1`. Verify `/api/health`, a human take/brew/serve, then scan the invite QR on a real phone. Both clients must use the same HTTPS origin and WSS `/ws`; move furniture while both remain connected.
+5. Warm the service before judging. [Render free services sleep after 15 minutes without inbound traffic and may take about a minute to wake](https://render.com/docs/free). Rooms are in memory and disappear on restart/redeploy. This is a demo service, with no durable saves.
+
+Local production verification: build, then run the server with `NODE_ENV=production` and a separate `PORT` (the npm start shell syntax works on Render/Linux; in PowerShell set those environment variables and run `node --import tsx server/main.ts`). The November 14 Codex run exercised the built game on port 5174; see PROGRESS.md. **No public Render deploy has been verified yet: account connection/public service URL is missing.**
+
+The split deployment below is optional.
 
 ## Architecture
 

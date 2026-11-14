@@ -1,60 +1,50 @@
 # SoftOpen — Progress (Issue #2)
 
-Tracking **P0: Prove real-property playable vertical slice and replace sponsor stand-ins**  
-https://github.com/farhanmir/SoftOpen/issues/2
+Tracking https://github.com/farhanmir/SoftOpen/issues/2. Work directly on `main` under AGENTS.md.
 
-Also following **AGENTS.md game-first direction** (owner playtest: must feel like a game, not a dashboard).
+## November 14, 2026 — Codex implementation and browser verification
 
-Branch: `main` (direct commits per owner / AGENTS.md workflow).
+Safely fast-forwarded `799a904` → `17e7f97` before editing. Preserved the owner's uncommitted Vitest 5 upgrade in `package.json` and `package-lock.json`; those edits are excluded from these commits.
 
-## Done this session
+- `66a93b6`: protect the first human sale, pace later AI assistance, reject overlapping/nonfinite/outside furniture placements and moves. Retain existing service-path checks, validated transactions and multiplayer regression coverage.
+- `2d63c17`: wider café camera with correct character facing, readable camera-facing order bubbles, faces/glasses/hands/shoes, sage wainscoting and café lettering, visible daylight windows, raised espresso equipment, ceramic carried cups and corrected steam height. Hide overhead beams in elevated views.
+- Service HUD: management/director calls stay behind Menu; fixed overlapping camera controls; brewing progress uses the authoritative sim clock; no repeated brew prompt while brewing; payment audio follows accepted sales. Hidden management drawer is inert to keyboard focus.
+- Build: half-metre floor grid, green/red placement preview, rotation, move-existing selection and live shared updates. Server retains final path validation and reports rejected edits. Build remains local to the editor while others serve.
+- Phone: continuous held movement reads the latest player position, pointer capture stops movement on release/cancel, keyboard movement clears on blur. Retained touch look and contextual service action.
 
-| Item | Status |
-| --- | --- |
-| Economy / navigation defects from QA PR #5 | ✅ On main (`serve` needs drink + ticket, no clock auto-sales, collect does not mint cash, restock/wages need funds, station clearance + sealed-path reject) |
-| Immersive full-viewport game shell | ✅ Canvas fills the viewport; manage/finance/integrations live behind Esc Menu |
-| Contextual E / Space interact | ✅ One primary action prompt; desktop action grid hidden during immersive play |
-| Daylight café look + set dressing | ✅ Warm lighting, wood counters, pastry case, cup shelf, POS, apron’d walkers, order bubbles |
-| Third-person default camera | ✅ Elevated follow cam clamped inside the room (fixed exterior-wall / ceiling occlusion bugs) |
-| Sims build overlay (Tab) | ✅ Floating catalog + orbit camera; other players keep serving; furniture sync verified |
-| Judge demo no longer auto-plays the first order | ✅ Parks host at counter; player takes the order |
-| Vercel + Railway / Render split config | ✅ `vercel.json`, `render.yaml`, `.env.example`, `docs/DEPLOY.md`, `VITE_API_BASE_URL` / `VITE_WS_URL` / `VITE_PUBLIC_ORIGIN` |
-| Vertical-slice regression tests | ✅ **59** passing |
+## Actual verification
 
-## Browser evidence (this run)
+`npm test`: **63 passing, 0 TODO** across 13 files. `npm run typecheck`: clean. `npm run build`: successful. `npm ci --dry-run --include=dev --ignore-scripts`: successful. Checks ran with the owner's installed Vitest 5.1.0; dependency changes remain uncommitted.
 
-Headless Chrome against local `http://127.0.0.1:5175/?demo=1` (WebGL canvas ~1438×898):
+Real Microsoft Edge browser with WebGL, driven through keyboard/pointer controls via Playwright. Desktop viewport 1440×900 and emulated iPhone viewport 390×844. Final run used the **built production SPA + production Node server on port 5174**, rather than Vite development imports. WebSocket frames were observed for assertions; the browser flow did not inject tickets, stock, payments or layout state.
 
-- Immersive third-person play: `/opt/cursor/artifacts/immersive_cafe_play.png`
-- Build mode catalog + live floor: `/opt/cursor/artifacts/build_mode_overlay.png`
-- After contextual take-order: `/opt/cursor/artifacts/immersive_after_interact.png`
+1. Judge demo: zero sales and empty Jamie hands before the first player order. Regression also verifies that idling through a seeded rush leaves first-sale stock untouched. Jamie starts automatic work only after a completed sale and 18 seconds without human interaction.
+2. Player: E takes ticket → keyboard walk to machine → E brews → progress/cup → keyboard walk to pickup → E serves. One matched sale, one cup and bean consumed; milk consumed for milk drinks. Earlier latte runs booked $7 and $10 depending on persona; see the final run's exact order/payment in [verification.json](screenshots/verification.json).
+3. A separate phone-sized browser joined the same room. Holding its movement pad moved its player more than 0.5 world units.
+4. Owner placed a plant through the build catalog/floor; both clients reached ten furniture items. Then moved the service counter to (6, 7.5), rotated it 90°, and verified the move/rotation on both clients while service remained open.
+5. No browser JavaScript errors. Production `/api/health` returned `ok: true`. A proxy request with `Host: softopen.example` and `X-Forwarded-Proto: https` generated an HTTPS invite.
 
-## Verified gameplay (authoritative WS)
+### Committed screenshots from the running game
 
-Against the same local Node server:
+- [Gameplay](screenshots/gameplay.png)
+- [Brewing interaction](screenshots/brewing.png)
+- [Accepted service](screenshots/served.png)
+- [Build mode and ghost preview](screenshots/build-mode.png)
+- [Move and rotation preview](screenshots/build-moving.png)
+- [Phone-sized second client](screenshots/phone-join.png)
 
-1. **Order loop** — take ticket → brew → finish drink → serve: `customersServed` +1, `finance.balance` +$10 for office latte tip path, cups/beans decremented once, holding cleared.
-2. **Two-client build sync** — host `place_furniture` decoration; guest snapshot furniture count increased and saw the plant at the placed coords.
-3. **`npm test`** 59 pass · **`npm run typecheck`** clean · **`npm run build`** green.
+## Deployment and sponsor blockers
 
-## Still blocked / needs team or owner
+The existing `render.yaml` remains the preferred **free, single-service** deployment: Node 22, build with development dependencies, `npm start`, `/api/health`. Same-origin API/socket defaults require no Vercel service. Updated [DEPLOY.md](DEPLOY.md) to lead with Render and mark split hosting optional. Production serving and proxy invite behavior were tested locally. **No public deployment is claimed**: no Render CLI/account credentials or public service URL are available in this session. The owner was asked for a connected service URL. Render free cold starts and process restarts clear in-memory rooms; warm the service before judging.
 
-| Item | Blocker |
-| --- | --- |
-| Matched CoStar listing + Matterport scan | Event toolkit credentials unset |
-| Hosted Deepagents runtime | No `DEEPAGENTS_*` / model keys; local tools exist |
-| Photon 2.0 messaging | No provider token; crew WebRTC + in-app chat remain labeled |
-| Public HTTPS/WSS URL | Needs owner Vercel + Railway/Render projects; configs ready |
-| Physical phone playtest | Not run in this cloud environment |
-| Art fidelity vs “would play 10 minutes” bar | Procedural meshes improved but still stylized/low-poly; further licensed assets welcome |
+`/api/integrations` confirms bundled **costar-mock**, no Matterport/Nessie/Deepagents credentials, and explicitly labeled non-Photon messaging/crew voice. Still need one authorized matching CoStar listing + Matterport scan, hosted Deepagents credentials/runtime access, and a provisioned Photon provider/channel. Existing optional integration functionality is preserved.
 
-## Remaining game-feel limitations
+## Current limitations
 
-- Customers / player are stylized capsules (walk/idle), not fully rigged characters.
-- Build mode uses orbit “monitor” camera rather than a polished isometric Sims camera with ghost previews / snap gizmos (placement + invalid feedback still basic).
-- Floor Captain rush cards still appear during service (compacted); true “silent until opened” may need another pass.
-- Jamie AI assist still covers the line when the human is idle — intentional for rush, but can steal serves during demos.
+- Browser automation is not a physical human/phone playtest. Public HTTPS/WSS and real-phone QR scanning remain unverified until Render is connected.
+- Characters remain original procedural meshes, not fully rigged or licensed asset models. No performance/FPS claim for physical phones.
+- Build move is select-then-click; direct object dragging is still absent. Ghosts show a simple volume/footprint, not the complete furniture model. Local bounds/overlap preview is conservative; the server can additionally reject a green preview if it seals a service path. Occupancy remains the existing radial clearance model.
+- Customer order bubbles can overlap in a long queue. More art and camera tuning may still be needed to reach the owner's visual-quality target.
+- Vite reports the existing large bundle warning (about 1.35 MB uncompressed / 389 KB gzip). Tests/build pass; this is not a phone performance benchmark.
+- No durable room saves; sponsor property data is still mock. Public deployment and real sponsor integrations are not complete.
 
-## SoftOpen
-
-Play your business before you pay for it.
