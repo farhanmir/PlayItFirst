@@ -17,8 +17,12 @@ import { RolePicker } from "../components/RolePicker";
 import { HelpOverlay } from "../components/HelpOverlay";
 import { PhotonCall } from "../components/PhotonCall";
 import { DollhouseToggle } from "../components/DollhouseToggle";
+import { SessionRecap } from "../components/SessionRecap";
+import { WebXRHint } from "../components/WebXRHint";
+import { CrewBoard } from "../components/CrewBoard";
 import type { CafeViewMode } from "../components/CafeScene";
 import { play } from "../lib/audio";
+import { startAmbient, stopAmbient } from "../lib/ambient";
 import "./game.css";
 
 export function Game() {
@@ -37,6 +41,12 @@ export function Game() {
     if (snapshot.open && snapshot.phase === "play" && snapshot.eventLog[0]?.includes("Doors open")) {
       play("open");
     }
+  }, [snapshot?.open]);
+
+  useEffect(() => {
+    if (snapshot?.open) void startAmbient();
+    else stopAmbient();
+    return () => stopAmbient();
   }, [snapshot?.open]);
 
   useEffect(() => {
@@ -63,6 +73,7 @@ export function Game() {
           viewMode={viewMode}
         />
         {!mobile && <DollhouseToggle mode={viewMode} onChange={setViewMode} />}
+        <WebXRHint />
         <TutorialTips snapshot={snapshot} />
         <DirectorPanel snapshot={snapshot} />
         <PhotonCall snapshot={snapshot} />
@@ -104,6 +115,7 @@ export function Game() {
           {tab === "ops" && (
             <>
               <PhotonChat snapshot={snapshot} />
+              <CrewBoard snapshot={snapshot} />
               <FinanceLedger snapshot={snapshot} />
               <InventoryCard snapshot={snapshot} />
               <EventLog lines={snapshot.eventLog} />
@@ -116,7 +128,12 @@ export function Game() {
               <TimelineCompare snapshot={snapshot} />
             </>
           )}
-          {tab === "plan" && <BlueprintPanel markdown={blueprint} />}
+          {tab === "plan" && (
+            <>
+              <SessionRecap snapshot={snapshot} />
+              <BlueprintPanel markdown={blueprint} />
+            </>
+          )}
         </div>
       </div>
     </main>
