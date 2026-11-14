@@ -20,6 +20,7 @@ import { DollhouseToggle } from "../components/DollhouseToggle";
 import { SessionRecap } from "../components/SessionRecap";
 import { WebXRHint } from "../components/WebXRHint";
 import { CrewBoard } from "../components/CrewBoard";
+import { MiniMap } from "../components/MiniMap";
 import type { CafeViewMode } from "../components/CafeScene";
 import { play } from "../lib/audio";
 import { startAmbient, stopAmbient } from "../lib/ambient";
@@ -74,6 +75,7 @@ export function Game() {
         />
         {!mobile && <DollhouseToggle mode={viewMode} onChange={setViewMode} />}
         <WebXRHint />
+        <MiniMap snapshot={snapshot} />
         <TutorialTips snapshot={snapshot} />
         <DirectorPanel snapshot={snapshot} />
         <PhotonCall snapshot={snapshot} />

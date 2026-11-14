@@ -9,7 +9,7 @@ export function DollhouseToggle({
   onChange: (m: "orbit" | "dollhouse" | "play") => void;
 }) {
   return (
-    <div className="view-toggle panel">
+    <div className="view-toggle panel" role="group" aria-label="Camera view">
       <span className="tag">Matterport view</span>
       {(
         [
@@ -22,6 +22,8 @@ export function DollhouseToggle({
           key={id}
           type="button"
           className={mode === id ? "active" : ""}
+          aria-label={`${label} camera`}
+          aria-pressed={mode === id}
           onClick={() => {
             play("ui", 0.2);
             onChange(id);

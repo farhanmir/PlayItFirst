@@ -22,6 +22,7 @@ export function Hud({ snapshot }: { snapshot: RoomSnapshot }) {
         <button
           type="button"
           className="btn-ghost btn-small hud-mute"
+          aria-label={mute ? "Unmute sound" : "Mute sound"}
           aria-pressed={mute}
           onClick={() => {
             const next = !mute;

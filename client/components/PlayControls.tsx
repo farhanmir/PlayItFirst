@@ -67,30 +67,35 @@ export function PlayControls({ snapshot }: { snapshot: RoomSnapshot }) {
     : "Hands empty";
 
   return (
-    <div className={`play-controls panel ${mobile ? "mobile" : ""}`}>
+    <div
+      className={`play-controls panel ${mobile ? "mobile" : ""}`}
+      role="toolbar"
+      aria-label="Café play controls"
+    >
       <div className="holding-chip">
         <span className="tag">Holding</span>
         <strong>{holding}</strong>
       </div>
       <p className="hint">{mobile ? "Tap actions · drag pad to move" : "WASD move · E order · F brew · R serve · Q restock"}</p>
       <div className="action-grid">
-        <button type="button" onClick={() => act("take_order")}>
+        <button type="button" aria-label="Take order" onClick={() => act("take_order")}>
           Take order
         </button>
-        <button type="button" onClick={() => act("make_coffee")}>
+        <button type="button" aria-label="Make coffee" onClick={() => act("make_coffee")}>
           Make coffee
         </button>
-        <button type="button" onClick={() => act("serve")}>
+        <button type="button" aria-label="Serve drink" onClick={() => act("serve")}>
           Serve
         </button>
-        <button type="button" onClick={() => act("restock")}>
+        <button type="button" aria-label="Restock supplies" onClick={() => act("restock")}>
           Restock
         </button>
-        <button type="button" onClick={() => act("collect")}>
+        <button type="button" aria-label="Collect payment" onClick={() => act("collect")}>
           Collect $
         </button>
         <button
           type="button"
+          aria-label="Switch to build phase"
           onClick={() => {
             play("ui");
             conn?.send({ t: "set_phase", phase: "build" });
@@ -114,6 +119,8 @@ function MobilePad({ onMove }: { onMove: (dx: number, dz: number) => void }) {
   return (
     <div
       className="mobile-pad"
+      role="application"
+      aria-label="Drag to move your character"
       onPointerDown={(e) => {
         const el = e.currentTarget;
         const move = (ev: PointerEvent) => {

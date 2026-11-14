@@ -60,6 +60,14 @@ button {
   color: inherit;
 }
 
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--crema);
+  outline-offset: 2px;
+}
+
 a {
   color: inherit;
 }
