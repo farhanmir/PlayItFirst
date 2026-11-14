@@ -1,12 +1,12 @@
 # Play It First public deploy
 
-Use the free **single-service Render Blueprint** first. It serves the built Vite game, API and authoritative WebSocket rooms together. No Vercel project or cross-origin configuration is required.
+**Render is the only production host.** The existing free single-service Blueprint serves the built Vite game, API and authoritative WebSocket rooms together at https://playitfirst.onrender.com/. The previous separate frontend deployment has been discontinued; do not recreate it.
 
-## Render (preferred, free)
+## Render (free)
 
 1. In Render, create a Blueprint from `farhanmir/PlayItFirst`, branch `main`, using the existing `render.yaml`. Confirm the service plan is **Free**.
 2. The blueprint sets Node 22, `npm ci --include=dev && npm run build`, `npm start`, and health check `/api/health`. Keep development dependencies during build/runtime because `tsx` runs the server.
-3. Leave `VITE_API_BASE_URL`, `VITE_WS_URL`, `VITE_PUBLIC_ORIGIN`, `FRONTEND_ORIGIN` and `CORS_ORIGINS` unset for this same-origin deployment. Put optional sponsor secrets only in the service dashboard.
+3. Remove any leftover `VITE_API_BASE_URL`, `VITE_WS_URL`, `VITE_PUBLIC_ORIGIN`, `FRONTEND_ORIGIN` and `CORS_ORIGINS` settings from the Render dashboard or local `.env`. The frontend now always uses the current origin. Put optional sponsor secrets only in the service dashboard.
 4. Open the assigned `https://<service>.onrender.com/?demo=1`. Verify `/api/health`, a human take/brew/serve, then scan the invite QR on a real phone. Both clients must use the same HTTPS origin and WSS `/ws`; move furniture while both remain connected.
 5. Warm the service before judging. [Render free services sleep after 15 minutes without inbound traffic and may take about a minute to wake](https://render.com/docs/free). Rooms are in memory and disappear on restart/redeploy. This is a demo service, with no durable saves.
 
@@ -58,39 +58,13 @@ In a second terminal run `node scripts/check-deployment.mjs http://127.0.0.1:518
 
 Passing this check does **not** verify WebGL, a physical phone scanning the QR, a human paid order, customer rerouting, or recovery after process restart. Complete the manual checklist below and record the actual Render URL, deployed commit, Free plan, devices and results in issue #6. Keep the issue open until public verification is complete.
 
-The split deployment below is optional.
-
-## Architecture
-
-| Piece | Host | Why |
-| --- | --- | --- |
-| Vite `dist/` SPA | Vercel | Static HTTPS frontend and QR landing page |
-| `server/main.ts` rooms + sim | Railway (or one persistent Node process) | In-memory rooms, 20 Hz ticks, WebSockets |
-
-Do **not** put the multiplayer simulation in independent serverless functions. One backend instance is enough for the hackathon.
-
-## Backend (Railway)
-
-1. Create a Node service from this repo.
-2. Start command: `npm run start` (runs `NODE_ENV=production tsx server/main.ts`).
-3. Build command: `npm install && npm run build` (ships `dist/` if you also want same-origin fallback).
-4. Set secrets in the Railway dashboard only (`NESSIE_KEY`, `COSTAR_*`, `DEEPAGENTS_*`, Matterport tokens). Never put them in `VITE_*`.
-5. Set `CORS_ORIGINS` / `FRONTEND_ORIGIN` to the Vercel HTTPS origin (e.g. `https://softopen.vercel.app`).
-6. Confirm `/api/health` and `wss://<railway-host>/ws` are reachable.
-
-## Frontend (Vercel)
-
-1. Import the repo. `vercel.json` already points at the Vite build output.
-2. Set public build env vars (no secrets):
-   - `VITE_API_BASE_URL=https://<railway-host>`
-   - `VITE_WS_URL=wss://<railway-host>/ws`
-   - `VITE_PUBLIC_ORIGIN=https://<vercel-host>`
-3. Redeploy after changing env vars.
-4. Open the Vercel URL, host a room, scan the QR. The QR must be the Vercel HTTPS page; the browser socket must hit Railway WSS.
-
 ## Local defaults
 
-With env vars unset, `client/lib/api.ts` and `client/lib/net.ts` keep same-origin `/api/*` and `/ws`, matching `npm run dev`.
+Both local development and Render production serve the game and API from one origin. Client requests use relative /api/* paths and derive /ws and QR origin from the current page, using WSS on HTTPS. Keep the existing Render service, its secrets and auto-deploy from main.
+
+## Retire legacy frontend hosting
+
+In the old hosting dashboard, confirm the project is linked to farhanmir/PlayItFirst, then delete only that frontend project (or disconnect its Git integration if retaining the old deployment temporarily). Do not delete the GitHub repository or the Render Web Service. Removing configuration from GitHub alone does not shut down an existing hosted project.
 
 ## Checklist before claiming a public demo
 

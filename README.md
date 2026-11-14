@@ -8,6 +8,10 @@ Before every grand opening, there's a soft opening. We built one you can play.
 
 **Repo:** https://github.com/farhanmir/PlayItFirst
 
+**Play:** https://playitfirst.onrender.com/ · [Judge demo](https://playitfirst.onrender.com/?demo=1)
+
+Production runs entirely on one free Render Web Service (frontend, API and multiplayer). See [deployment instructions](docs/DEPLOY.md).
+
 ## Run
 
 ```sh
