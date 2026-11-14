@@ -5,6 +5,25 @@
 import local from "../data/properties.json";
 import { readFile } from "node:fs/promises";
 import type { PropertyListing } from "../shared/types.ts";
+import { correctLegacyMatterportFloor } from "../shared/floorplan.ts";
+import { enrichMeasuredProperty } from "./matterport.ts";
+
+const LEGACY_GEOMETRY = "Measured single-floor room polygons, walls and openings; API x/y translated to game x/z in meters";
+
+/** Migrate only records created by our known old importer, never arbitrary plans. */
+export function correctImportedCoordinates(p: PropertyListing): PropertyListing {
+  if (p.source !== "costar-extract" || p.provenance?.geometry !== LEGACY_GEOMETRY ||
+    !p.floorPlan || p.floorPlan.units !== "meters" || p.floorPlan.modelId !== p.matterportModelId ||
+    p.floorPlan.coordinateConvention) return p;
+  return {
+    ...p,
+    floorPlan: correctLegacyMatterportFloor(p.floorPlan, p.width, p.depth),
+    provenance: { ...p.provenance, geometry: "Measured single-floor room polygons, walls and openings; Model API x/-y translated to right-handed game x/z in meters",
+      assumptions: p.provenance.assumptions.flatMap((item) => item === "Standardized wall height and cozy materials"
+        ? ["Game finishes approximate the walkthrough; original furnishings and duct geometry are not captured", "Room/opening heights used where available; missing sill and ceiling elevations remain estimates"] : [item]),
+    },
+  };
+}
 
 export type ListingSource = "costar-live" | "costar-extract" | "costar-mock";
 
@@ -96,7 +115,8 @@ export async function loadProperties(force = false): Promise<CoStarBundle> {
           ![p.sqft, p.monthlyRent, p.width, p.depth].every((n) => typeof n === "number" && Number.isFinite(n) && n > 0))) {
           throw new Error("Invalid authorized CoStar extract file");
         }
-        cache = stamp(rows as PropertyListing[], "costar-extract", "Authorized hackathon extract; asking terms, not an executed lease. See per-property assumptions.");
+        const listings = await Promise.all((rows as PropertyListing[]).map((p) => enrichMeasuredProperty(correctImportedCoordinates(p))));
+        cache = stamp(listings, "costar-extract", "Authorized hackathon extract; asking terms, not an executed lease. See per-property assumptions.");
         return cache;
       }
       const live = await fetchLive();

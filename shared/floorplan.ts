@@ -1,10 +1,22 @@
 import type { Vec2 } from "./types";
 
-export interface PlanOpening { id: string; type: string; center: number; width: number; height: number }
+export interface PlanOpening {
+  id: string; type: string; center: number; width: number; height: number;
+  /** Floor-relative game Y; populated only when source floor elevation is known. */
+  lowerElevation?: number;
+  /** Unmodified Model API Z, retained separately from the normalized sill. */
+  sourceLowerElevation?: number;
+}
 export interface PlanWall { id: string; a: Vec2; b: Vec2; thickness: number; openings: PlanOpening[] }
 export interface MeasuredFloorPlan {
   modelId: string; floorId: string; units: "meters";
-  rooms: { id: string; areaM2: number; polygon: Vec2[] }[];
+  /** Model API x/y mapped to right-handed Y-up game x/-y, then translated. */
+  coordinateConvention?: "matterport-api-x-neg-y-v1";
+  sourceFloorElevation?: number;
+  /** Set only after a validated authenticated read of this model/floor's metadata. */
+  metadataSource?: "matterport-live";
+  metadataFetchedAt?: number;
+  rooms: { id: string; label?: string; labelSource?: "user-label" | "detected-classification"; height?: number; areaM2: number; polygon: Vec2[] }[];
   walls: PlanWall[];
   entry: Vec2;
   serviceOrigin: Vec2;
@@ -26,6 +38,43 @@ export function distanceToSegment(x: number, z: number, a: Vec2, b: Vec2): numbe
   const dx = b.x - a.x, dz = b.z - a.z;
   const t = Math.max(0, Math.min(1, ((x - a.x) * dx + (z - a.z) * dz) / (dx * dx + dz * dz || 1)));
   return Math.hypot(x - a.x - t * dx, z - a.z - t * dz);
+}
+
+/** Same conservative starter-layout search used by the authorized importer. */
+export function measuredServiceOrigin(plan: MeasuredFloorPlan, width: number, depth: number): Vec2 {
+  const main = [...plan.rooms].sort((a, b) => b.areaM2 - a.areaM2)[0];
+  if (!main) throw new Error("Measured floor has no rooms");
+  const pattern = [[1, 2], [3, 2], [5, 2], [2, 5], [5, 5], [1.2, 5], [2.8, 5], [0.5, 0.5], [3, 4], [1, 3]];
+  let best: Vec2 | undefined, score = Infinity;
+  for (let ix = 1; ix < Math.floor(width * 2); ix++) {
+    for (let iz = 1; iz < Math.floor(depth * 2); iz++) {
+      const x = ix / 2, z = iz / 2;
+      if (!pattern.every(([px, pz]) => pointInPolygon(x + px, z + pz, main.polygon) &&
+        plan.walls.every((wall) => distanceToSegment(x + px, z + pz, wall.a, wall.b) >= 0.85))) continue;
+      const nextScore = (x - (width - 7.2)) ** 2 + (z - (depth - 9.2)) ** 2;
+      if (nextScore < score) { best = { x, z }; score = nextScore; }
+    }
+  }
+  if (!best) throw new Error("No safe starter café area after coordinate correction; manual layout required");
+  return best;
+}
+
+/** Correct old importer output; caller must identify the exact legacy provenance. */
+export function correctLegacyMatterportFloor(plan: MeasuredFloorPlan, width: number, depth: number): MeasuredFloorPlan {
+  if (plan.coordinateConvention === "matterport-api-x-neg-y-v1") return plan;
+  const reflect = (p: Vec2): Vec2 => ({ x: p.x, z: depth - p.z });
+  const corrected: MeasuredFloorPlan = {
+    ...plan,
+    coordinateConvention: "matterport-api-x-neg-y-v1",
+    rooms: plan.rooms.map((room) => ({ ...room, polygon: room.polygon.map(reflect) })),
+    walls: plan.walls.map((wall) => ({ ...wall, a: reflect(wall.a), b: reflect(wall.b), openings: wall.openings.map((o) => ({ ...o })) })),
+    entry: reflect(plan.entry),
+    serviceOrigin: reflect(plan.serviceOrigin),
+  };
+  // The starter furniture offsets point toward +z; reflecting only its origin
+  // would place equipment through walls. Search again on corrected geometry.
+  corrected.serviceOrigin = measuredServiceOrigin(corrected, width, depth);
+  return corrected;
 }
 
 /** Split a measured wall at doorways. Windows remain solid at walking height. */

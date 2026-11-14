@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { floorMoveClear, floorPositionClear, solidWallSegments, type MeasuredFloorPlan } from "./floorplan";
+import { correctLegacyMatterportFloor, floorMoveClear, floorPositionClear, solidWallSegments, type MeasuredFloorPlan } from "./floorplan";
 import { measuredRoute } from "../server/navigation";
 import { addPlayer, createRoomSnapshot, movePlayer, placeFurniture, selectProperty } from "../server/simulation";
 import properties from "../data/properties.json";
@@ -12,6 +12,30 @@ const plan: MeasuredFloorPlan = {
     openings: [{ id: "door", type: "doorway", center: 0.5, width: 1.2, height: 2.1 }] }],
 };
 describe("measured floor topology", () => {
+  it("corrects Model API handedness once while preserving directed wall openings and collision", () => {
+    const legacy: MeasuredFloorPlan = {
+      modelId: "synthetic", floorId: "floor", units: "meters", entry: { x: 1, z: 3 }, serviceOrigin: { x: 4, z: 4 },
+      rooms: [{ id: "room", areaM2: 192, polygon: [{ x: 0, z: 0 }, { x: 16, z: 0 }, { x: 16, z: 12 }, { x: 0, z: 12 }] }],
+      walls: [{ id: "west", a: { x: 0, z: 0 }, b: { x: 0, z: 12 }, thickness: 0.16,
+        openings: [{ id: "door", type: "doorway", center: 0.25, width: 1.2, height: 2.3 }] }],
+    };
+    const corrected = correctLegacyMatterportFloor(legacy, 16, 12);
+    expect(corrected.rooms[0].polygon[0]).toEqual({ x: 0, z: 12 });
+    expect(corrected.entry).toEqual({ x: 1, z: 9 });
+    expect(corrected.walls[0].a).toEqual({ x: 0, z: 12 });
+    expect(corrected.walls[0].b).toEqual({ x: 0, z: 0 });
+    expect(corrected.walls[0].openings).toEqual(legacy.walls[0].openings);
+    const segments = solidWallSegments(corrected.walls[0]);
+    expect(segments[0].b.z).toBeCloseTo(9.6);
+    expect(segments[1].a.z).toBeCloseTo(8.4);
+    expect(floorPositionClear(corrected, 0.1, 9)).toBe(true);
+    expect(floorPositionClear(corrected, 0.1, 3)).toBe(false);
+    for (const [x, z] of [[1, 2], [3, 2], [5, 2], [2, 5], [5, 5]]) {
+      expect(floorPositionClear(corrected, corrected.serviceOrigin.x + x, corrected.serviceOrigin.z + z, 0.6)).toBe(true);
+    }
+    expect(correctLegacyMatterportFloor(corrected, 16, 12)).toBe(corrected);
+    expect(legacy.entry.z).toBe(3);
+  });
   it("keeps doors passable and walls solid, including long movement attempts", () => {
     expect(solidWallSegments(plan.walls[0])).toHaveLength(2);
     expect(floorMoveClear(plan, { x: 4, z: 2 }, { x: 6, z: 2 })).toBe(false);

@@ -6,6 +6,7 @@ import io
 import json
 import math
 import os
+import time
 from pathlib import Path
 import urllib.request
 import zipfile
@@ -37,7 +38,7 @@ def import_suite(archive, password, listing_id, space_id, key, token):
         matched = next((r for r in rows if r["PropertyId"] == str(listing["propertyId"]) and r["MatterportModelId"] == model), None)
         if not matched or matched["City"] not in ("Houston", "Los Angeles"):
             raise ValueError("No matching property/model row")
-    query = {"query": "query($id:ID!) { model(id:$id) { id name dimensionEstimates(units:metric) { area } floors { id edges { id type thickness vertices { id position { x y } } openings { id type relativeCenter width height } } } rooms { id dimensionEstimates(units:metric) { area } boundary { edges { id } } } } }", "variables": {"id": model}}
+    query = {"query": "query($id:ID!) { model(id:$id) { id name dimensionEstimates(units:metric) { area } floors { id edges { id type thickness vertices { id position { x y } } openings { id type relativeCenter width height lowerElevation } } } rooms { id label classifications { label } dimensionEstimates(units:metric) { area height lowerElevation } boundary { edges { id } } } } }", "variables": {"id": model}}
     request = urllib.request.Request("https://api.matterport.com/api/models/graph", data=json.dumps(query).encode(), headers={
         "Authorization": "Basic " + base64.b64encode(f"{key}:{token}".encode()).decode(), "Content-Type": "application/json"})
     response = json.load(urllib.request.urlopen(request, timeout=20))
@@ -48,6 +49,8 @@ def import_suite(archive, password, listing_id, space_id, key, token):
     if not scan_area or not math.isfinite(scan_area) or scan_area <= 0:
         raise ValueError("No usable measured scan area")
     floor_plan, width, depth = convert_floor(live)
+    floor_plan["metadataSource"] = "matterport-live"
+    floor_plan["metadataFetchedAt"] = round(time.time() * 1000)
     return [{
         "id": f"costar-{listing['propertyId']}-{space_id}", "name": f"{matched['Address']} · Suite {space.get('suite', '')}",
         "city": matched["City"], "neighborhood": "", "address": f"{matched['Address']}, {matched['City']}, {matched['State']}",
@@ -59,8 +62,8 @@ def import_suite(archive, password, listing_id, space_id, key, token):
         "matterportHint": f"Measured walls, rooms and openings from matched scan: {live.get('name', model)}. Original game materials and equipment.",
         "provenance": {"listingId": str(listing_id), "spaceId": str(space_id), "suite": space.get("suite", ""), "askingRate": rate,
             "rateBasis": "USD/sqft/year" if basis == 2 else "USD/sqft/month", "scanAreaM2": scan_area,
-            "geometry": "Measured single-floor room polygons, walls and openings; API x/y translated to game x/z in meters",
-            "assumptions": ["Operational entrance chosen among measured exterior doors", "New café equipment positions", "Standardized wall height and cozy materials", "28-person simulation capacity", "0.6 simulated foot traffic", "CAM/taxes/additional charges excluded", "Permitted café use not independently verified"]},
+            "geometry": "Measured single-floor room polygons, walls and openings; Model API x/-y translated to right-handed game x/z in meters",
+            "assumptions": ["Operational entrance chosen among measured exterior doors", "New café equipment positions", "Missing wall heights and sill elevations use labeled reconstruction assumptions", "Game materials approximate the walkthrough; original scan textures are not included", "28-person simulation capacity", "0.6 simulated foot traffic", "CAM/taxes/additional charges excluded", "Permitted café use not independently verified"]},
     }]
 
 
