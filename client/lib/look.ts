@@ -1,6 +1,7 @@
 /** Shared look angles for first/third person cameras + relative WASD. */
-let yaw = 0;
-let pitch = 0;
+/** Default faces into the café (+Z) so first-person doesn't stare at the entrance wall. */
+let yaw = Math.PI;
+let pitch = -0.08;
 const listeners = new Set<() => void>();
 
 export function getLook() {

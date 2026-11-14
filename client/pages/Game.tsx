@@ -39,7 +39,8 @@ export function Game() {
   const buildKind = useApp((s) => s.buildKind);
   const set = useApp((s) => s.set);
 
-  const [viewMode, setViewMode] = useState<CafeViewMode>(mobile ? "third" : "first");
+  // Third-person default keeps the whole café readable; first-person stays one click away.
+  const [viewMode, setViewMode] = useState<CafeViewMode>("third");
   const [userPickedView, setUserPickedView] = useState(false);
   const [buildMode, setBuildMode] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -47,7 +48,7 @@ export function Game() {
 
   useEffect(() => {
     if (userPickedView || buildMode) return;
-    setViewMode(mobile ? "third" : "first");
+    setViewMode("third");
   }, [snapshot?.phase, mobile, userPickedView, buildMode]);
 
   useEffect(() => {
@@ -83,7 +84,7 @@ export function Game() {
             if (!useApp.getState().snapshot?.open) useApp.getState().conn?.send({ t: "set_phase", phase: "build" });
           } else {
             useApp.getState().set({ buildKind: null });
-            setViewMode(useApp.getState().mobile ? "third" : "first");
+            setViewMode("third");
             if (useApp.getState().snapshot?.open) useApp.getState().conn?.send({ t: "set_phase", phase: "play" });
           }
           return next;
@@ -93,7 +94,7 @@ export function Game() {
         setBuildMode((open) => {
           if (open) {
             useApp.getState().set({ buildKind: null });
-            setViewMode(useApp.getState().mobile ? "third" : "first");
+            setViewMode("third");
             return false;
           }
           setDrawerOpen((drawer) => !drawer);
@@ -140,7 +141,7 @@ export function Game() {
     play("ui", 0.2);
     setBuildMode(false);
     set({ buildKind: null });
-    setViewMode(mobile ? "third" : "first");
+    setViewMode("third");
     if (snapshot.open) conn?.send({ t: "set_phase", phase: "play" });
   };
 

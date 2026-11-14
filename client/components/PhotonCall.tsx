@@ -21,14 +21,15 @@ export function PhotonCall({ snapshot }: { snapshot: RoomSnapshot }) {
     if (!ev || ev.resolved) return;
     if (ev.severity !== "critical") return;
     if (ev.id === seenEvent) return;
+    // Don't stack a phone call over the director choices — wait until they resolve.
+    if (directorOpen) return;
     setSeenEvent(ev.id);
     setRinging(true);
-    play("rush", 0.5);
-    play("ping", 0.4);
-  }, [snapshot.director?.id, snapshot.director?.resolved, snapshot.director?.severity, seenEvent]);
+    play("rush", 0.35);
+    play("ping", 0.3);
+  }, [snapshot.director?.id, snapshot.director?.resolved, snapshot.director?.severity, seenEvent, directorOpen]);
 
-  // Narrow screens: keep director choices readable — show the call after they resolve.
-  if (mobile && directorOpen && !active) return null;
+  if (directorOpen && !active) return null;
   if (!ringing && !active) return null;
 
   return (

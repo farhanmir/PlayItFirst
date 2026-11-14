@@ -23,9 +23,9 @@ export type { StationHint } from "../shared/stations.ts";
 
 const AI_PLAYER_ID = "__jamie_ai__";
 /** Help when no human interact for this many sim-seconds. Leave room for the player to act. */
-const AI_IDLE_SEC = 12;
-/** Act every N ticks so players still matter (~2s at 20 Hz). */
-const AI_PERIOD_TICKS = 40;
+const AI_IDLE_SEC = 18;
+/** Act every N ticks so players still matter (~3s at 20 Hz). */
+const AI_PERIOD_TICKS = 60;
 
 const NAMES = ["Ava", "Ben", "Chris", "Dana", "Eli", "Faye", "Gus", "Hana", "Ivan", "Jade", "Kai", "Lina"];
 const ORDERS = ["latte", "americano", "cappuccino", "cold brew", "mocha", "espresso"];
@@ -71,12 +71,13 @@ function emptyMetrics(): Metrics {
 export function addPlayer(snapshot: RoomSnapshot, id: string, name: string, role: PlayerState["role"]): RoomSnapshot {
   if (snapshot.players.some((p) => p.id === id)) return snapshot;
   const color = COLORS[snapshot.players.length % COLORS.length];
+  const counter = snapshot.layout?.furniture.find((item) => item.kind === "counter");
   const player: PlayerState = {
     id,
     name,
     role,
-    x: 2 + snapshot.players.length * 1.2,
-    z: 2,
+    x: counter ? counter.x + 0.4 + snapshot.players.length * 0.9 : 2.4 + snapshot.players.length * 1.1,
+    z: counter ? counter.z + 1.1 : 3.2,
     holding: null,
     score: 0,
     color,
@@ -828,8 +829,8 @@ export function stepSimulation(snapshot: RoomSnapshot, dt: number): RoomSnapshot
 
   // Jamie (AI) barista: help on long queues or when humans go idle — paced so players still matter
   const humanIdle = next.simTime - (next.lastHumanInteractAt ?? 0) >= AI_IDLE_SEC;
-  const needsHelp = queueLength >= 3 || humanIdle;
-  const period = queueLength >= 5 || rush > 0.5 ? Math.floor(AI_PERIOD_TICKS / 2) : AI_PERIOD_TICKS;
+  const needsHelp = queueLength >= 5 || humanIdle;
+  const period = queueLength >= 7 || rush > 0.5 ? Math.floor(AI_PERIOD_TICKS / 2) : AI_PERIOD_TICKS;
   if (needsHelp && next.tick % period === 0) {
     next = runAiBaristaAssist(next);
   }

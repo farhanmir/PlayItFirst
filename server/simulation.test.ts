@@ -103,11 +103,13 @@ describe("café simulation", () => {
         seedCustomer({ id: "c1", name: "Ava", state: "ordering", patience: 500 }),
         seedCustomer({ id: "c2", name: "Ben", state: "queue", patience: 500 }),
         seedCustomer({ id: "c3", name: "Chris", state: "queue", patience: 500 }),
+        seedCustomer({ id: "c4", name: "Dana", state: "queue", patience: 500 }),
+        seedCustomer({ id: "c5", name: "Eli", state: "queue", patience: 500 }),
       ],
-      metrics: { ...snap.metrics, queueLength: 3 },
+      metrics: { ...snap.metrics, queueLength: 5 },
     };
 
-    for (let i = 0; i < 400; i++) {
+    for (let i = 0; i < 600; i++) {
       snap = stepSimulation(snap, 0.25);
     }
 

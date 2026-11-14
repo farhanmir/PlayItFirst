@@ -35,13 +35,13 @@ export function OrderRail({
             {!compact ? (
               <div className="ticket-meta">
                 <span>{PERSONA[c.persona].hint}</span>
-                <span className="patience">Patience {Math.max(0, Math.round(c.patience))}%</span>
+                <span className="patience">Wait {Math.max(0, Math.round(c.patience))}</span>
               </div>
             ) : (
-              <span className="patience">Patience {Math.max(0, Math.round(c.patience))}%</span>
+              <span className="patience">Wait {Math.max(0, Math.round(c.patience))}</span>
             )}
             <div className="ticket-bar">
-              <i style={{ width: `${Math.round(c.progress * 100)}%` }} />
+              <i style={{ width: `${Math.min(100, Math.round((c.patience / 280) * 100))}%` }} />
             </div>
           </article>
         ))}

@@ -80,7 +80,14 @@ export function CafeScene({ snapshot, viewMode = "monitor", buildMode = false }:
         gl={{ antialias: true, powerPreference: "high-performance", failIfMajorPerformanceCaveat: false }}
       >
         <color attach="background" args={[PALETTE.bg]} />
-        <fog attach="fog" args={[PALETTE.fog, mode === "dollhouse" ? 18 : 12, mode === "dollhouse" ? 42 : 34]} />
+        <fog
+          attach="fog"
+          args={[
+            PALETTE.fog,
+            mode === "first" ? 16 : mode === "dollhouse" ? 18 : 14,
+            mode === "first" ? 48 : mode === "dollhouse" ? 42 : 36,
+          ]}
+        />
 
         {/* Warm daylight café — soft sun through the windows */}
         <ambientLight intensity={0.38} color="#fff4e8" />
@@ -222,9 +229,9 @@ function CameraRig({
       cam.updateProjectionMatrix();
       controlsRef.current?.target.set(width / 2, 0.4, depth / 2);
     } else if (mode === "first") {
-      cam.fov = 78;
-      cam.near = 0.05;
-      cam.far = 60;
+      cam.fov = 72;
+      cam.near = 0.08;
+      cam.far = 70;
       cam.updateProjectionMatrix();
     } else {
       cam.fov = 55;
@@ -356,11 +363,15 @@ function CafeRoom({
         <meshStandardMaterial color="#3f5240" roughness={0.95} />
       </mesh>
 
-      {/* Walls — tinted by property listing tone; dollhouse drops the front wall */}
-      {!cutaway && <Wall length={w} position={[w / 2, 1.45, 0]} color={property.imageTone} />}
-      <Wall length={w} position={[w / 2, 1.45, d]} color={property.imageTone} />
-      <Wall length={d} position={[0, 1.45, d / 2]} rotation={Math.PI / 2} color={property.imageTone} />
-      <Wall length={d} position={[w, 1.45, d / 2]} rotation={Math.PI / 2} color={property.imageTone} />
+      {/* Warm plaster walls — listing tone stays as an accent strip, not the whole room */}
+      {!cutaway && <Wall length={w} position={[w / 2, 1.45, 0]} color={PALETTE.wall} />}
+      <Wall length={w} position={[w / 2, 1.45, d]} color={PALETTE.wall} />
+      <Wall length={d} position={[0, 1.45, d / 2]} rotation={Math.PI / 2} color={PALETTE.wall} />
+      <Wall length={d} position={[w, 1.45, d / 2]} rotation={Math.PI / 2} color={PALETTE.wall} />
+      <mesh position={[w / 2, 2.35, d - 0.12]}>
+        <boxGeometry args={[Math.min(w * 0.55, 6), 0.18, 0.05]} />
+        <meshStandardMaterial color={property.imageTone || PALETTE.wood} roughness={0.8} />
+      </mesh>
 
       {/* Baseboard trim */}
       <mesh position={[w / 2, 0.08, 0.1]} castShadow>
