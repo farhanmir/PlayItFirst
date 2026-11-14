@@ -168,13 +168,23 @@ export class CafeRoomServer {
         break;
       }
       case "select_property": {
+        if (member.role !== "owner") {
+          send(socket, { t: "error", message: "Only the owner can select a property" });
+          return;
+        }
+        // Retransmission or a resumed client's repeated selection must not reset
+        // the played ledger or create a second external sandbox account.
+        if (room.snapshot.property?.id === msg.propertyId) {
+          this.broadcast(room);
+          return;
+        }
         const property = listings().find((p) => p.id === msg.propertyId);
         if (!property) {
           send(socket, { t: "error", message: "Unknown property" });
           return;
         }
         room.snapshot = selectProperty(room.snapshot, property);
-        attachNessieAccount(room.snapshot.finance, () => this.broadcast(room));
+        attachNessieAccount(room.snapshot.finance, () => this.broadcast(room), { monthlyRent: property.monthlyRent });
         this.broadcast(room);
         break;
       }
@@ -363,7 +373,8 @@ export class CafeRoomServer {
   private disconnect(socket: WebSocket) {
     const session = this.sessions.get(socket);
     if (!session) return;
-    session.member.socket = null;
+    // A resumed connection can already own this member when the old socket closes.
+    if (session.member.socket === socket) session.member.socket = null;
     this.sessions.delete(socket);
   }
 
