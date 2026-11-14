@@ -7,6 +7,26 @@
 
 This document consolidates the original concept, issue #2, the event handbook, sponsor issues #6–#11, original alignment and pitch docs, and later owner feedback. It is the authoritative product scope and acceptance plan, not a claim that everything is finished. Read [PROGRESS.md](PROGRESS.md) for dated evidence, [DEPLOY.md](DEPLOY.md) for deployment steps, [ALIGNMENT.md](ALIGNMENT.md) for the compact audit, [HACKATHON.md](HACKATHON.md) for the pitch, and [../AGENTS.md](../AGENTS.md) for agent rules. Current owner decisions and new verified evidence supersede old historical descriptions. Update this plan as requirements change.
 
+## Current release status and owner priorities — November 14, 6:11 PM ET audit
+
+Source snapshot: `07e55e5`; latest detailed observations are at the end of [PROGRESS.md](PROGRESS.md). This section supersedes the earlier implementation-status descriptions below; the original product requirements and acceptance gates remain. **Owner decision: finish Nessie LAST.** Keep its existing V2 code and Capital One target; do not remove or rewrite it, and do not block the core demo on it. Finish the main game, real-property proof, live manager and Photon first.
+
+| Area | Evidence | Still needed |
+| --- | --- | --- |
+| CoStar / Matterport | Public costar-extract, matched matterport-live, panorama loaded in test iframe, 12 rooms/66 walls/11 doorways/4 windows; paid service on public measured floor | Publication/external-processing permission; full property-picker preview; physical phone; meaningful agentic decision |
+| Gameplay / co-op | Public mocha sale $7, one milk/cup/bean consumed, no page errors; public two-client WSS edit/resume; local shared counter movement changed seeded guest remaining route by 4.01 world units | Public real-floor counter rerouting and useful measured comparison; actual phone QR/touch; human visual acceptance |
+| Visuals / controls | Second polish pass, improved characters/materials/mobile HUD, collision and camera-relative movement; desktop and phone-emulated rendering | Real-device performance and final polish; do not rewrite scene just for extra features |
+| Deepagents | Successful public synthetic run at 03497a4: $35 owner-approved restock, correct inventory and two-client state, duplicate/guest rejection | Latest b2ff7ee provider attempt failed after state read; safe failure categories now in 07e55e5. Diagnose and reverify provider/model identity, approval and outcome. Do not claim Gemini-specific success from older run. Keep sponsor-context guard false absent permission. |
+| Photon Messaging | Tested signature and outbound text transport in ddce01f; owner has obtained API key | Project/sender/space/line provisioning, event schema and signing secret, authenticated webhook or supported event channel, expiring owner pairing, durable acceptance/dedupe strategy compatible with ephemeral rooms, real phone send/reply and approved action. Follow [PHOTON_SETUP.md](PHOTON_SETUP.md). No live callback yet. |
+| Photon Voice | Crew WebRTC/local mock only | Actual provisioned number/SIP/voice agent and verified real call |
+| Blueprint | Detailed export including provenance, layout, actual receipts/decisions, inventory, shift and caveats; actual browser download verified locally | Verify real-property export and final judging flow |
+| Nessie (LAST) | V2 HTTPS Bearer/cents adapter, bounded queue, opening balance and read-only reconciliation implemented f668b7e; mocked-network tests | Keep key unset until ready; obtain sandbox key, verify actual sale and purchase receipts/balances; no blind replay. Optional bills/merchant/reserve features only if time. |
+| Hosting / submission | Render-only; owner deleted Vercel; public smoke on b2ff7ee, health after service at 0b6dcd7 | Confirm latest actual deployed SHA, free plan, physical phone/restart, permissions, public history audit, pitch/submission |
+
+Combined recorded local verification: 106 JavaScript tests in 22 files, typecheck/build passed, 3 Python converter tests. This was before the newest diagnostic commit; rerun on current main. Latest public service observed at 23:07:49 UTC; health immediately after reported 0b6dcd7, not proof of starting SHA. Public earlier synthetic success at 22:58 UTC is distinct from later failure at 23:05 UTC. Evidence in PROGRESS and screenshots JSON. This audit reviewed committed evidence, not an independent new public test.
+
+**Execution order now:** (1) finish core game/real property/physical-phone/demo and actual model reliability in parallel; (2) real Photon Messaging first, then Voice as provisioning permits; (3) final blueprint, SpaceXSI eligibility and submission prep in parallel (do not miss deadline); (4) Nessie live verification and optional improvements LAST, only if core and submission safe. Do not lose a working demo chasing a bank integration. If Nessie is unverified, label local ledger honestly and omit unsupported prize claim.
+
 ## 1. Product vision and why it matters
 
 **Name:** Play It First, formerly SoftOpen / PlayFirst.  
@@ -222,9 +242,9 @@ Run independent workstreams in parallel. Hrudai is the only formally assigned de
 - [ ] Property/agent: confirm permissions, public exact property, real viewer, live Gemini synthetic test, authorized real-property reasoning if allowed; tool receipt and two-client update.
 - [ ] Fix blockers in tested paths, no major architecture replacement. Each agent reads AGENTS.md and this file before touching code.
 
-**P1 parallel sponsor gates**
+**P1 parallel sponsor gates (Nessie deferred until last)**
 - [ ] Photon Messaging then Voice real provider onboarding/verified callback/pairing/approved action; escalate provisioning early.
-- [ ] Nessie correct sandbox integration and reconciliation; one verified sale and purchase.
+- [ ] Nessie LAST: V2 integration/reconciliation already implemented; defer real sandbox configuration, receipt verification and optional enhancements until core game, manager, Photon and submission readiness.
 - [ ] SpaceXSI workflow/eligibility, submission, evidence, public repo audit, final pitch.
 
 **P2 only after vertical slice:** direct dragging/full ghosts, seeded replay, additional property/Vexcel, advanced XR, more business types, durable saves. Do not let P2 or extra integrations displace game feel or required testing.

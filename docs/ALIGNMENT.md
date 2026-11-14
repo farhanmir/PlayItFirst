@@ -1,23 +1,20 @@
 # Play It First — current alignment
 
-See [MASTER_PLAN.md](MASTER_PLAN.md) for the full original vision, detailed specifications, all nine prize targets, evidence and remaining acceptance gates. Audit baseline: main 02219b7, November 14, 2026. Latest recorded full tests: 82 JS + typecheck/build before Render-only cleanup; earlier 3 Python converter tests. No fresh run for this docs audit.
+[MASTER_PLAN.md](MASTER_PLAN.md) is canonical; its current release status section supersedes historical requirements descriptions. Audit source 07e55e5, November 14, 2026. Latest recorded combined local run: 106 JS tests (22 files), typecheck/build and 3 Python tests; not an independent rerun on the latest diagnostic commit. **Nessie last, not dropped.**
 
 | Area | Current evidence | Remaining |
 | --- | --- | --- |
-| Core gameplay | Real keyboard orders, brew, carry, serve, receipt; local and public browser | Latest build, physical phone touch, polished interactions |
-| Multiplayer | Public WSS, two clients, edit and resume | Physical QR, current SHA, restart |
-| Real property | Local authorized CoStar extract and measured Matterport single-floor reconstruction | Public data file/credentials, permission, walkthrough and real-floor public test |
-| Geometry | 12 rooms, 66 walls, 11 doors, 4 windows; collisions and routes tested | Actual shared counter move and measured outcome in public real suite |
-| Visuals | Original procedural café, improved character pass | Commercial-quality silhouettes/animation, lighting, camera, HUD and phone performance |
-| Build | Grid, ghosts, move/rotate, server validation | Direct drag/full ghosts, show causal route change |
-| Business manager | Real Deepagents graph, four tools, owner authorization, idempotency, local proof | Live Gemini plan/approve/execute/observe; authorization for sponsor context |
-| Messaging/voice | Local UI and WebRTC | Actual Photon providers and verified identity/approval |
-| Banking | Local validated ledger, legacy sandbox adapter | Real sandbox reconcile/provision/mirror receipts |
-| Director | Local operational events | Verify effects match choices, no metric manipulation |
-| Rival/timeline | Labeled heuristics | Reproducible A/B optional, no fake outcomes |
-| Blueprint | Downloadable Markdown | Real session evidence, assumptions and actionable export |
-| WebXR | Optional session entry/dollhouse | Actual headset testing, not required |
-| Hosting | Existing Render full stack; Vercel removed | Confirm active deployment and sponsor config |
-| Submission | Nine targets; ChatOverflow dropped | Eligibility, public repo audit, deadline, rehearsed demo |
+| Core gameplay | Public measured-floor manual order, $7 sale, correct inventory, no page errors | Human final playtest and physical phone |
+| Multiplayer | Public WSS, two clients, edit and resume | Real phone QR/touch/restart |
+| Real property | Public costar-extract and matching matterport-live; panorama in test iframe | Publication/external model permission, picker preview acceptance |
+| Geometry / build | Measured 12 rooms/66 walls/11 doorways/4 windows; local seeded reroute +4.01 world units after counter edit | Public real-floor causal counter move; measured business improvement, no invented metrics |
+| Visuals | Second character/materials/HUD pass and updated controls | Final art judgment and real-device performance |
+| Business manager | Actual public synthetic plan/approve/execute/read outcome passed at 03497a4; two clients and duplicate protection | Later run at b2ff7ee failed after state read; diagnose with 07e55e5; confirm provider identity, reliability and real-property permission |
+| Photon | Tested signature/outbound transport, owner reports key obtained | Provision line/identity, event schema, signed receiver, owner pairing, dedupe, actual message and call |
+| Nessie (last) | V2 adapter with bounded queue and reconciliation, six mocked-network tests | Actual sandbox credentials, sale and approved purchase receipts, balances; defer until core ready |
+| Blueprint | Improved actual session export and browser download | Real-property export and pitch |
+| Timeline/rival/XR | Optional heuristics/session path | No false causal or headset claims; defer extras |
+| Hosting | Render only; public smoke and measured service observed | Verify latest deployed SHA, free plan, physical phone and restart |
+| Submission | Nine targets, ChatOverflow dropped | Eligibility, permissions/history audit, Devpost and two-minute rehearsal |
 
-Prior public proof is [public-verification.json](screenshots/public-verification.json) (mock property). Local manager proof is [manager-verification.json](screenshots/manager-verification.json) (providerVerified false). Do not treat source configuration or prior test evidence as proof of current production. See [PROGRESS.md](PROGRESS.md) for chronology, [DEPLOY.md](DEPLOY.md) for exact verification and [HACKATHON.md](HACKATHON.md) for demo. Current architecture/decisions are specified in MASTER_PLAN; old reports are retained as historical evidence.
+Evidence: [PROGRESS.md](PROGRESS.md) final dated sections, [successful public model trace](screenshots/provider-public-synthetic-verification.json), [later failed provider attempt](screenshots/provider-public-b2ff7ee-verification.json), [local service and route](screenshots/polish-service.json), [Photon setup](PHOTON_SETUP.md). Earlier mock-property reports are historical, not current public status. See master plan for details and DEPLOY for configuration. No new live tests were performed in this documentation audit.
