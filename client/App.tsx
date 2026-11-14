@@ -129,15 +129,16 @@ async function runJudgeDemo(setPhase: (p: DemoPhase) => void) {
 
     const conn = useApp.getState().conn;
     if (!conn) throw new Error("No connection for judge demo");
-    conn.send({ t: "select_property", propertyId: DEMO_PROPERTY_ID });
+    const demoPropertyId = useApp.getState().properties.find((p) => p.source === "costar-extract")?.id ?? DEMO_PROPERTY_ID;
+    conn.send({ t: "select_property", propertyId: demoPropertyId });
     useApp.getState().set({ screen: "game" });
     setPhase("entering");
 
     for (let i = 0; i < 50; i++) {
-      if (useApp.getState().snapshot?.property?.id === DEMO_PROPERTY_ID) break;
+      if (useApp.getState().snapshot?.property?.id === demoPropertyId) break;
       await sleep(80);
     }
-    if (useApp.getState().snapshot?.property?.id !== DEMO_PROPERTY_ID) {
+    if (useApp.getState().snapshot?.property?.id !== demoPropertyId) {
       throw new Error("Property select timed out");
     }
     await sleep(600);

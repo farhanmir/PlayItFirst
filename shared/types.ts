@@ -38,7 +38,11 @@ export interface PropertyListing {
   matterportModelId?: string;
   matterportEmbedUrl?: string;
   /** costar-live when COSTAR_API_URL answered; otherwise mock */
-  source?: "costar-live" | "costar-mock" | "local";
+  source?: "costar-live" | "costar-extract" | "costar-mock" | "local";
+  provenance?: {
+    listingId: string; spaceId: string; suite: string; askingRate: number; rateBasis: "USD/sqft/year" | "USD/sqft/month";
+    geometry: string; scanAreaM2?: number; assumptions: string[];
+  };
   liveFetchedAt?: number;
 }
 

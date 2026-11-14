@@ -912,7 +912,9 @@ export function buildBlueprint(snapshot: RoomSnapshot): string {
     .join("\n");
 
   const sourceLabel =
-    p.source === "costar-live"
+    p.source === "costar-extract"
+      ? "Authorized CoStar event extract; asking terms, not an executed lease"
+      : p.source === "costar-live"
       ? "CoStar live feed (verify with broker)"
       : p.source === "local"
         ? "Local fixture listing"

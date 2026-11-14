@@ -2,6 +2,16 @@
 
 Tracking https://github.com/farhanmir/PlayItFirst/issues/2. Work directly on `main` under AGENTS.md.
 
+## Authorized CoStar / Matterport pair — issue #7
+
+The owner supplied the event kit and credentials. `scripts/import-costar.py` joins an active USD retail lease space's own Matterport floor-plan attachment to the kit's property/model CSV, then verifies that exact model through the live API. Credentials, archive, normalized local property and API responses stay in ignored `.env` / `.sponsor/`; no raw sponsor records are committed. `COSTAR_DATA_FILE` loads the vetted normalized file server-side with explicit `costar-extract` provenance. Existing mock fallback remains. Judge demo selects the imported property when configured.
+
+Locally verified property **1018657**, listing **4105591**, space **21963212**, suite **104**, model **4H2JSnQ3wSj**. The live model title matches suite 104 and 2,946 SF; the suite's own attachment supplies the same model ID. Asking rate **$45/SF/year** × **2,946 rentable SF** / 12 = **$11,047.50/month**, excluding additional charges. Opening balance after rent and starter equipment: **$4,842.50**. These are asking terms, not an executed lease or verified café permission.
+
+Corrected Matterport to documented server-side **Basic authentication (key:token)** and POST GraphQL variables; HTTP-200 GraphQL errors no longer count as live. Live query returned **one floor** and **228.0032 m² scan area**. Rentable listing area and captured scan area remain distinct. The playable footprint is an explicitly assumed 1.4-aspect-ratio rectangle scaled to scan area; **walls/doors/entrance have not been faithfully reconstructed**. The floor-plan CDN returned 403. SDK key currently authorizes localhost only; public SDK domain authorization remains necessary.
+
+Edge browser verified the imported property, changed starting funds, real `/api/matterport` result, full-viewport scene and build mode with no JS errors. Screenshots are local `.sponsor/costar-gameplay.png` and `.sponsor/costar-build.png`, pending publication clearance. **72 tests pass**, typecheck/build pass. For Render, provide the authorized normalized file privately and set `COSTAR_DATA_FILE`, `MATTERPORT_API_KEY`, `MATTERPORT_TOKEN`; source code alone intentionally retains mock fallback. Vexcel has not been added to gameplay. Matched data/API access is now verified; geometry/public walkthrough acceptance remains incomplete, so issue #7 stays open.
+
 ## Play It First rename
 
 Renamed the visible product, HTML metadata, café sign, blueprint export, package name and active project links. Git remote now points to `https://github.com/farhanmir/PlayItFirst.git`. Existing Render service identifier, API compatibility headers and save/resume keys are retained. Verified the production build in Edge, including the manager approval flow on two clients. Screenshots: [landing](screenshots/playitfirst-landing.png), [gameplay](screenshots/playitfirst-gameplay.png), [build](screenshots/playitfirst-build.png). All 70 tests, typecheck and build pass. Model credentials remain absent, so provider acceptance is still pending.

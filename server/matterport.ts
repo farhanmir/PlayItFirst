@@ -11,6 +11,7 @@ export interface MatterportModel {
   source: "matterport-live" | "matterport-showcase";
   name?: string;
   floorCount?: number;
+  scanAreaM2?: number;
   detail?: string;
 }
 
@@ -30,35 +31,36 @@ function embedFor(modelId: string) {
 
 async function fetchLiveModel(modelId: string): Promise<Partial<MatterportModel> | null> {
   const token = process.env.MATTERPORT_TOKEN?.trim() || process.env.MATTERPORT_SDK_TOKEN?.trim();
-  if (!token) return null;
+  const key = process.env.MATTERPORT_API_KEY?.trim();
+  if (!token || !key) return null;
   const endpoint =
     process.env.MATTERPORT_API_URL?.trim() ||
-    `https://api.matterport.com/api/models/graph?query=${encodeURIComponent(
-      `{ model(id: "${modelId}") { id name floorCount } }`,
-    )}`;
+    "https://api.matterport.com/api/models/graph";
   const res = await fetch(endpoint, {
+    method: "POST",
     headers: {
-      Authorization: `Bearer ${token}`,
+      Authorization: `Basic ${Buffer.from(`${key}:${token}`).toString("base64")}`,
+      "Content-Type": "application/json",
       Accept: "application/json",
     },
+    body: JSON.stringify({ query: "query($id:ID!) { model(id:$id) { id name floors { id } dimensionEstimates(units:metric) { area } } }", variables: { id: modelId } }),
     signal: AbortSignal.timeout(8000),
   });
   if (!res.ok) throw new Error(`Matterport HTTP ${res.status}`);
   const body = (await res.json()) as {
-    data?: { model?: { id?: string; name?: string; floorCount?: number } };
+    errors?: unknown[];
+    data?: { model?: { id?: string; name?: string; floors?: { id: string }[]; dimensionEstimates?: { area?: number } } };
     id?: string;
     name?: string;
     floorCount?: number;
   };
-  const model = body.data?.model ?? {
-    id: body.id,
-    name: body.name,
-    floorCount: body.floorCount,
-  };
+  const model = body.data?.model;
+  if (body.errors?.length || !model || model.id !== modelId) throw new Error("Matterport model query failed validation");
   return {
     modelId: String(model.id ?? modelId),
     name: model.name ? String(model.name) : undefined,
-    floorCount: typeof model.floorCount === "number" ? model.floorCount : undefined,
+    floorCount: model.floors?.length,
+    scanAreaM2: model.dimensionEstimates?.area,
     source: "matterport-live",
     detail: "Live Matterport Model API",
   };
@@ -77,6 +79,7 @@ export async function resolveMatterport(listing: PropertyListing): Promise<Matte
         source: "matterport-live",
         name: live.name,
         floorCount: live.floorCount,
+        scanAreaM2: live.scanAreaM2,
         detail: live.detail,
       };
     }

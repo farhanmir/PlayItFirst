@@ -54,14 +54,14 @@ export function PropertySelect() {
                   <span className="tag tag-soft">
                     {p.matterportModelId ? "Matterport model" : "Matterport showcase stand-in"}
                   </span>
-                  {p.source === "costar-live" ? (
-                    <span className="tag">CoStar live</span>
+                  {p.source === "costar-live" || p.source === "costar-extract" ? (
+                    <span className="tag">{p.source === "costar-extract" ? "CoStar event extract" : "CoStar live"}</span>
                   ) : (
                     <span className="tag tag-soft">CoStar-shaped mock</span>
                   )}
                 </div>
                 <p className="media-dims">
-                  {p.width}m × {p.depth}m plate
+                  {p.width.toFixed(1)}m × {p.depth.toFixed(1)}m {p.provenance ? "simulation footprint" : "plate"}
                 </p>
               </div>
               <div className="property-body">
@@ -75,6 +75,7 @@ export function PropertySelect() {
                   {p.neighborhood} · {p.address}
                 </p>
                 <p className="desc">{p.description}</p>
+                {p.provenance ? <p className="desc">{p.provenance.geometry} · Asking rent excludes additional charges. Café use and capacity require verification.</p> : null}
                 <dl className="stats">
                   <div>
                     <dt>Rent</dt>

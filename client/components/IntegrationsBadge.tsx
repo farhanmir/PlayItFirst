@@ -24,7 +24,7 @@ export function IntegrationsBadge() {
   if (!info) return null;
 
   const chips = [
-    { label: "CoStar", on: info.costar === "costar-live", tip: info.costarDetail || info.costar },
+    { label: "CoStar", on: info.costar === "costar-live" || info.costar === "costar-extract", tip: info.costarDetail || info.costar },
     { label: "Matterport", on: info.matterport, tip: info.matterport ? "Model API token" : "Showcase embed (stand-in)" },
     { label: "Nessie", on: info.nessie, tip: info.nessie ? "Sandbox key" : "Local ledger" },
     {

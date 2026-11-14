@@ -3,9 +3,10 @@
  * otherwise enriched local listings stamped as costar-mock.
  */
 import local from "../data/properties.json";
+import { readFile } from "node:fs/promises";
 import type { PropertyListing } from "../shared/types.ts";
 
-export type ListingSource = "costar-live" | "costar-mock";
+export type ListingSource = "costar-live" | "costar-extract" | "costar-mock";
 
 export interface CoStarBundle {
   source: ListingSource;
@@ -88,6 +89,16 @@ export async function loadProperties(force = false): Promise<CoStarBundle> {
   if (inflight) return inflight;
   inflight = (async () => {
     try {
+      const file = process.env.COSTAR_DATA_FILE?.trim();
+      if (file) {
+        const rows: unknown = JSON.parse(await readFile(file, "utf8"));
+        if (!Array.isArray(rows) || !rows.length || rows.some((p) => !p?.id || !p?.matterportModelId || !p?.provenance ||
+          ![p.sqft, p.monthlyRent, p.width, p.depth].every((n) => typeof n === "number" && Number.isFinite(n) && n > 0))) {
+          throw new Error("Invalid authorized CoStar extract file");
+        }
+        cache = stamp(rows as PropertyListing[], "costar-extract", "Authorized hackathon extract; asking terms, not an executed lease. See per-property assumptions.");
+        return cache;
+      }
       const live = await fetchLive();
       cache = live ?? stamp(local as PropertyListing[], "costar-mock", "Using bundled Houston/LA listings (set COSTAR_API_URL for live)");
     } catch (err) {

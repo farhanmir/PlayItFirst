@@ -6,3 +6,7 @@ dist
 !.env.example
 *.log
 .DS_Store
+
+# Private sponsor archive and extracted records
+costar-hackathon-kit.zip
+.sponsor/
