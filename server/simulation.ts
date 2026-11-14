@@ -469,6 +469,12 @@ export function interact(
     return { ...snapshot, eventLog: log.slice(0, 30), lastHumanInteractAt: opts?.ai ? snapshot.lastHumanInteractAt : snapshot.simTime };
   }
 
+  if (action === "take_order" && player.holding) {
+    // Duplicate taps/packets cannot replace a claimed ticket or an active brew.
+    log.unshift(`${player.name} — finish the current order before taking another`);
+    return { ...snapshot, eventLog: log.slice(0, 30), lastHumanInteractAt: opts?.ai ? snapshot.lastHumanInteractAt : snapshot.simTime };
+  }
+
   if (action === "take_order") {
     const target = customers.find((c) => c.state === "queue" || c.state === "ordering");
     if (target) {

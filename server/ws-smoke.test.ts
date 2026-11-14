@@ -2,8 +2,68 @@ import { describe, expect, it } from "vitest";
 import { createServer } from "node:http";
 import { WebSocketServer, WebSocket } from "ws";
 import { CafeRoomServer } from "./rooms.ts";
+import { seedDemoCrowd } from "./simulation.ts";
 
 describe("multiplayer room smoke", () => {
+  it("exports an owner's blueprint without interrupting another player's order", async () => {
+    const httpServer = createServer();
+    const wss = new WebSocketServer({ server: httpServer });
+    const rooms = new CafeRoomServer(wss);
+    const created = rooms.createRoom();
+    const room = rooms.getRoom(created.code)!;
+    const clients: WebSocket[] = [];
+    try {
+      await new Promise<void>((resolve) => httpServer.listen(0, resolve));
+      const port = (httpServer.address() as { port: number }).port;
+      const host = await connectClient(port, created.code, "Host", "owner");
+      clients.push(host.ws);
+      const propertyId = rooms.listProperties()[0].id;
+      const selected = waitForSnapshot(host.ws, (s) => s.property?.id === propertyId);
+      host.ws.send(JSON.stringify({ t: "select_property", propertyId }));
+      await selected;
+      const guest = await connectClient(port, created.code, "Barista", "barista");
+      clients.push(guest.ws);
+      const opened = waitForSnapshot(guest.ws, (s) => s.open);
+      host.ws.send(JSON.stringify({ t: "open_cafe" }));
+      await opened;
+
+      // Freeze incidental arrivals/patience so this asserts only the requested export.
+      clearInterval(room.stepTimer);
+      clearInterval(room.snapshotTimer);
+      clearInterval(room.directorTimer);
+      room.snapshot = seedDemoCrowd(room.snapshot);
+      const counter = room.snapshot.layout!.furniture.find((f) => f.kind === "counter")!;
+      room.snapshot = { ...room.snapshot, players: room.snapshot.players.map((p) =>
+        p.id === guest.welcome.you ? { ...p, x: counter.x, z: counter.z } : p) };
+      const before = structuredClone(room.snapshot);
+      const blueprint = waitFor(host.ws, (m) => m.t === "blueprint");
+      const hostShared = waitForSnapshot(host.ws, () => true);
+      const guestShared = waitForSnapshot(guest.ws, () => true);
+      host.ws.send(JSON.stringify({ t: "request_blueprint" }));
+      expect((await blueprint).markdown).toContain("# Play It First Business Launch Blueprint");
+      expect((await hostShared).phase).toBe("play");
+      expect((await guestShared).phase).toBe("play");
+      expect(room.snapshot).toEqual(before);
+
+      const claimedByGuest = (s: any) => s.customers.some((c: any) => c.ticketHolder === guest.welcome.you);
+      const ownerOrder = waitForSnapshot(host.ws, claimedByGuest);
+      const guestOrder = waitForSnapshot(guest.ws, claimedByGuest);
+      guest.ws.send(JSON.stringify({ t: "interact", action: "take_order" }));
+      const shared = await ownerOrder;
+      expect((await guestOrder).phase).toBe("play");
+      expect(shared.players.find((p: any) => p.id === guest.welcome.you).holding).toMatch(/^ticket:/);
+      expect(shared.customers.filter((c: any) => c.ticketHolder === guest.welcome.you)).toHaveLength(1);
+      expect(shared.finance).toEqual(before.finance);
+    } finally {
+      clearInterval(room.stepTimer);
+      clearInterval(room.snapshotTimer);
+      clearInterval(room.directorTimer);
+      for (const ws of clients) ws.terminate();
+      wss.close();
+      await new Promise<void>((resolve, reject) => httpServer.close((err) => err ? reject(err) : resolve()));
+    }
+  }, 15000);
+
   it("two clients share property selection and play open", async () => {
     const httpServer = createServer();
     const wss = new WebSocketServer({ server: httpServer });

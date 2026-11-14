@@ -276,7 +276,7 @@ export class CafeRoomServer {
         break;
       }
       case "request_blueprint":
-        room.snapshot = { ...room.snapshot, phase: "blueprint" };
+        // Export is private UI state; it must not take the shared floor out of play.
         send(socket, { t: "blueprint", markdown: buildBlueprint(room.snapshot) });
         this.broadcast(room);
         break;

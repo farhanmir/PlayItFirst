@@ -207,6 +207,52 @@ describe("shared room join", () => {
 });
 
 describe("paid order, inventory, and exactly-once revenue", () => {
+  it("keeps the first ticket on a repeated order tap and leaves the next customer for another player", () => {
+    let snap = addPlayer(openCafe(selectProperty(createRoomSnapshot("repeat-order"), listing)), "p1", "Alex", "barista");
+    snap = addPlayer(snap, "p2", "Sam", "barista");
+    snap = atStation(atStation(snap, "p1", "counter"), "p2", "counter");
+    snap = { ...snap, customers: [customer({ id: "first", state: "ordering", preference: "latte" }),
+      customer({ id: "second", state: "queue", preference: "espresso" })] };
+    const inventory = { ...snap.inventory };
+
+    snap = interact(snap, "p1", "take_order");
+    snap = interact(snap, "p1", "take_order");
+    expect(snap.players.find((p) => p.id === "p1")).toMatchObject({ holding: "ticket:latte", score: 1 });
+    expect(snap.customers.filter((c) => c.ticketHolder === "p1")).toHaveLength(1);
+    expect(snap.customers.find((c) => c.id === "second")).toMatchObject({ state: "queue", ticketHolder: undefined });
+    expect(snap.inventory).toEqual(inventory);
+    expect(sales(snap)).toHaveLength(0);
+
+    snap = interact(snap, "p2", "take_order");
+    expect(snap.players.find((p) => p.id === "p2")?.holding).toBe("ticket:espresso");
+    expect(snap.customers.find((c) => c.id === "second")?.ticketHolder).toBe("p2");
+  });
+
+  it("cannot replace a paid-for active brew with another ticket, and still completes its original sale", () => {
+    let snap = addPlayer(openCafe(selectProperty(createRoomSnapshot("brew-order-overwrite"), listing)), "p1", "Alex", "barista");
+    snap = atStation(snap, "p1", "counter");
+    snap = { ...snap, customers: [customer({ id: "first", state: "ordering", preference: "latte" }),
+      customer({ id: "second", state: "queue", preference: "espresso" })] };
+    const inventory = { ...snap.inventory };
+    snap = interact(snap, "p1", "take_order");
+    snap = interact(atStation(snap, "p1", "coffee_machine"), "p1", "make_coffee");
+    const brewing = snap.players[0].holding;
+    expect(brewing).toMatch(/^brewing:latte@/);
+    snap = interact(atStation(snap, "p1", "counter"), "p1", "take_order");
+    expect(snap.players[0].holding).toBe(brewing);
+    expect(snap.customers.filter((c) => c.ticketHolder === "p1")).toHaveLength(1);
+    expect(snap.inventory).toEqual({ milk: inventory.milk - 1, cups: inventory.cups - 1, beans: inventory.beans - 1 });
+
+    snap = stepSimulation(quietFloor(snap), 2);
+    expect(snap.players[0].holding).toBe("drink:latte");
+    snap = interact(atStation(snap, "p1", "pickup"), "p1", "serve");
+    expect(snap.players[0].holding).toBeNull();
+    expect(sales(snap)).toHaveLength(1);
+    expect(sales(snap)[0].label).toBe("latte · Pat");
+    expect(snap.metrics.customersServed).toBe(1);
+    expect(snap.customers.find((c) => c.id === "second")?.ticketHolder).toBeUndefined();
+  });
+
   it("clears a drink when its customer has left, then accepts the next order without inventing a sale", () => {
     let snap = addPlayer(openCafe(selectProperty(createRoomSnapshot("expired-drink"), listing)), "p1", "Alex", "barista");
     snap = atStation(snap, "p1", "pickup");
