@@ -6,6 +6,7 @@ import { useApp } from "../lib/store";
 import { play } from "../lib/audio";
 import { moveFromKeys } from "../lib/look";
 import { actionPrompt, suggestedAction, stationLabel, type PlayAction } from "../lib/suggestAction";
+import { interactionSounds } from "../lib/interactionFeedback";
 
 function patchMyPosition(x: number, z: number) {
   const { snapshot, you, set } = useApp.getState();
@@ -35,6 +36,15 @@ export function PlayControls({
   const mobile = useApp((s) => s.mobile);
   const meRef = useRef(me);
   meRef.current = me;
+  const feedback = useRef({ snapshot, you });
+
+  useEffect(() => {
+    const previous = feedback.current;
+    feedback.current = { snapshot, you };
+    // Mount/reconnect establishes a baseline instead of replaying old actions.
+    if (previous.you !== you) return;
+    for (const sound of interactionSounds(previous.snapshot, snapshot, you)) play(sound);
+  }, [snapshot, you]);
 
   const station = useMemo(() => (you ? nearestStation(snapshot, you) : null), [snapshot, you]);
   const suggest = useMemo(() => suggestedAction(snapshot, you), [snapshot, you]);
@@ -86,11 +96,6 @@ export function PlayControls({
 
   const act = (action: PlayAction) => {
     conn?.send({ t: "interact", action });
-    if (action === "take_order") play("order");
-    if (action === "make_coffee") play("brew");
-    // Payment feedback comes from the accepted snapshot in ServeToast.
-    if (action === "restock") play("place");
-    if (action === "collect") play("coin");
   };
 
   const holding = me?.holding
