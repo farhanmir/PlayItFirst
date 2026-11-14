@@ -6,6 +6,8 @@ import { managerModelConfigured } from "./manager-runtime.ts";
 export const deepagentsConfigured = managerModelConfigured;
 
 export interface CafeToolState {
+  currency: "USD";
+  monetaryUnit: "dollars";
   balance: number;
   revenue: number;
   inventory: RoomSnapshot["inventory"];
@@ -20,6 +22,8 @@ export interface CafeToolState {
 
 export function getCafeState(snapshot: RoomSnapshot): CafeToolState {
   return {
+    currency: "USD",
+    monetaryUnit: "dollars",
     balance: snapshot.finance.balance,
     revenue: snapshot.finance.revenue,
     inventory: { ...snapshot.inventory },

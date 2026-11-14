@@ -11,6 +11,7 @@ describe("local café tools", () => {
     const snap = openCafe(selectProperty(createRoomSnapshot("tools"), listing));
     const state = getCafeState(snap);
     expect(state.open).toBe(true);
+    expect(state).toMatchObject({ currency: "USD", monetaryUnit: "dollars", balance: snap.finance.balance });
     expect(state.inventory.beans).toBeGreaterThan(0);
     expect(state.hostedRuntime).toBe(deepagentsConfigured());
     expect(state.hostedRuntime).toBe(false);
