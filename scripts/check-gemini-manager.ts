@@ -28,6 +28,9 @@ assert.deepEqual(snapshot.inventory, initial.inventory);
 assert.equal(snapshot.finance.balance, initial.finance.balance);
 await assert.rejects(manager.approve({ ...owner, memberId: "synthetic-guest" }, proposal.id), /owner/);
 const outcome = await manager.approve(owner, proposal.id);
+assert(outcome.providerVerified, "Gemini approval run was not provider-verified");
+assert.equal(outcome.providerIdentity?.provider, "google", "Approval must use the Google adapter");
+assert(!outcome.trace.some((t) => t.tool === "run_failed"), "A provider run failed; this is not full live acceptance");
 assert.equal(outcome.proposals.find((p) => p.id === proposal.id)?.status, "executed");
 assert(outcome.trace.some((t) => t.tool === "read_outcome"), "Gemini must read fresh outcome");
 assert.equal(snapshot.finance.balance, initial.finance.balance - 35);
@@ -36,6 +39,6 @@ assert.equal(snapshot.inventory.cups, initial.inventory.cups + 20);
 assert.equal(snapshot.inventory.beans, initial.inventory.beans + 15);
 await manager.approve(owner, proposal.id);
 assert.equal(snapshot.finance.balance, initial.finance.balance - 35);
-console.log(JSON.stringify({ model: process.env.DEEPAGENTS_MODEL || "gemini-3.6-flash", syntheticOnly: true,
+console.log(JSON.stringify({ providerIdentity: outcome.providerIdentity, syntheticOnly: true,
   balanceBefore: initial.finance.balance, balanceAfter: snapshot.finance.balance, inventory: snapshot.inventory,
   status: "executed-once", trace: outcome.trace.map((t) => t.tool) }, null, 2));

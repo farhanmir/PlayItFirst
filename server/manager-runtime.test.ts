@@ -63,7 +63,9 @@ describe("manager provider configuration", () => {
     });
     const result = await runner({ prompt: "Inspect and propose a restock", history: [], signal: AbortSignal.timeout(5000),
       tools: { inspect: () => ({ synthetic: true, balance: 100, inventory: { milk: 1 } }), propose, execute, outcome: () => ({}) } });
-    expect(result).toContain("Approve");
+    expect(result).toMatchObject({ summary: "Approve the $35 restock.",
+      providerIdentity: { provider: "google", model: "gemini-3.6-flash" } });
+    expect(JSON.stringify(result)).not.toContain("synthetic-test-key");
     expect(propose).toHaveBeenCalledWith("reorder_supplies", "Synthetic restock");
     expect(execute).not.toHaveBeenCalled();
     expect(requests).toHaveLength(3);

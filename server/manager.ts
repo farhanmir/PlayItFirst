@@ -115,6 +115,9 @@ export class CafeManager {
     const id = randomUUID();
     this.activeRun = id;
     this.view.busy = true;
+    // Verification describes this run, never a previous successful provider call.
+    this.view.providerVerified = false;
+    delete this.view.providerIdentity;
     const modelKeyConfigured = (this.options.configured ?? managerModelConfigured)();
     const source = this.room.read().property?.source;
     const restricted = source === "costar-extract" || source === "costar-live";
@@ -139,9 +142,13 @@ export class CafeManager {
       if (configured) {
         const timeout = new Promise<never>((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(new Error("Manager timed out")); }, this.options.timeoutMs ?? 20_000); });
         const traceStart = this.view.trace.at(-1);
-        this.view.summary = await Promise.race([(this.options.runner ?? createManagerRunner())({ prompt, history: this.history, approvedId, tools, signal: controller.signal }), timeout]);
+        const result = await Promise.race([(this.options.runner ?? createManagerRunner())({ prompt, history: this.history, approvedId, tools, signal: controller.signal }), timeout]);
         guard();
+        this.view.summary = typeof result === "string" ? result : result.summary;
         this.view.providerVerified = this.view.trace.at(-1) !== traceStart;
+        if (this.view.providerVerified && typeof result !== "string" && result.providerIdentity) {
+          this.view.providerIdentity = result.providerIdentity;
+        }
       } else {
         this.localPlan(actor, prompt, tools, approvedId);
       }

@@ -10,9 +10,15 @@ export interface ManagerProposal {
   result?: string;
   transactionId?: string;
 }
+export interface ManagerProviderIdentity {
+  provider: "google" | "openai" | "anthropic";
+  model: string;
+}
 export interface ManagerView {
   runtime: "local" | "deepagents";
   providerVerified: boolean;
+  /** Identity of the model used by this completed run, not merely configured credentials. */
+  providerIdentity?: ManagerProviderIdentity;
   busy: boolean;
   summary: string;
   proposals: ManagerProposal[];
