@@ -1,0 +1,197 @@
+.landing {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: clamp(1.25rem, 4vw, 3rem);
+}
+
+.landing-hero {
+  width: min(1120px, 100%);
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: clamp(1.5rem, 4vw, 3.5rem);
+  align-items: end;
+}
+
+.landing-copy .brand {
+  font-family: var(--font-display);
+  font-size: clamp(2.8rem, 7vw, 5.2rem);
+  font-weight: 800;
+  line-height: 0.95;
+  color: var(--foam);
+  margin-bottom: 0.85rem;
+  text-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+}
+
+.landing-copy h1 {
+  font-size: clamp(1.35rem, 2.6vw, 2rem);
+  font-weight: 500;
+  color: var(--crema);
+  max-width: 18ch;
+  margin-bottom: 1rem;
+}
+
+.landing-copy .lede {
+  color: var(--foam-soft);
+  max-width: 38ch;
+  line-height: 1.55;
+  opacity: 0.9;
+  margin-bottom: 1.5rem;
+}
+
+.landing-cta {
+  display: grid;
+  gap: 0.75rem;
+  max-width: 360px;
+}
+
+.name-input {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+  background: rgba(0, 0, 0, 0.28);
+  color: var(--foam);
+  outline: none;
+}
+
+.name-input:focus {
+  border-color: rgba(196, 165, 116, 0.55);
+}
+
+.mode-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+  padding: 0.3rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--glass-border);
+}
+
+.mode-toggle button {
+  border-radius: 999px;
+  padding: 0.55rem 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.mode-toggle button.active {
+  background: rgba(243, 235, 226, 0.12);
+  color: var(--foam);
+}
+
+.landing-visual {
+  position: relative;
+  min-height: 420px;
+  border-radius: 28px;
+  overflow: hidden;
+  border: 1px solid var(--glass-border);
+  background:
+    linear-gradient(160deg, rgba(61, 36, 24, 0.65), rgba(18, 14, 12, 0.85)),
+    radial-gradient(circle at 70% 30%, rgba(217, 119, 63, 0.35), transparent 45%);
+  box-shadow: var(--shadow);
+}
+
+.cafe-silhouette {
+  position: absolute;
+  inset: 12% 10% 18% 10%;
+  border-radius: 18px 18px 8px 8px;
+  background: linear-gradient(180deg, #4a3428, #2a1c14 70%, #1a120c);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.window-glow {
+  position: absolute;
+  inset: 12% 14% 42% 14%;
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(244, 210, 160, 0.55), rgba(217, 119, 63, 0.25));
+  filter: blur(0.5px);
+  animation: pulse-soft 3.6s ease-in-out infinite;
+}
+
+.counter-block {
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  bottom: 12%;
+  height: 18%;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #6b4a34, #3b281c);
+}
+
+.cup {
+  position: absolute;
+  bottom: 26%;
+  width: 28px;
+  height: 24px;
+  border-radius: 0 0 10px 10px;
+  background: #f3ebe2;
+}
+
+.cup-a {
+  left: 28%;
+}
+.cup-b {
+  left: 48%;
+  width: 34px;
+  height: 28px;
+}
+
+.steam {
+  position: absolute;
+  width: 10px;
+  height: 24px;
+  border-radius: 999px;
+  background: rgba(243, 235, 226, 0.45);
+  filter: blur(3px);
+  animation: steam 2.4s ease-out infinite;
+}
+
+.s1 {
+  left: 30%;
+  bottom: 42%;
+}
+.s2 {
+  left: 51%;
+  bottom: 46%;
+  animation-delay: 0.4s;
+}
+.s3 {
+  left: 56%;
+  bottom: 44%;
+  animation-delay: 0.9s;
+}
+
+.visual-caption {
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  bottom: 0.9rem;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--foam-soft);
+  opacity: 0.75;
+}
+
+@media (max-width: 860px) {
+  .landing-hero {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .landing-visual {
+    min-height: 280px;
+    order: -1;
+  }
+
+  .landing-copy .brand {
+    font-size: clamp(2.6rem, 12vw, 4rem);
+  }
+
+  .landing-copy h1 {
+    max-width: none;
+  }
+}

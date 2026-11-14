@@ -1,0 +1,147 @@
+.property-page {
+  position: relative;
+  z-index: 1;
+  width: min(1200px, 100%);
+  margin: 0 auto;
+  padding: clamp(1rem, 3vw, 2.5rem);
+}
+
+.property-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.5rem;
+  align-items: start;
+  margin-bottom: 1.75rem;
+}
+
+.brand-inline {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin-bottom: 0.35rem;
+}
+
+.property-head h1 {
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  margin-bottom: 0.5rem;
+}
+
+.property-head > div > p:last-child {
+  max-width: 46ch;
+  color: var(--foam-soft);
+  line-height: 1.5;
+}
+
+.join-card {
+  padding: 1rem;
+  min-width: 180px;
+  text-align: center;
+  display: grid;
+  gap: 0.6rem;
+  justify-items: center;
+}
+
+.join-card .qr svg {
+  width: 120px;
+  height: 120px;
+  border-radius: 8px;
+}
+
+.room-code {
+  font-family: ui-monospace, monospace;
+  letter-spacing: 0.08em;
+  color: var(--crema);
+}
+
+.property-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1rem;
+}
+
+.property-card {
+  display: grid;
+  grid-template-rows: 140px auto;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid var(--glass-border);
+  background: rgba(20, 14, 11, 0.7);
+  box-shadow: var(--shadow);
+}
+
+.property-media {
+  position: relative;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--tone) 70%, #000), #1a120c),
+    radial-gradient(circle at 30% 40%, rgba(243, 235, 226, 0.18), transparent 50%);
+  padding: 0.85rem;
+}
+
+.floorplan-ghost {
+  position: absolute;
+  inset: 18% 12% 16% 12%;
+  border: 2px solid rgba(243, 235, 226, 0.28);
+  border-radius: 6px;
+  clip-path: polygon(0 0, 100% 0, 100% 70%, 72% 70%, 72% 100%, 0 100%);
+}
+
+.property-body {
+  padding: 1rem 1.1rem 1.15rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.property-body h2 {
+  font-size: 1.25rem;
+}
+
+.addr {
+  color: var(--crema);
+  font-size: 0.9rem;
+}
+
+.desc,
+.matterport {
+  color: var(--foam-soft);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.matterport {
+  opacity: 0.8;
+  font-size: 0.82rem;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem 0.75rem;
+  margin: 0.25rem 0;
+}
+
+.stats div {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.stats dt {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.stats dd {
+  margin: 0;
+  font-weight: 700;
+}
+
+@media (max-width: 720px) {
+  .property-head {
+    flex-direction: column;
+  }
+
+  .join-card {
+    width: 100%;
+  }
+}
