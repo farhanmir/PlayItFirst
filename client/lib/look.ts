@@ -31,8 +31,12 @@ export function moveFromKeys(keys: Set<string>, speed: number) {
   if (keys.has("s") || keys.has("arrowdown")) forward -= 1;
   if (keys.has("a") || keys.has("arrowleft")) strafe -= 1;
   if (keys.has("d") || keys.has("arrowright")) strafe += 1;
-  if (!forward && !strafe) return { dx: 0, dz: 0 };
-  const len = Math.hypot(forward, strafe) || 1;
+  return moveFromAxes(strafe, forward, speed);
+}
+
+/** Preserve analog magnitude while limiting diagonal movement. */
+export function moveFromAxes(strafe: number, forward: number, speed: number) {
+  const len = Math.max(1, Math.hypot(forward, strafe));
   forward = (forward / len) * speed;
   strafe = (strafe / len) * speed;
   const { yaw: y } = getLook();
@@ -42,4 +46,17 @@ export function moveFromKeys(keys: Set<string>, speed: number) {
     dx: -sin * forward + cos * strafe,
     dz: -cos * forward - sin * strafe,
   };
+}
+
+/** Same walking pace on desktop and phone; never catch up after a suspended tab. */
+export function walkingDistance(elapsedMs: number) {
+  return 4 * Math.max(0, Math.min(50, elapsedMs)) / 1000;
+}
+
+/** Radial deadzone removes thumb jitter without snapping to eight directions. */
+export function stickAxes(x: number, y: number) {
+  const magnitude = Math.hypot(x, y);
+  if (magnitude <= 0.15) return { strafe: 0, forward: 0 };
+  const strength = (Math.min(1, magnitude) - 0.15) / 0.85;
+  return { strafe: x / magnitude * strength, forward: -y / magnitude * strength };
 }

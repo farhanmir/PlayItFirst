@@ -5,27 +5,35 @@ import { furnitureMoveClear } from "../../shared/movement";
 import { floorMoveClear } from "../../shared/floorplan";
 import { useApp } from "../lib/store";
 import { play } from "../lib/audio";
-import { moveFromKeys } from "../lib/look";
+import { moveFromKeys, moveFromAxes, stickAxes, walkingDistance } from "../lib/look";
 import { actionPrompt, suggestedAction, stationLabel, type PlayAction } from "../lib/suggestAction";
 import { interactionSounds } from "../lib/interactionFeedback";
 
 function patchMyPosition(x: number, z: number) {
   const { snapshot, you, set } = useApp.getState();
-  if (!snapshot || !you) return false;
-  if (!snapshot.property) return false;
+  if (!snapshot || !you) return null;
+  if (!snapshot.property) return null;
   x = Math.max(0.3, Math.min(snapshot.property.width - 0.3, x));
   z = Math.max(0.3, Math.min(snapshot.property.depth - 0.3, z));
   const current = snapshot.players.find((p) => p.id === you);
-  if (!current || !furnitureMoveClear(snapshot.layout?.furniture ?? [], current, { x, z })) return false;
-  const plan = snapshot.property?.floorPlan;
-  if (plan && current && !floorMoveClear(plan, current, { x, z })) return false;
+  if (!current) return null;
+  const plan = snapshot.property.floorPlan;
+  const clear = (point: { x: number; z: number }) =>
+    furnitureMoveClear(snapshot.layout?.furniture ?? [], current, point) &&
+    (!plan || floorMoveClear(plan, current, point));
+  // Slide along a wall rather than stopping both axes when one is blocked.
+  const candidates = [{ x, z }, { x, z: current.z }, { x: current.x, z }];
+  const next = candidates.find((point) =>
+    (point.x !== current.x || point.z !== current.z) && clear(point));
+  if (!next) return null;
+  ({ x, z } = next);
   set({
     snapshot: {
       ...snapshot,
       players: snapshot.players.map((p) => (p.id === you ? { ...p, x, z } : p)),
     },
   });
-  return true;
+  return { x, z };
 }
 
 export function PlayControls({
@@ -61,6 +69,7 @@ export function PlayControls({
     if (!conn || !enabled) return;
     const keys = new Set<string>();
     const onDown = (e: KeyboardEvent) => {
+      if (document.querySelector("dialog[open]")) { keys.clear(); return; }
       if (e.target instanceof HTMLElement && e.target.closest("input, textarea, select, [contenteditable=true], [role=dialog]")) return;
       const k = e.key.toLowerCase();
       if (e.repeat && ["e", " ", "enter", "f", "r", "q"].includes(k)) return;
@@ -79,18 +88,25 @@ export function PlayControls({
     const onUp = (e: KeyboardEvent) => keys.delete(e.key.toLowerCase());
     const clearKeys = () => keys.clear();
     window.addEventListener("blur", clearKeys);
+    document.addEventListener("visibilitychange", clearKeys);
     window.addEventListener("keydown", onDown);
     window.addEventListener("keyup", onUp);
 
+    let previousTick = performance.now();
     const id = setInterval(() => {
+      const now = performance.now();
+      const distance = walkingDistance(now - previousTick);
+      previousTick = now;
+      if (document.hidden || document.querySelector("dialog[open]") || document.activeElement?.matches("input, textarea, select, [contenteditable=true]")) { keys.clear(); return; }
       const state = useApp.getState();
       const current = state.snapshot?.players.find((p) => p.id === state.you);
       if (!current) return;
-      const { dx, dz } = moveFromKeys(keys, 0.22);
+      const { dx, dz } = moveFromKeys(keys, distance);
       if (!dx && !dz) return;
       const x = current.x + dx;
       const z = current.z + dz;
-      if (patchMyPosition(x, z)) conn.send({ t: "player_move", x, z });
+      const next = patchMyPosition(x, z);
+      if (next) conn.send({ t: "player_move", ...next });
     }, 33);
 
     return () => {
@@ -98,6 +114,7 @@ export function PlayControls({
       window.removeEventListener("keydown", onDown);
       window.removeEventListener("keyup", onUp);
       window.removeEventListener("blur", clearKeys);
+      document.removeEventListener("visibilitychange", clearKeys);
     };
   }, [conn, enabled]);
 
@@ -148,7 +165,8 @@ export function PlayControls({
         }}
         disabled={!suggest || !enabled}
       >
-        {prompt}
+        {!mobile && suggest ? <kbd className="action-key">E</kbd> : null}
+        <span>{prompt.replace(/^E · /, "")}</span>
       </button>
 
       {!immersive || mobile ? (
@@ -166,6 +184,7 @@ export function PlayControls({
               type="button"
               className={suggest === id ? "suggested" : undefined}
               aria-current={suggest === id ? "true" : undefined}
+              disabled={!enabled}
               onClick={() => act(id)}
             >
               {label}
@@ -184,7 +203,8 @@ export function PlayControls({
             if (!current) return;
             const x = current.x + dx;
             const z = current.z + dz;
-            if (patchMyPosition(x, z)) conn?.send({ t: "player_move", x, z });
+            const next = patchMyPosition(x, z);
+            if (next) conn?.send({ t: "player_move", ...next });
           }}
         />
       )}
@@ -194,44 +214,69 @@ export function PlayControls({
 
 function MobilePad({ onMove }: { onMove: (dx: number, dz: number) => void }) {
   const direction = useRef({ x: 0, y: 0 });
+  const padRef = useRef<HTMLDivElement>(null);
+  const activePointer = useRef<number | null>(null);
+  const resetPad = () => {
+    activePointer.current = null;
+    direction.current = { x: 0, y: 0 };
+    padRef.current?.style.setProperty("--stick-x", "0px");
+    padRef.current?.style.setProperty("--stick-y", "0px");
+  };
   const moveRef = useRef(onMove);
   moveRef.current = onMove;
   useEffect(() => {
-    const stop = () => { direction.current = { x: 0, y: 0 }; };
+    const stop = resetPad;
+    let previousTick = performance.now();
     const timer = window.setInterval(() => {
+      const now = performance.now();
+      const distance = walkingDistance(now - previousTick);
+      previousTick = now;
+      if (document.hidden || document.querySelector("dialog[open]")) { stop(); return; }
       const { x, y } = direction.current;
-      if (!x && !y) return;
-      const keys = new Set<string>();
-      if (y < -0.12) keys.add("w");
-      if (y > 0.12) keys.add("s");
-      if (x < -0.12) keys.add("a");
-      if (x > 0.12) keys.add("d");
-      const step = moveFromKeys(keys, 0.18);
-      moveRef.current(step.dx, step.dz);
+      const { strafe, forward } = stickAxes(x, y);
+      const step = moveFromAxes(strafe, forward, distance);
+      if (step.dx || step.dz) moveRef.current(step.dx, step.dz);
     }, 33);
     window.addEventListener("blur", stop);
-    return () => { clearInterval(timer); window.removeEventListener("blur", stop); };
+    document.addEventListener("visibilitychange", stop);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("blur", stop);
+      document.removeEventListener("visibilitychange", stop);
+    };
   }, []);
   const update = (el: HTMLDivElement, clientX: number, clientY: number) => {
     const rect = el.getBoundingClientRect();
-    direction.current = { x: (clientX - rect.left) / rect.width - 0.5, y: (clientY - rect.top) / rect.height - 0.5 };
+    direction.current = { x: ((clientX - rect.left) / rect.width - 0.5) * 2, y: ((clientY - rect.top) / rect.height - 0.5) * 2 };
+    const len = Math.max(1, Math.hypot(direction.current.x, direction.current.y));
+    el.style.setProperty("--stick-x", `${direction.current.x / len * 22}px`);
+    el.style.setProperty("--stick-y", `${direction.current.y / len * 22}px`);
   };
   return (
     <div
+      ref={padRef}
       className="mobile-pad"
       role="application"
       aria-label="Drag to move your character"
       style={{ touchAction: "none" }}
       onPointerDown={(e) => {
+        if (activePointer.current !== null) return;
+        e.preventDefault();
+        activePointer.current = e.pointerId;
         e.currentTarget.setPointerCapture(e.pointerId);
         update(e.currentTarget, e.clientX, e.clientY);
       }}
-      onPointerMove={(e) => { if (e.currentTarget.hasPointerCapture(e.pointerId)) update(e.currentTarget, e.clientX, e.clientY); }}
-      onLostPointerCapture={() => { direction.current = { x: 0, y: 0 }; }}
-      onPointerUp={(e) => { direction.current = { x: 0, y: 0 }; e.currentTarget.releasePointerCapture(e.pointerId); }}
-      onPointerCancel={() => { direction.current = { x: 0, y: 0 }; }}
+      onPointerMove={(e) => { if (activePointer.current === e.pointerId && e.currentTarget.hasPointerCapture(e.pointerId)) update(e.currentTarget, e.clientX, e.clientY); }}
+      onLostPointerCapture={(e) => { if (activePointer.current === e.pointerId) resetPad(); }}
+      onPointerUp={(e) => {
+        if (activePointer.current !== e.pointerId) return;
+        resetPad();
+        if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
+      }}
+      onPointerCancel={(e) => { if (activePointer.current === e.pointerId) resetPad(); }}
     >
-      Move
+      <span className="stick-puck" aria-hidden="true" />
+      <span className="stick-label">Move</span>
     </div>
   );
 }

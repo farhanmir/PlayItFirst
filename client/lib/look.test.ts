@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Euler, Vector3 } from "three";
-import { getLook, moveFromKeys, setLook } from "./look";
+import { getLook, moveFromKeys, setLook, walkingDistance, stickAxes, moveFromAxes } from "./look";
 
 describe("look / moveFromKeys", () => {
   it("moves forward along -Z when yaw is 0", () => {
@@ -45,5 +45,22 @@ describe("camera-relative movement", () => {
     setLook(-0.9, 0);
     const { dx, dz } = moveFromKeys(new Set(["w", "d"]), 3);
     expect(Math.hypot(dx, dz)).toBeCloseTo(3);
+  });
+});
+
+describe("walking pace and analog movement", () => {
+  it("covers the same distance at 30 and 60 updates per second", () => {
+    expect(walkingDistance(1000 / 30) * 30).toBeCloseTo(4);
+    expect(walkingDistance(1000 / 60) * 60).toBeCloseTo(4);
+    expect(walkingDistance(5000)).toBe(0.2);
+  });
+  it("supports slow precise movement and clamps out-of-pad drags", () => {
+    setLook(0, 0);
+    expect(stickAxes(0.1, 0)).toEqual({ strafe: 0, forward: 0 });
+    const half = stickAxes(0.575, 0);
+    expect(moveFromAxes(half.strafe, half.forward, 4).dx).toBeCloseTo(2);
+    const full = stickAxes(8, -8);
+    const result = moveFromAxes(full.strafe, full.forward, 4);
+    expect(Math.hypot(result.dx, result.dz)).toBeCloseTo(4);
   });
 });

@@ -9,6 +9,7 @@ import { getLook, nudgeLook } from "../lib/look";
 import { createTouchLookTracker } from "../lib/touchLook";
 import { play } from "../lib/audio";
 import { useApp } from "../lib/store";
+import { CafeCharacter } from "./CafeCharacter";
 
 const STATION_KIND: Record<string, FurnitureItem["kind"]> = {
   counter: "counter",
@@ -25,10 +26,10 @@ const PALETTE = {
   plankAlt: "#8a6344",
   wall: "#f0e4d4",
   wallTrim: "#5c4030",
-  wood: "#765039",
-  woodDark: "#5c4030",
-  woodTop: "#e1d6bd",
-  crema: "#c4a574",
+  wood: "#173c35",
+  woodDark: "#59402f",
+  woodTop: "#f6efd8",
+  crema: "#e9b765",
   foam: "#f3ebe2",
   espresso: "#3b2418",
   leaf: "#3f6b54",
@@ -206,7 +207,8 @@ function CameraRig({
     }
     const el = gl.domElement;
     let dragging = false;
-    const onClick = () => {
+    const onClick = (event: MouseEvent) => {
+      if (document.querySelector("dialog[open]") || (event instanceof PointerEvent && event.pointerType !== "mouse")) return;
       if (document.pointerLockElement !== el && typeof el.requestPointerLock === "function") {
         try { const result = el.requestPointerLock(); result?.catch(() => { /* Drag look remains available. */ }); } catch { /* Browser denied pointer lock. */ }
       }
@@ -215,6 +217,7 @@ function CameraRig({
     const onDragEnd = () => { dragging = false; };
 
     const onMove = (e: MouseEvent) => {
+      if (document.hidden || document.querySelector("dialog[open]")) { dragging = false; return; }
       if (document.pointerLockElement !== el && !dragging) return;
       nudgeLook(e.movementX, e.movementY);
     };
@@ -222,11 +225,15 @@ function CameraRig({
     const previousTouchAction = el.style.touchAction;
     el.style.touchAction = "none";
     const onTouchStart = (e: TouchEvent) => {
+      if (document.querySelector("dialog[open]")) return;
+      if (e.cancelable) e.preventDefault();
       // HUD and movement-pad touches belong to their controls, never the camera.
       const touch = Array.from(e.changedTouches).find((candidate) => candidate.target === el);
       if (touch) touchLook.start(touch);
     };
     const onTouch = (e: TouchEvent) => {
+      if (document.hidden || document.querySelector("dialog[open]")) { touchLook.reset(); return; }
+      if (e.cancelable) e.preventDefault();
       const delta = touchLook.move(e.touches);
       if (delta) nudgeLook(delta.x, delta.y, 0.004);
     };
@@ -237,11 +244,12 @@ function CameraRig({
     window.addEventListener("pointerup", onDragEnd);
     window.addEventListener("blur", onDragEnd);
     document.addEventListener("mousemove", onMove);
-    el.addEventListener("touchstart", onTouchStart, { passive: true });
-    el.addEventListener("touchmove", onTouch, { passive: true });
+    el.addEventListener("touchstart", onTouchStart, { passive: false });
+    el.addEventListener("touchmove", onTouch, { passive: false });
     el.addEventListener("touchend", onTouchEnd);
     el.addEventListener("touchcancel", onTouchEnd);
     window.addEventListener("blur", resetTouchLook);
+    document.addEventListener("visibilitychange", resetTouchLook);
     return () => {
       el.removeEventListener("click", onClick);
       el.removeEventListener("pointerdown", onDragStart);
@@ -253,6 +261,7 @@ function CameraRig({
       el.removeEventListener("touchend", onTouchEnd);
       el.removeEventListener("touchcancel", onTouchEnd);
       window.removeEventListener("blur", resetTouchLook);
+      document.removeEventListener("visibilitychange", resetTouchLook);
       el.style.touchAction = previousTouchAction;
       if (document.pointerLockElement === el) document.exitPointerLock();
     };
@@ -884,10 +893,14 @@ function CounterProp({ item }: { item: FurnitureItem }) {
       <RoundedBox position={[0, 0.86, 0]} castShadow receiveShadow args={[2.3, 0.08, 0.78]} radius={0.025} smoothness={2}><meshStandardMaterial color={PALETTE.woodTop} roughness={0.45} metalness={0.05} /></RoundedBox>
       {/* Front edge band */}
       <RoundedBox position={[0, 0.82, 0.38]} castShadow args={[2.3, 0.06, 0.04]} radius={0.025} smoothness={2}><meshStandardMaterial color={PALETTE.crema} roughness={0.5} /></RoundedBox>
-      {/* Drawer fronts */}
-      {[-0.65, 0, 0.65].map((x) => (
-        <RoundedBox key={x} position={[x, 0.45, 0.35]} castShadow args={[0.55, 0.35, 0.03]} radius={0.025} smoothness={2}><meshStandardMaterial color={PALETTE.woodDark} roughness={0.7} /></RoundedBox>
+      {/* Recessed walnut slats and brass rail give the service island a crafted face. */}
+      {Array.from({ length: 18 }, (_, i) => (
+        <mesh key={i} position={[-1.02 + i * .12, .43, .35]} castShadow>
+          <boxGeometry args={[.055, .63, .032]} />
+          <meshStandardMaterial color={PALETTE.woodDark} roughness={.72} />
+        </mesh>
       ))}
+      <mesh position={[0, .13, .38]}><boxGeometry args={[2.1, .025, .035]} /><meshStandardMaterial color={PALETTE.crema} metalness={.6} roughness={.35} /></mesh>
       {/* POS terminal */}
       <RoundedBox position={[-0.75, 1.05, -0.05]} castShadow args={[0.28, 0.32, 0.08]} radius={0.025} smoothness={2}><meshStandardMaterial color="#1c1c1e" metalness={0.4} roughness={0.4} /></RoundedBox>
       <RoundedBox position={[-0.75, 1.05, 0.01]} args={[0.22, 0.24, 0.01]} radius={0.025} smoothness={2}><meshStandardMaterial color="#8ec5e8" emissive="#3a6a90" emissiveIntensity={0.45} /></RoundedBox>
@@ -1238,6 +1251,7 @@ function CustomerMesh({ customer, featured, yourTicket, queuePosition }: {
 
   return (
     <group ref={root} position={[customer.x, 0, customer.z]}>
+      <CafeCharacter seed={customer.id} fallback={
       <group ref={bob}>
         <mesh position={[0, 0.92, 0]} castShadow>
           <latheGeometry args={[SHIRT_PROFILE, 12]} />
@@ -1270,6 +1284,7 @@ function CustomerMesh({ customer, featured, yourTicket, queuePosition }: {
           </mesh>
         </group>
       </group>
+      } />
 
       {waiting && featured && (
         <Billboard position={[0, 2.12, 0]}>
@@ -1381,6 +1396,7 @@ function PlayerMesh({
 
   return (
     <group ref={root} position={[player.x, 0, player.z]}>
+      <CafeCharacter seed={player.id} fallback={<group>
       <mesh position={[0, 1.02, 0]} castShadow>
         <latheGeometry args={[BARISTA_PROFILE, 12]} />
         <meshStandardMaterial
@@ -1421,6 +1437,10 @@ function PlayerMesh({
           <meshStandardMaterial color="#2f241c" roughness={0.8} />
         </mesh>
       </group>
+      </group>} />
+      {/* Staff apron gives players a clear service role among the visiting customers. */}
+      <RoundedBox position={[0, .98, .18]} args={[.38, .52, .035]} radius={.025} smoothness={2} castShadow><meshStandardMaterial color={PALETTE.wood} roughness={.95} /></RoundedBox>
+      <mesh position={[0, .91, .205]}><boxGeometry args={[.21, .13, .012]} /><meshStandardMaterial color={PALETTE.woodDark} roughness={.9} /></mesh>
       {!isYou && <Billboard position={[0, 2.12, 0]}>
       <mesh>
         <boxGeometry args={[Math.max(0.7, player.name.length * 0.09), 0.22, 0.02]} />
