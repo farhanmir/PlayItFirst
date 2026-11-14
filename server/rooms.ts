@@ -1,6 +1,6 @@
 /**
  * Authoritative multiplayer rooms — adapted from Gitzilla's RoomServer pattern
- * (WebSocket hello/resume, snapshot broadcast, tick loop) for PlayFirst cafés.
+ * (WebSocket hello/resume, snapshot broadcast, tick loop) for SoftOpen cafés.
  */
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import type { IncomingMessage } from "node:http";
@@ -222,6 +222,7 @@ export class CafeRoomServer {
         break;
       case "director_choice": {
         if (!room.snapshot.director || room.snapshot.director.id !== msg.eventId) return;
+        if (room.snapshot.director.resolved) return;
         const result = applyDirectorChoice(room.snapshot, msg.choiceId);
         room.snapshot = result.snapshot;
         if (result.photon) {
@@ -252,13 +253,11 @@ export class CafeRoomServer {
         } else if (lower.includes("alex") || lower.includes("drinks")) {
           reply = "done, alex is on drinks. want me to temporarily stop taking large orders?";
         } else if (lower.includes("stop") || lower.includes("large")) {
-          reply = "paused large orders for 5 simulated minutes. queue should breathe.";
+          reply = "paused large orders — simplified the menu so tickets clear faster.";
           room.snapshot = {
             ...room.snapshot,
-            metrics: {
-              ...room.snapshot.metrics,
-              queueLength: Math.max(0, room.snapshot.metrics.queueLength - 1),
-            },
+            menuReduced: true,
+            rushBoost: Math.max(0, (room.snapshot.rushBoost ?? 0) - 0.25),
           };
         }
         room.snapshot = {

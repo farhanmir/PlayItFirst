@@ -24,10 +24,14 @@ export function IntegrationsBadge() {
 
   const chips = [
     { label: "CoStar", on: info.costar === "costar-live", tip: info.costarDetail || info.costar },
-    { label: "Matterport", on: info.matterport, tip: info.matterport ? "Model API token" : "Showcase embed" },
+    { label: "Matterport", on: info.matterport, tip: info.matterport ? "Model API token" : "Showcase embed (stand-in)" },
     { label: "Nessie", on: info.nessie, tip: info.nessie ? "Sandbox key" : "Local ledger" },
-    { label: "Deepagents", on: info.deepagents, tip: info.deepagents ? "Hosted LLM director" : "Local rules" },
-    { label: "Photon Voice", on: true, tip: info.photonVoice },
+    {
+      label: "Deepagents",
+      on: info.deepagents,
+      tip: info.deepagents ? "Hosted LLM (tool runtime still partial)" : "Local director rules",
+    },
+    { label: "Crew voice", on: true, tip: `${info.photonVoice} — not Photon 2.0 messaging` },
     { label: "WebXR", on: true, tip: info.webxr },
   ];
 

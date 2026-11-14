@@ -1,5 +1,5 @@
 /**
- * PlayFirst game server — Vite middleware in dev, static dist in prod, WebSocket rooms.
+ * SoftOpen game server — Vite middleware in dev, static dist in prod, WebSocket rooms.
  * Architecture pattern adapted from Gitzilla's server/main.ts (single-port Vite + WS).
  */
 import http, { type IncomingMessage, type ServerResponse } from "node:http";
@@ -101,7 +101,8 @@ server.on("request", (req, res) => {
       const bundle = getCachedProperties();
       res.writeHead(200, {
         "Content-Type": "application/json; charset=utf-8",
-        "X-PlayFirst-CoStar": bundle.source,
+        "X-SoftOpen-CoStar": bundle.source,
+        "X-PlayFirst-CoStar": bundle.source, // legacy alias
       });
       res.end(JSON.stringify(rooms.listProperties()));
       return;
@@ -114,7 +115,8 @@ server.on("request", (req, res) => {
         matterport: !!(process.env.MATTERPORT_TOKEN || process.env.MATTERPORT_SDK_TOKEN),
         nessie: !!process.env.NESSIE_KEY,
         deepagents: deepagentsConfigured(),
-        photonVoice: "webrtc-signaling",
+        photonVoice: "webrtc-crew-not-photon-2",
+        photonMessaging: "in-app-regex-not-photon-2",
         webxr: "client",
       });
       return;
@@ -158,7 +160,7 @@ server.on("request", (req, res) => {
     }
 
     if (url.pathname === "/api/health") {
-      json(res, 200, { ok: true, service: "playfirst" });
+      json(res, 200, { ok: true, service: "softopen", legacy: "playfirst" });
       return;
     }
 
@@ -177,6 +179,6 @@ server.on("request", (req, res) => {
 });
 
 server.listen(port, () => {
-  console.log(`\n  PlayFirst running at http://localhost:${port}`);
+  console.log(`\n  SoftOpen running at http://localhost:${port}`);
   console.log(`  WebSocket: ws://localhost:${port}/ws\n`);
 });

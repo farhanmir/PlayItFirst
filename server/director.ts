@@ -1,9 +1,11 @@
 /**
- * Lightweight game director — LangChain Deepagents-shaped planner without requiring an API key.
- * Observes café metrics and injects contextual events with real state consequences.
+ * Lightweight game director — observes café metrics and injects contextual events.
+ * Choices mutate operational state (layout, rush, menu, cash); the sim computes metrics.
  */
 import { randomUUID } from "node:crypto";
 import type { DirectorEvent, Metrics, RoomSnapshot } from "../shared/types.ts";
+import { applyTransaction } from "./finance.ts";
+import { placeFurniture } from "./simulation.ts";
 
 export function maybeSpawnDirectorEvent(snapshot: RoomSnapshot, now: number): DirectorEvent | null {
   if (snapshot.director && !snapshot.director.resolved && snapshot.director.expiresAt > now) {
@@ -34,7 +36,7 @@ export function maybeSpawnDirectorEvent(snapshot: RoomSnapshot, now: number): Di
       "Reputation dip",
       "Reviews mention long waits. Regulars are hesitating. How do you recover?",
       [
-        { id: "discount", label: "Offer a happy-hour discount" },
+        { id: "discount", label: "Offer a happy-hour discount (−$80)" },
         { id: "staff_focus", label: "Pull staff to the queue" },
         { id: "ignore", label: "Stay the course" },
       ],
@@ -48,9 +50,9 @@ export function maybeSpawnDirectorEvent(snapshot: RoomSnapshot, now: number): Di
       "Cash crunch",
       "Payroll and rent are looming. Inventory is thin. Choose carefully.",
       [
-        { id: "cut_hours", label: "Shorten open hours" },
+        { id: "cut_hours", label: "Shorten open hours (lower rush)" },
         { id: "delay_equip", label: "Defer equipment upgrades" },
-        { id: "push_sales", label: "Push high-margin drinks" },
+        { id: "push_sales", label: "Focus on drink throughput" },
       ],
       "warn",
       now,
@@ -63,7 +65,7 @@ export function maybeSpawnDirectorEvent(snapshot: RoomSnapshot, now: number): Di
       "The espresso machine is sputtering. Throughput may drop unless you act.",
       [
         { id: "repair", label: "Quick repair (−$90)" },
-        { id: "swap", label: "Swap to manual brew" },
+        { id: "swap", label: "Swap to simplified menu brew" },
         { id: "run_hot", label: "Keep running it hot" },
       ],
       "info",
@@ -108,74 +110,109 @@ export function forceDemoRushEvent(now = Date.now()): DirectorEvent {
   );
 }
 
+/**
+ * Apply a director choice as operational state changes only.
+ * Metrics (queue, wait, revenue/hr) are recomputed by the simulation.
+ */
 export function applyDirectorChoice(
   snapshot: RoomSnapshot,
   choiceId: string,
 ): { snapshot: RoomSnapshot; photon?: string } {
-  const finance = { ...snapshot.finance };
-  const metrics = { ...snapshot.metrics };
+  if (snapshot.director?.resolved) {
+    return { snapshot };
+  }
+
+  let finance = snapshot.finance;
   let photon: string | undefined;
   const log = [...snapshot.eventLog];
+  let next: RoomSnapshot = { ...snapshot };
+  const property = snapshot.property;
+
+  const charge = (label: string, amount: number, category: "wages" | "equipment" | "other" | "inventory") => {
+    if (amount > 0 && finance.balance < amount) {
+      log.unshift(`Can't afford ${label} — need $${amount}`);
+      return false;
+    }
+    finance = applyTransaction(finance, label, -amount, category);
+    return true;
+  };
 
   switch (choiceId) {
     case "temp_help":
-      finance.balance -= 120;
-      finance.expenses += 120;
-      metrics.queueLength = Math.max(0, metrics.queueLength - 2);
-      photon = "temp barista checked in. queue should ease in a minute.";
-      log.unshift("Hired temporary help (−$120)");
-      snapshot = { ...snapshot, rushBoost: Math.max(0, (snapshot.rushBoost ?? 1) - 0.4) };
+      if (!charge("Temporary barista help", 120, "wages")) break;
+      // Jamie assists sooner; ease the rush pressure — sim recomputes queue
+      next = {
+        ...next,
+        rushBoost: Math.max(0, (snapshot.rushBoost ?? 1) - 0.5),
+        lastHumanInteractAt: snapshot.simTime - 10,
+        aiBarista: snapshot.aiBarista ?? { holding: null },
+      };
+      photon = "temp barista checked in. i'll cover the overflow.";
+      log.unshift("Hired temporary help (−$120) — Jamie covering harder");
       break;
-    case "open_station":
-      metrics.queueLength = Math.max(0, metrics.queueLength - 1);
-      log.unshift("Opened a second service station");
-      photon = "second station is live. i moved jordan to drinks.";
+    case "open_station": {
+      if (!property || !snapshot.layout) {
+        log.unshift("Can't open a station — no layout");
+        break;
+      }
+      const x = Math.min(property.width - 1.2, 2.8);
+      const z = Math.min(property.depth - 1.2, 6.2);
+      next = placeFurniture(snapshot, "coffee_machine", x, z);
+      finance = next.finance;
+      photon = "second machine is live. i moved jordan to drinks.";
+      log.unshift("Opened a second espresso station (placed machine)");
       break;
+    }
     case "reduce_menu":
-      metrics.avgWaitSec = Math.max(20, metrics.avgWaitSec * 0.7);
-      log.unshift("Temporarily reduced the menu");
-      snapshot = { ...snapshot, menuReduced: true };
+      next = { ...next, menuReduced: true };
+      photon = "menu simplified — faster tickets through the line.";
+      log.unshift("Temporarily reduced the menu (faster brew rate in sim)");
       break;
     case "tough_it":
-      metrics.satisfaction = Math.max(20, metrics.satisfaction - 8);
-      log.unshift("Chose to tough out the rush");
+      next = { ...next, rushBoost: (snapshot.rushBoost ?? 0) + 1.2 };
       photon = "we're getting slammed. pickup is backing up and milk is low.";
-      snapshot = { ...snapshot, rushBoost: (snapshot.rushBoost ?? 0) + 1.2 };
+      log.unshift("Chose to tough out the rush — higher arrival pressure");
       break;
     case "discount":
-      finance.balance -= 80;
-      metrics.satisfaction = Math.min(100, metrics.satisfaction + 10);
-      log.unshift("Launched a happy-hour discount");
+      if (!charge("Happy-hour promo stock", 80, "other")) break;
+      next = { ...next, rushBoost: Math.max(0, (snapshot.rushBoost ?? 0) - 0.15) };
+      log.unshift("Launched a happy-hour discount (−$80 promo cost)");
       break;
     case "staff_focus":
-      metrics.queueLength = Math.max(0, metrics.queueLength - 1);
-      metrics.avgWaitSec = Math.max(15, metrics.avgWaitSec * 0.85);
-      log.unshift("Pulled staff to the queue");
+      next = {
+        ...next,
+        rushBoost: Math.max(0, (snapshot.rushBoost ?? 0) - 0.35),
+        lastHumanInteractAt: snapshot.simTime - 8,
+      };
+      log.unshift("Pulled staff to the queue — eased rush boost");
+      break;
+    case "ignore":
+      log.unshift("Stayed the course on reputation");
       break;
     case "repair":
-      finance.balance -= 90;
-      finance.expenses += 90;
+      if (!charge("Espresso machine repair", 90, "equipment")) break;
+      next = { ...next, rushBoost: Math.max(0, (snapshot.rushBoost ?? 0) - 0.1) };
       log.unshift("Repaired espresso machine (−$90)");
       break;
     case "swap":
-      metrics.avgWaitSec *= 1.1;
-      log.unshift("Switched to manual brew");
+      next = { ...next, menuReduced: true };
+      log.unshift("Switched to simplified menu brew");
       break;
     case "run_hot":
-      metrics.satisfaction = Math.max(20, metrics.satisfaction - 5);
-      log.unshift("Kept the machine running hot");
+      next = { ...next, rushBoost: (snapshot.rushBoost ?? 0) + 0.35 };
+      log.unshift("Kept the machine running hot — higher operational stress");
       break;
     case "cut_hours":
-      metrics.revenuePerHour *= 0.85;
-      finance.expenses = Math.max(0, finance.expenses - 40);
-      log.unshift("Shortened open hours");
+      next = { ...next, rushBoost: Math.max(0, (snapshot.rushBoost ?? 0) - 0.55) };
+      log.unshift("Shortened open hours — lower arrival pressure");
       break;
     case "delay_equip":
       log.unshift("Deferred equipment upgrades");
       break;
     case "push_sales":
-      metrics.revenuePerHour *= 1.15;
-      log.unshift("Pushed high-margin drinks");
+      // Encourage throughput via menu focus without inventing revenue
+      next = { ...next, menuReduced: true };
+      log.unshift("Focused on high-throughput drinks (simplified menu)");
       break;
     default:
       log.unshift(`Director choice: ${choiceId}`);
@@ -183,13 +220,10 @@ export function applyDirectorChoice(
 
   return {
     snapshot: {
-      ...snapshot,
+      ...next,
       finance,
-      metrics,
       eventLog: log.slice(0, 30),
-      director: snapshot.director
-        ? { ...snapshot.director, resolved: choiceId }
-        : null,
+      director: snapshot.director ? { ...snapshot.director, resolved: choiceId } : null,
     },
     photon,
   };

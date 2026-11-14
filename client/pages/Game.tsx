@@ -73,7 +73,7 @@ export function Game() {
   if (!snapshot?.property) {
     return (
       <main className="game-loading">
-        <p className="brand-inline">PlayFirst</p>
+        <p className="brand-inline">SoftOpen</p>
         <p>Waiting for property selection…</p>
       </main>
     );

@@ -42,7 +42,7 @@ export function PhotonVoice({ snapshot }: { snapshot: RoomSnapshot }) {
       <h3>Live crew channel</h3>
       <p>
         {peers.length
-          ? `${peers.length} peer${peers.length === 1 ? "" : "s"} in room — WebRTC over PlayFirst signaling.`
+          ? `${peers.length} peer${peers.length === 1 ? "" : "s"} in room — WebRTC crew voice over SoftOpen signaling (not Photon 2.0).`
           : "Solo session — invite via QR, then start a live call. Jamie AI call still rings on rushes."}
       </p>
       <p className="voice-status" aria-live="polite">

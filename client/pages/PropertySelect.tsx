@@ -13,7 +13,7 @@ export function PropertySelect() {
     <main className="property-page">
       <header className="property-head rise">
         <div className="property-intro">
-          <p className="brand-inline">PlayFirst</p>
+          <p className="brand-inline">SoftOpen</p>
           <h1>Choose your dream café</h1>
           <p className="property-lede">
             Real commercial listings in Houston and Los Angeles. Rent, size, and foot traffic set the rules.
@@ -51,8 +51,14 @@ export function PropertySelect() {
                 />
                 <div className="media-chips">
                   <span className="tag">{p.city}</span>
-                  <span className="tag tag-soft">Matterport twin</span>
-                  {p.source === "costar-live" ? <span className="tag">CoStar live</span> : null}
+                  <span className="tag tag-soft">
+                    {p.matterportModelId ? "Matterport model" : "Matterport showcase stand-in"}
+                  </span>
+                  {p.source === "costar-live" ? (
+                    <span className="tag">CoStar live</span>
+                  ) : (
+                    <span className="tag tag-soft">CoStar-shaped mock</span>
+                  )}
                 </div>
                 <p className="media-dims">
                   {p.width}m × {p.depth}m plate
