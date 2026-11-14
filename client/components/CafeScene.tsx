@@ -2,9 +2,10 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, PerspectiveCamera, Sparkles, Text } from "@react-three/drei";
 import { useEffect, useRef, type ReactNode } from "react";
 import { DoubleSide, MathUtils, type Group, type PerspectiveCamera as ThreePerspectiveCamera } from "three";
-import type { Customer, FurnitureItem, PlayerState, PropertyListing, RoomSnapshot } from "../../shared/types";
+import type { Customer, FurnitureItem, FurnitureKind, PlayerState, PropertyListing, RoomSnapshot } from "../../shared/types";
 import { nearestStation } from "../../shared/stations";
 import { getLook, nudgeLook } from "../lib/look";
+import { play } from "../lib/audio";
 import { useApp } from "../lib/store";
 
 const STATION_KIND: Record<string, FurnitureItem["kind"]> = {
@@ -52,11 +53,23 @@ interface Props {
 export function CafeScene({ snapshot, viewMode = "monitor" }: Props) {
   const property = snapshot.property!;
   const you = useApp((s) => s.you);
+  const conn = useApp((s) => s.conn);
+  const buildKind = useApp((s) => s.buildKind);
   const me = snapshot.players.find((p) => p.id === you);
   const mode = viewMode;
+  const canFloorPlace =
+    snapshot.phase === "build" && !!buildKind && (mode === "monitor" || mode === "dollhouse");
+
+  const placeOnFloor = (x: number, z: number) => {
+    if (!canFloorPlace || !buildKind || !conn || !property) return;
+    const px = Math.min(property.width - 0.6, Math.max(0.6, x));
+    const pz = Math.min(property.depth - 0.6, Math.max(0.6, z));
+    conn.send({ t: "place_furniture", kind: buildKind as FurnitureKind, x: px, z: pz });
+    play("place");
+  };
 
   return (
-    <div className={`cafe-canvas mode-${mode}`}>
+    <div className={`cafe-canvas mode-${mode} ${canFloorPlace ? "placing" : ""}`}>
       <Canvas
         shadows
         dpr={[1, 1.5]}
@@ -97,6 +110,8 @@ export function CafeScene({ snapshot, viewMode = "monitor" }: Props) {
           property={property}
           furniture={snapshot.layout?.furniture ?? []}
           cutaway={mode === "dollhouse"}
+          placeEnabled={canFloorPlace}
+          onFloorPlace={placeOnFloor}
           highlightKind={
             you
               ? (() => {
@@ -267,11 +282,15 @@ function CafeRoom({
   furniture,
   cutaway = false,
   highlightKind,
+  placeEnabled = false,
+  onFloorPlace,
 }: {
   property: PropertyListing;
   furniture: FurnitureItem[];
   cutaway?: boolean;
   highlightKind?: FurnitureItem["kind"] | null;
+  placeEnabled?: boolean;
+  onFloorPlace?: (x: number, z: number) => void;
 }) {
   const w = property.width;
   const d = property.depth;
@@ -279,10 +298,32 @@ function CafeRoom({
 
   return (
     <group>
-      {/* Floor base */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[w / 2, 0, d / 2]} receiveShadow>
+      {/* Floor base — clickable for build placement */}
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[w / 2, 0, d / 2]}
+        receiveShadow
+        onClick={(e) => {
+          if (!placeEnabled || !onFloorPlace) return;
+          e.stopPropagation();
+          onFloorPlace(e.point.x, e.point.z);
+        }}
+        onPointerOver={(e) => {
+          if (!placeEnabled) return;
+          e.stopPropagation();
+          document.body.style.cursor = "crosshair";
+        }}
+        onPointerOut={() => {
+          document.body.style.cursor = "";
+        }}
+      >
         <planeGeometry args={[w + 0.4, d + 0.4]} />
-        <meshStandardMaterial color={PALETTE.floor} roughness={0.92} />
+        <meshStandardMaterial
+          color={placeEnabled ? "#6b5040" : PALETTE.floor}
+          roughness={0.92}
+          emissive={placeEnabled ? PALETTE.ember : "#000000"}
+          emissiveIntensity={placeEnabled ? 0.08 : 0}
+        />
       </mesh>
 
       {/* Wood planks */}

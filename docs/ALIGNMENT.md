@@ -97,24 +97,25 @@ Patterns reused from Gitzilla (WS rooms, QR, tick) — not a rewrite of Gitzilla
 
 ## D. Critical gaps (smallest set)
 
-1. **Station-gated interactions** — walking to counter/machine/pickup must matter.  
-2. **Brew preparation time** — short timer before drink is holdable.  
-3. **Honest café-only onboarding** — other types = coming soon.  
-4. **Blueprint provenance** — CoStar live vs mock + gameplay assumptions labeled.
+1. **Station-gated interactions** — ✅ server `stationOk`.  
+2. **Brew preparation time** — ✅ `brewing:order@t` + `advanceBrewing`.  
+3. **Honest café-only onboarding** — ✅ landing chips.  
+4. **Blueprint provenance** — ✅ live vs mock labels.  
+5. **Click-to-place build** — ✅ catalog select → click floor (Quick drop kept).
 
-Explicitly **not** in this pass: iMessage Photon, Vexcel, hire wage UI, CV markers, new business types, architecture rewrite.
+Still soft / deferred: cosmetic roles, carrier iMessage Photon, Vexcel, hire wage UI, CV markers, multi business types.
 
 ---
 
 ## E. Implementation plan (dependency order)
 
-1. Station gates + brew timer in `server/simulation.ts` (+ tests)  
-2. Landing business-type honesty + blueprint provenance strings  
-3. Keep demo/`/?demo=1` green; typecheck + vitest  
-4. Polish only if time — do not expand P2  
+1. ✅ Station gates + brew timer  
+2. ✅ Café-only honesty + blueprint provenance  
+3. ✅ Click-to-place build (follow-up from codebase audit)  
+4. Keep demo green; avoid P2 expansion  
 
 ---
 
 ## F. Execution notes
 
-After this report, implement D1–D4 only. Document deviations in commits/PR. Known limitations remain: Matterport mesh import unavailable; Photon is in-app; CoStar may be mock without `COSTAR_API_URL`.
+D1–D5 closed. Known limitations remain: Matterport mesh import unavailable; Photon is in-app; CoStar may be mock without `COSTAR_API_URL`; roles do not gate actions.

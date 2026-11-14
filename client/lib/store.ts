@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { PropertyListing, RoomSnapshot } from "../../shared/types";
+import type { FurnitureKind, PropertyListing, RoomSnapshot } from "../../shared/types";
 import type { Conn, ConnStatus } from "./net";
 import { detectDevice, type DeviceKind } from "./device";
 
@@ -17,6 +17,8 @@ interface AppState {
   status: ConnStatus;
   mobile: boolean;
   device: DeviceKind | null;
+  /** Catalog selection for click-to-place on the café floor (build mode). */
+  buildKind: FurnitureKind | null;
   set: (partial: Partial<AppState>) => void;
 }
 
@@ -37,6 +39,7 @@ export const useApp = create<AppState>((set) => ({
   status: "closed",
   mobile: uaMobile,
   device: null,
+  buildKind: null,
   set: (partial) => set(partial),
 }));
 
