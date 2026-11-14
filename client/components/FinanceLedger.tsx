@@ -4,9 +4,15 @@ export function FinanceLedger({ snapshot }: { snapshot: RoomSnapshot }) {
   const f = snapshot.finance;
   return (
     <aside className="side-panel panel finance-panel">
-      <p className="tag">Capital One Nessie</p>
+      <p className="tag">Business ledger</p>
       <h3>${Math.round(f.balance).toLocaleString()}</h3>
-      <p className="sub">Available business funds</p>
+      <p className="sub">Simulated business funds · local ledger</p>
+      {f.nessieSync ? <p className="sub" aria-live="polite">
+        Nessie sandbox: {f.nessieSync.status}. {f.nessieSync.records.filter((r) => r.status === "confirmed").length} confirmed,
+        {" "}{f.nessieSync.records.filter((r) => r.status === "pending" || r.status === "queued").length} pending.
+        {f.nessieSync.error ? ` ${f.nessieSync.error}` : ""}
+        {f.nessieSync.differenceCents !== undefined ? ` Balance difference: $${(f.nessieSync.differenceCents / 100).toFixed(2)}.` : ""}
+      </p> : null}
       <ul>
         {f.transactions.slice(0, 8).map((tx) => (
           <li key={tx.id}>
