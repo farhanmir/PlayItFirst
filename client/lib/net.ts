@@ -1,8 +1,9 @@
 /**
  * WebSocket client — same-origin /ws with resume tokens and reconnect,
- * adapted from Gitzilla's client/app/net.ts pattern for PlayFirst.
+ * adapted from Gitzilla's client/app/net.ts pattern for SoftOpen.
  */
 import type { ClientMsg, PlayerRole, ServerMsg } from "../../shared/types";
+import { getResumeToken, setResumeToken } from "./storage";
 
 export type ConnStatus = "connecting" | "open" | "closed";
 
@@ -12,8 +13,6 @@ export interface Conn {
   onStatus(fn: (s: ConnStatus) => void): void;
   close(): void;
 }
-
-const tokenKey = (room: string) => `playfirst.token.${room}`;
 
 export function connect(room: string, name: string, role?: PlayerRole): Conn {
   const msgFns: ((m: ServerMsg) => void)[] = [];
@@ -36,7 +35,7 @@ export function connect(room: string, name: string, role?: PlayerRole): Conn {
     ws = sock;
     sock.onopen = () => {
       retry = 0;
-      const resume = localStorage.getItem(tokenKey(room)) ?? undefined;
+      const resume = getResumeToken(room) ?? undefined;
       sock.send(
         JSON.stringify({
           t: "hello",
@@ -56,7 +55,7 @@ export function connect(room: string, name: string, role?: PlayerRole): Conn {
       } catch {
         return;
       }
-      if (m.t === "welcome" && m.token) localStorage.setItem(tokenKey(room), m.token);
+      if (m.t === "welcome" && m.token) setResumeToken(room, m.token);
       for (const f of msgFns) f(m);
     };
     sock.onclose = () => {

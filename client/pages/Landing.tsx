@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { IntegrationsBadge } from "../components/IntegrationsBadge";
+import { getStoredName } from "../lib/storage";
 import "./landing.css";
 
 interface Props {
@@ -10,7 +11,7 @@ interface Props {
 }
 
 export function Landing({ onStart, onJoin, onJudgeDemo, demoBusy }: Props) {
-  const [name, setName] = useState(localStorage.getItem("playfirst.name") || "");
+  const [name, setName] = useState(getStoredName());
   const [joinCode, setJoinCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState<"host" | "join">("host");
@@ -39,18 +40,30 @@ export function Landing({ onStart, onJoin, onJudgeDemo, demoBusy }: Props) {
 
       <div className="landing-content">
         <div className="landing-copy">
-          <p className="brand brand-reveal">PlayFirst</p>
+          <p className="brand brand-reveal">SoftOpen</p>
           <h1 className="rise">Play your business before you pay for it.</h1>
           <p className="lede rise-delay">
-            Practice ownership inside a real storefront — layout, queues, cash — then leave with a launch blueprint, not a burned lease.
+            Turn real commercial properties into playable businesses. Build your dream café, invite your friends, serve
+            customers, and discover what it takes to make your business work before opening its doors.
           </p>
+          <p className="brand-line rise-delay">Your grand opening starts with a SoftOpen.</p>
           <div className="biz-types" aria-label="Business types">
             <span className="biz-type active">Café</span>
-            <span className="biz-type muted" title="Coming after the café MVP">Restaurant</span>
-            <span className="biz-type muted" title="Coming after the café MVP">Bookstore</span>
-            <span className="biz-type muted" title="Coming after the café MVP">Gaming lounge</span>
-            <span className="biz-type muted" title="Coming after the café MVP">Retail</span>
-            <span className="biz-type muted" title="Coming after the café MVP">Gym</span>
+            <span className="biz-type muted" title="Coming after the café MVP">
+              Restaurant
+            </span>
+            <span className="biz-type muted" title="Coming after the café MVP">
+              Bookstore
+            </span>
+            <span className="biz-type muted" title="Coming after the café MVP">
+              Gaming lounge
+            </span>
+            <span className="biz-type muted" title="Coming after the café MVP">
+              Retail
+            </span>
+            <span className="biz-type muted" title="Coming after the café MVP">
+              Gym
+            </span>
           </div>
           <p className="biz-types-note">Hackathon build: café is fully playable — other types preview the roadmap.</p>
           <IntegrationsBadge />
@@ -64,7 +77,7 @@ export function Landing({ onStart, onJoin, onJudgeDemo, demoBusy }: Props) {
               aria-label="Your name"
               disabled={locked}
             />
-            <div className="mode-toggle" role="tablist" aria-label="Host or join">
+            <div className="mode-toggle" role="tablist" aria-label="Open or join a business">
               <button
                 className={mode === "host" ? "active" : ""}
                 onClick={() => setMode("host")}
@@ -73,7 +86,7 @@ export function Landing({ onStart, onJoin, onJudgeDemo, demoBusy }: Props) {
                 aria-selected={mode === "host"}
                 disabled={locked}
               >
-                Host café
+                Open Your Business
               </button>
               <button
                 className={mode === "join" ? "active" : ""}
@@ -83,7 +96,7 @@ export function Landing({ onStart, onJoin, onJudgeDemo, demoBusy }: Props) {
                 aria-selected={mode === "join"}
                 disabled={locked}
               >
-                Join room
+                Join a Business
               </button>
             </div>
             {mode === "join" && (

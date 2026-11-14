@@ -1,4 +1,4 @@
-/** Shared contracts for PlayFirst client + authoritative server. */
+/** Shared contracts for SoftOpen client + authoritative server. */
 
 export type BusinessType = "cafe" | "restaurant" | "gaming_cafe" | "bookstore" | "retail" | "gym";
 export type PlayerRole = "owner" | "barista" | "cashier" | "manager" | "customer" | "builder";

@@ -15,6 +15,7 @@ import {
   sleep,
   type DemoPhase,
 } from "./lib/demo";
+import { getStoredName, setStoredName } from "./lib/storage";
 
 export function App() {
   const screen = useApp((s) => s.screen);
@@ -26,7 +27,7 @@ export function App() {
     const params = new URLSearchParams(location.search);
     const room = params.get("room");
     if (room) {
-      const savedName = localStorage.getItem("playfirst.name") || `Guest ${Math.floor(Math.random() * 90 + 10)}`;
+      const savedName = getStoredName() || `Guest ${Math.floor(Math.random() * 90 + 10)}`;
       joinRoom(room, savedName, true);
     }
 
@@ -76,7 +77,7 @@ async function startHost(name: string) {
   void unlockAudio().catch(() => undefined);
   play("ui");
   const set = useApp.getState().set;
-  localStorage.setItem("playfirst.name", name);
+  setStoredName(name);
   const res = await fetch("/api/rooms", { method: "POST" });
   const data = (await res.json()) as { code: string; url: string; qrSvg: string };
   set({
@@ -94,7 +95,7 @@ async function startHost(name: string) {
 function joinRoom(code: string, name: string, fromLink = false) {
   void unlockAudio();
   const set = useApp.getState().set;
-  localStorage.setItem("playfirst.name", name);
+  setStoredName(name);
   set({
     name,
     roomCode: code,

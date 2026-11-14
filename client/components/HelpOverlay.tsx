@@ -24,7 +24,7 @@ export function HelpOverlay() {
         <div className="help-modal" role="dialog" aria-modal="true" onClick={() => setOpen(false)}>
           <div className="help-card panel" onClick={(e) => e.stopPropagation()}>
             <p className="tag">Controls</p>
-            <h3>PlayFirst shortcuts</h3>
+            <h3>SoftOpen shortcuts</h3>
             <ul>
               <li>
                 Click canvas · mouse look (1st / 3rd)

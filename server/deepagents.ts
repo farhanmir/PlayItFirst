@@ -81,7 +81,7 @@ export async function planDirectorEvent(snapshot: RoomSnapshot, now = Date.now()
   if (snapshot.director && !snapshot.director.resolved && snapshot.director.expiresAt > now) return null;
   if (snapshot.phase !== "play" || !snapshot.open) return null;
 
-  const prompt = `You are the PlayFirst café Game Director (LangChain Deepagents style).
+  const prompt = `You are the SoftOpen café Game Director (LangChain Deepagents style).
 Given this café state JSON, invent ONE urgent operational event with 2-4 concrete choices that change staffing, menu, cash, or layout.
 Return ONLY JSON: {"title":"...","body":"...","severity":"info|warn|critical","choices":[{"id":"snake_case","label":"..."}]}
 

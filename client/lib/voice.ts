@@ -1,5 +1,5 @@
 /**
- * Photon Voice–style WebRTC telephony over PlayFirst room signaling.
+ * Crew WebRTC telephony over SoftOpen room signaling (honestly not Photon 2.0).
  * Works peer-to-peer when a second player joins; Jamie call UI can also trigger a local loopback demo.
  */
 import type { Conn } from "./net";

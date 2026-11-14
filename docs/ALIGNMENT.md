@@ -1,8 +1,6 @@
-# PlayFirst — Implementation Alignment Report
+# SoftOpen — Implementation Alignment Report
 
-Living audit against the HackPrinceton product vision. **Product requirements are authoritative; libraries and schemas are not.** Preserve working systems.
-
-Canvas: interactive summary available in the agent chat (“PlayFirst Spec Alignment”).
+Living audit against the HackPrinceton product vision. Former name: **PlayFirst** (storage keys still migrate).
 
 ---
 
@@ -18,44 +16,15 @@ Canvas: interactive summary available in the agent chat (“PlayFirst Spec Align
 | Client | `client/App.tsx` → Landing / PropertySelect / Game | Zustand + R3F café |
 | Cameras | `client/components/CafeScene.tsx`, `client/lib/look.ts` | First / third / monitor / dollhouse |
 
-Patterns reused from Gitzilla (WS rooms, QR, tick) — not a rewrite of Gitzilla.
-
 ### User journey
-1. **Landing** (`client/pages/Landing.tsx`) — Host / Join / Judge demo  
-2. **Property** (`client/pages/PropertySelect.tsx`) — CoStar-shaped listings; rent/size/traffic shown  
-3. **Game** (`client/pages/Game.tsx`) — Build + Play + Ops/Table/Future/Plan rails  
-4. **Demo** `/?demo=1` (`client/lib/demo.ts`) — Midtown, open doors, rush boost  
+1. **Landing** — SoftOpen brand · Open Your Business / Join a Business / Judge demo  
+2. **Property** — CoStar-shaped listings; rent/size/traffic shown  
+3. **Game** — Build + Play + Ops/Table/Future/Plan  
+4. **Demo** `/?demo=1` — Midtown, open doors, rush boost  
 
-### Gameplay
-- Customers: enter → queue → order → wait → happy/angry leave (`stepSimulation`)  
-- Jobs: `take_order` / `make_coffee` / `serve` / `restock` / `collect`  
-- Jamie AI barista when humans idle or queue long  
-- Inventory recipes (beans/cups/milk)  
-- Property `footTraffic`, `capacity`, machine count affect spawn/throughput  
-- Immersive cameras + yaw-relative WASD + optimistic move  
-
-### Multiplayer
-- Create room `POST /api/rooms`, join via code/QR/URL  
-- Shared layout, players, customers, orders, finance, director, photon  
-- Mid-session join receives current snapshot  
-
-### Build ↔ play
-- Catalog place/move/remove (`BuildPanel`)  
-- **Tabletop** markers → `tabletop_sync` while others play (signature wow)  
-- Customers re-anchor queue to counter / pickup  
-
-### Sponsor integrations
-| Sponsor | Module | Behavior |
-| --- | --- | --- |
-| CoStar | `server/costar.ts` | Live when `COSTAR_API_URL`; else stamped mock |
-| Matterport | `server/matterport.ts` + `MatterportPanel` | Embed + Model API; reconstructed plate |
-| Deepagents | `server/deepagents.ts` + `director.ts` | Hosted when keyed; local rules always |
-| Photon | chat / call / `PhotonVoice` WebRTC | In-app; not carrier iMessage |
-| Nessie | `server/finance.ts` | Local ledger + optional sandbox mirror |
-| WebXR | `WebXRSession` | VR/AR entry + dollhouse fallback |
-
-### Tests
-32 Vitest cases: sim, stations, WS smoke, look, demo, costar, rival, suggestAction.
+### Branding
+Product: **SoftOpen**. Tagline: *Play your business before you pay for it.*  
+Compat: `softopen.*` localStorage + legacy `playfirst.*` dual-write.
 
 ---
 
@@ -65,57 +34,34 @@ Patterns reused from Gitzilla (WS rooms, QR, tick) — not a rewrite of Gitzilla
 | --- | --- | --- |
 | Attractive playable café | **Full** | Procedural R3F interior |
 | First-person / character control | **Full** | FPS + third + monitor |
-| CoStar data layers | **Partial** | Live/mock listings; Vexcel deferred |
-| Matterport → layout | **Partial** | Embed + dims-driven reconstruction (honest Approach C) |
-| Order lifecycle | **Partial → tightening** | Station gates + brew timer |
+| CoStar data layers | **Partial** | Live/mock; issue #2: matched real listing |
+| Matterport → layout | **Partial** | Embed + dims reconstruction; issue #2: matched scan |
+| Order lifecycle | **Full** | Station gates + brew timer |
 | Autonomous customers | **Full** | Personas + patience |
 | Finance from gameplay | **Full** | Sales/rent/equipment/inventory |
 | Multiplayer shared room | **Full** | WS authoritative |
-| Build mode | **Full** | Catalog + budget |
+| Build mode | **Full** | Click-to-place + tabletop |
 | Live layout while playing | **Full** | Editor + tabletop |
-| Deepagents director | **Different / better** | Demo-safe local + optional hosted |
-| AI employees hire UX | **Partial** | Jamie assists; no wage hire UI |
-| Photon iMessage | **Partial** | In-app messaging/voice; carrier deferred |
-| Physical CV tabletop | **Different / better** | On-screen markers → same actions |
-| Launch blueprint | **Full** | Markdown + disclaimer |
-| Rival / time machine | **Full** | P2 early; keep |
-| Multi business types | **Deferred** | Café only (correct) |
-| Competitive dual rooms | **Deferred** | Rival panel approximates |
+| Deepagents director | **Partial** | Local rules + LLM JSON; issue #2: real tools |
+| Photon 2.0 messaging | **Missing** | In-app chat/WebRTC only; issue #2 |
+| Launch blueprint | **Full** | Provenance labels |
+| Timeline / rival honesty | **Partial** | Issue #2: fix units / labels |
 
 ---
 
-## C. Architectural decisions to retain
+## C. Decisions to retain
 
-1. **Single-port Node + Vite + WS** — fewer moving parts than a microservice mesh.  
-2. **Deterministic sim + optional LLM director** — game never stalls on AI latency.  
-3. **On-screen tabletop** — same wow as fiducials without stage camera risk.  
-4. **Property-dimension procedural café** — until authorized Matterport meshes exist.  
-5. **Optimistic client move + server snapshots** — feels live without client authority.  
-6. **Café-only MVP** — spec forbids unfinished multi-type sprawl.
-
----
-
-## D. Critical gaps (smallest set)
-
-1. **Station-gated interactions** — ✅ server `stationOk`.  
-2. **Brew preparation time** — ✅ `brewing:order@t` + `advanceBrewing`.  
-3. **Honest café-only onboarding** — ✅ landing chips.  
-4. **Blueprint provenance** — ✅ live vs mock labels.  
-5. **Click-to-place build** — ✅ catalog select → click floor (Quick drop kept).
-
-Still soft / deferred: cosmetic roles, carrier iMessage Photon, Vexcel, hire wage UI, CV markers, multi business types.
+1. Single-port Node + Vite + WS  
+2. Deterministic sim + optional LLM director  
+3. On-screen tabletop (reliable wow)  
+4. Property-dimension procedural café until authorized meshes  
+5. Optimistic client move + server snapshots  
+6. Café-only MVP  
 
 ---
 
-## E. Implementation plan (dependency order)
+## D–F. Gaps & execution
 
-1. ✅ Station gates + brew timer  
-2. ✅ Café-only honesty + blueprint provenance  
-3. ✅ Click-to-place build (follow-up from codebase audit)  
-4. Keep demo green; avoid P2 expansion  
+See **GitHub issue #2** and `docs/PROGRESS.md` for the P0 vertical-slice plan (real property pairing, causal director, Photon/Deepagents honesty).
 
----
-
-## F. Execution notes
-
-D1–D5 closed. Known limitations remain: Matterport mesh import unavailable; Photon is in-app; CoStar may be mock without `COSTAR_API_URL`; roles do not gate actions.
+Rebrand complete on branch `cursor/softopen-rebrand-078f`. Gameplay architecture unchanged.

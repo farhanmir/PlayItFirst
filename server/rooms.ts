@@ -1,6 +1,6 @@
 /**
  * Authoritative multiplayer rooms — adapted from Gitzilla's RoomServer pattern
- * (WebSocket hello/resume, snapshot broadcast, tick loop) for PlayFirst cafés.
+ * (WebSocket hello/resume, snapshot broadcast, tick loop) for SoftOpen cafés.
  */
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import type { IncomingMessage } from "node:http";

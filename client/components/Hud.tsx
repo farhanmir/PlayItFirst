@@ -14,7 +14,7 @@ export function Hud({ snapshot, live = false }: { snapshot: RoomSnapshot; live?:
   return (
     <header className={`hud-top panel ${live ? "hud-live" : ""}`}>
       <div className="hud-brand">
-        <strong>PlayFirst</strong>
+        <strong>SoftOpen</strong>
         <span className="tag">{snapshot.phase}</span>
         <span className={`conn ${status}`} title={`Connection: ${status}`}>
           {status}

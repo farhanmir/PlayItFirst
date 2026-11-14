@@ -24,7 +24,7 @@ export class CafeCanvasFallback extends Component<Props, State> {
     if (this.state.error) {
       return (
         <div className="cafe-canvas cafe-canvas-fallback" role="img" aria-label="Café floorplan fallback">
-          <p className="brand-inline">PlayFirst</p>
+          <p className="brand-inline">SoftOpen</p>
           <p>3D floor needs WebGL — HUD and controls still work.</p>
           <p className="muted">{this.state.error}</p>
         </div>
