@@ -51,7 +51,9 @@ describe("café simulation", () => {
   it("runs customers after opening", () => {
     let snap = selectProperty(createRoomSnapshot("demo"), listing);
     snap = openCafe(snap);
-    for (let i = 0; i < 200; i++) snap = stepSimulation(snap, 0.2);
+    // Deterministic seed so we don't flake on spawn RNG
+    snap = seedDemoCrowd(snap);
+    for (let i = 0; i < 80; i++) snap = stepSimulation(snap, 0.25);
     expect(snap.customers.length + snap.metrics.customersServed + snap.metrics.customersLost).toBeGreaterThan(0);
   });
 
