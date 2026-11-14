@@ -3,7 +3,19 @@ import type { RoomSnapshot } from "../../shared/types";
 import { nearestStation } from "../../shared/stations";
 import { useApp } from "../lib/store";
 import { play } from "../lib/audio";
+import { moveFromKeys } from "../lib/look";
 import { suggestedAction, stationLabel, type PlayAction } from "../lib/suggestAction";
+
+function patchMyPosition(x: number, z: number) {
+  const { snapshot, you, set } = useApp.getState();
+  if (!snapshot || !you) return;
+  set({
+    snapshot: {
+      ...snapshot,
+      players: snapshot.players.map((p) => (p.id === you ? { ...p, x, z } : p)),
+    },
+  });
+}
 
 export function PlayControls({ snapshot }: { snapshot: RoomSnapshot }) {
   const conn = useApp((s) => s.conn);
@@ -25,6 +37,7 @@ export function PlayControls({ snapshot }: { snapshot: RoomSnapshot }) {
     if (!conn) return;
     const keys = new Set<string>();
     const onDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       const k = e.key.toLowerCase();
       keys.add(k);
       if (k === "e") act("take_order");
@@ -44,15 +57,13 @@ export function PlayControls({ snapshot }: { snapshot: RoomSnapshot }) {
     const id = setInterval(() => {
       const current = meRef.current;
       if (!current) return;
-      let x = current.x;
-      let z = current.z;
-      const speed = 0.2;
-      if (keys.has("w") || keys.has("arrowup")) z -= speed;
-      if (keys.has("s") || keys.has("arrowdown")) z += speed;
-      if (keys.has("a") || keys.has("arrowleft")) x -= speed;
-      if (keys.has("d") || keys.has("arrowright")) x += speed;
-      if (x !== current.x || z !== current.z) conn.send({ t: "player_move", x, z });
-    }, 50);
+      const { dx, dz } = moveFromKeys(keys, 0.22);
+      if (!dx && !dz) return;
+      const x = current.x + dx;
+      const z = current.z + dz;
+      patchMyPosition(x, z);
+      conn.send({ t: "player_move", x, z });
+    }, 33);
 
     return () => {
       clearInterval(id);
@@ -81,11 +92,11 @@ export function PlayControls({ snapshot }: { snapshot: RoomSnapshot }) {
         : me.holding
     : "Hands empty";
 
-  const actions: { id: PlayAction; label: string }[] = [
-    { id: "take_order", label: "Take order" },
-    { id: "make_coffee", label: "Make coffee" },
-    { id: "serve", label: "Serve" },
-    { id: "restock", label: "Restock" },
+  const actions: { id: PlayAction; label: string; key?: string }[] = [
+    { id: "take_order", label: "Take order", key: "E" },
+    { id: "make_coffee", label: "Brew", key: "F" },
+    { id: "serve", label: "Serve", key: "R" },
+    { id: "restock", label: "Restock", key: "Q" },
     { id: "collect", label: "Collect $" },
   ];
 
@@ -95,20 +106,22 @@ export function PlayControls({ snapshot }: { snapshot: RoomSnapshot }) {
       role="toolbar"
       aria-label="Café play controls"
     >
-      <div className="holding-chip">
-        <span className="tag">Holding</span>
-        <strong>{holding}</strong>
+      <div className="play-controls-top">
+        <div className="holding-chip">
+          <span className="tag">Holding</span>
+          <strong>{holding}</strong>
+        </div>
+        {(nearLabel || jamieHelping) && (
+          <p className="station-hint" aria-live="polite">
+            {nearLabel ? <span>{nearLabel}</span> : null}
+            {jamieHelping ? <em>Jamie covering the line</em> : null}
+          </p>
+        )}
       </div>
-      {(nearLabel || jamieHelping) && (
-        <p className="station-hint" aria-live="polite">
-          {nearLabel ? <span>{nearLabel}</span> : null}
-          {jamieHelping ? <em>Jamie (AI) covering the line</em> : null}
-        </p>
-      )}
       <p className="hint">
         {mobile
-          ? "Tap highlighted action · drag pad to move"
-          : "WASD move · Space next action · E order · F brew · R serve · Q restock"}
+          ? "Tap action · drag pad to move · swipe canvas to look"
+          : "Click canvas to look · WASD move · Space next · E/F/R/Q"}
       </p>
       <div className="action-grid">
         {actions.map((a) => (
@@ -120,6 +133,7 @@ export function PlayControls({ snapshot }: { snapshot: RoomSnapshot }) {
             aria-current={suggest === a.id ? "true" : undefined}
             onClick={() => act(a.id)}
           >
+            {a.key ? <kbd>{a.key}</kbd> : null}
             {a.label}
           </button>
         ))}
@@ -137,7 +151,10 @@ export function PlayControls({ snapshot }: { snapshot: RoomSnapshot }) {
       {mobile && me && (
         <MobilePad
           onMove={(dx, dz) => {
-            conn?.send({ t: "player_move", x: me.x + dx, z: me.z + dz });
+            const x = me.x + dx;
+            const z = me.z + dz;
+            patchMyPosition(x, z);
+            conn?.send({ t: "player_move", x, z });
           }}
         />
       )}
@@ -157,7 +174,15 @@ function MobilePad({ onMove }: { onMove: (dx: number, dz: number) => void }) {
           const rect = el.getBoundingClientRect();
           const x = (ev.clientX - rect.left) / rect.width - 0.5;
           const y = (ev.clientY - rect.top) / rect.height - 0.5;
-          onMove(x * 0.35, y * 0.35);
+          // Camera-relative on mobile too
+          const keys = new Set<string>();
+          if (y < -0.08) keys.add("w");
+          if (y > 0.08) keys.add("s");
+          if (x < -0.08) keys.add("a");
+          if (x > 0.08) keys.add("d");
+          const { dx, dz } = moveFromKeys(keys, 0.28);
+          if (dx || dz) onMove(dx, dz);
+          else onMove(x * 0.35, y * 0.35);
         };
         const up = () => {
           window.removeEventListener("pointermove", move);

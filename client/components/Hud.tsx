@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { RoomSnapshot } from "../../shared/types";
 import { useApp } from "../lib/store";
 import { setMuted, play } from "../lib/audio";
 
-export function Hud({ snapshot }: { snapshot: RoomSnapshot }) {
+export function Hud({ snapshot, live = false }: { snapshot: RoomSnapshot; live?: boolean }) {
   const f = snapshot.finance;
   const m = snapshot.metrics;
   const qrSvg = useApp((s) => s.qrSvg);
@@ -12,13 +12,14 @@ export function Hud({ snapshot }: { snapshot: RoomSnapshot }) {
   const [mute, setMute] = useState(false);
 
   return (
-    <header className="hud-top panel">
+    <header className={`hud-top panel ${live ? "hud-live" : ""}`}>
       <div className="hud-brand">
         <strong>PlayFirst</strong>
         <span className="tag">{snapshot.phase}</span>
         <span className={`conn ${status}`} title={`Connection: ${status}`}>
           {status}
         </span>
+        {snapshot.open ? <span className="live-dot" title="Doors open">Live</span> : null}
         <button
           type="button"
           className="btn-ghost btn-small hud-mute"
@@ -39,7 +40,7 @@ export function Hud({ snapshot }: { snapshot: RoomSnapshot }) {
         <Vital label="Funds" value={`$${Math.round(f.balance).toLocaleString()}`} />
         <Vital label="Revenue" value={`+$${Math.round(f.revenue).toLocaleString()}`} tone="ok" priority="high" />
         <Vital label="Served" value={String(m.customersServed)} priority="high" />
-        <Vital label="Queue" value={String(m.queueLength)} priority="high" />
+        <Vital label="Queue" value={String(m.queueLength)} priority="high" pulse={m.queueLength >= 4} />
         <Vital label="Wait" value={`${m.avgWaitSec}s`} priority="low" />
         <Vital
           label="Happy"
@@ -67,14 +68,27 @@ function Vital({
   value,
   tone,
   priority = "normal",
+  pulse = false,
 }: {
   label: string;
   value: string;
   tone?: "ok";
   priority?: "high" | "normal" | "low";
+  pulse?: boolean;
 }) {
+  const prev = useRef(value);
+  const [flash, setFlash] = useState(false);
+
+  useEffect(() => {
+    if (prev.current === value) return;
+    prev.current = value;
+    setFlash(true);
+    const id = window.setTimeout(() => setFlash(false), 420);
+    return () => window.clearTimeout(id);
+  }, [value]);
+
   return (
-    <div className={`vital vital-${priority}`}>
+    <div className={`vital vital-${priority} ${flash ? "vital-flash" : ""} ${pulse ? "vital-pulse" : ""}`}>
       <span>{label}</span>
       <strong className={tone}>{value}</strong>
     </div>

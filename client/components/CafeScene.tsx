@@ -1,9 +1,10 @@
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, PerspectiveCamera, Sparkles, Text } from "@react-three/drei";
-import { useMemo, useRef, type ReactNode } from "react";
-import { DoubleSide, type Group, type PerspectiveCamera as ThreePerspectiveCamera } from "three";
+import { useEffect, useRef, type ReactNode } from "react";
+import { DoubleSide, MathUtils, type Group, type PerspectiveCamera as ThreePerspectiveCamera } from "three";
 import type { Customer, FurnitureItem, PlayerState, PropertyListing, RoomSnapshot } from "../../shared/types";
 import { nearestStation } from "../../shared/stations";
+import { getLook, nudgeLook } from "../lib/look";
 import { useApp } from "../lib/store";
 
 const STATION_KIND: Record<string, FurnitureItem["kind"]> = {
@@ -41,25 +42,25 @@ const PALETTE = {
   angry: "#c45c4a",
 } as const;
 
-export type CafeViewMode = "orbit" | "dollhouse" | "play";
+export type CafeViewMode = "first" | "third" | "monitor" | "dollhouse";
 
 interface Props {
   snapshot: RoomSnapshot;
-  firstPerson: boolean;
   viewMode?: CafeViewMode;
 }
 
-export function CafeScene({ snapshot, firstPerson, viewMode = "orbit" }: Props) {
+export function CafeScene({ snapshot, viewMode = "monitor" }: Props) {
   const property = snapshot.property!;
   const you = useApp((s) => s.you);
   const me = snapshot.players.find((p) => p.id === you);
-  const mode = firstPerson ? "play" : viewMode;
+  const mode = viewMode;
+  const playCam = (mode === "first" || mode === "third") && me;
 
   return (
-    <div className="cafe-canvas">
+    <div className={`cafe-canvas mode-${mode}`}>
       <Canvas shadows dpr={[1, 1.6]} gl={{ antialias: true, powerPreference: "high-performance" }}>
         <color attach="background" args={[PALETTE.bg]} />
-        <fog attach="fog" args={[PALETTE.fog, mode === "dollhouse" ? 18 : 14, mode === "dollhouse" ? 40 : 32]} />
+        <fog attach="fog" args={[PALETTE.fog, mode === "dollhouse" ? 18 : 12, mode === "dollhouse" ? 42 : 34]} />
 
         {/* Warm key + cool fill */}
         <ambientLight intensity={0.22} color="#f3ebe2" />
@@ -82,8 +83,10 @@ export function CafeScene({ snapshot, firstPerson, viewMode = "orbit" }: Props) 
         <pointLight position={[property.width * 0.35, 2.4, property.depth * 0.4]} intensity={0.55} color="#d9773f" distance={10} decay={2} />
         <pointLight position={[property.width * 0.7, 2.4, property.depth * 0.55]} intensity={0.4} color="#c4a574" distance={9} decay={2} />
 
-        {mode === "play" && me ? (
-          <FollowCam x={me.x} z={me.z} />
+        {playCam && mode === "first" ? (
+          <FirstPersonCam x={me.x} z={me.z} />
+        ) : playCam && mode === "third" ? (
+          <ThirdPersonCam x={me.x} z={me.z} />
         ) : mode === "dollhouse" ? (
           <>
             <PerspectiveCamera
@@ -107,6 +110,8 @@ export function CafeScene({ snapshot, firstPerson, viewMode = "orbit" }: Props) 
               maxPolarAngle={Math.PI / 2.15}
               minDistance={6}
               maxDistance={28}
+              enableDamping
+              dampingFactor={0.08}
             />
           </>
         )}
@@ -128,23 +133,104 @@ export function CafeScene({ snapshot, firstPerson, viewMode = "orbit" }: Props) 
           <CustomerMesh key={c.id} customer={c} />
         ))}
         {snapshot.players.map((p) => (
-          <PlayerMesh key={p.id} player={p} isYou={p.id === you} hideBody={mode === "play" && p.id === you} />
+          <PlayerMesh
+            key={p.id}
+            player={p}
+            isYou={p.id === you}
+            hideBody={mode === "first" && p.id === you}
+            followLook={p.id === you}
+          />
         ))}
       </Canvas>
     </div>
   );
 }
 
-function FollowCam({ x, z }: { x: number; z: number }) {
+function usePointerLook(enabled: boolean) {
+  const { gl } = useThree();
+  useEffect(() => {
+    if (!enabled) return;
+    const el = gl.domElement;
+    const onClick = () => {
+      if (document.pointerLockElement !== el) void el.requestPointerLock();
+    };
+    const onMove = (e: MouseEvent) => {
+      if (document.pointerLockElement !== el) return;
+      nudgeLook(e.movementX, e.movementY);
+    };
+    const onTouch = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return;
+      const t = e.touches[0];
+      const prev = (el as HTMLCanvasElement & { __lookX?: number; __lookY?: number });
+      if (prev.__lookX != null && prev.__lookY != null) {
+        nudgeLook(t.clientX - prev.__lookX, t.clientY - prev.__lookY, 0.004);
+      }
+      prev.__lookX = t.clientX;
+      prev.__lookY = t.clientY;
+    };
+    const onTouchEnd = () => {
+      const prev = el as HTMLCanvasElement & { __lookX?: number; __lookY?: number };
+      prev.__lookX = undefined;
+      prev.__lookY = undefined;
+    };
+    el.addEventListener("click", onClick);
+    document.addEventListener("mousemove", onMove);
+    el.addEventListener("touchmove", onTouch, { passive: true });
+    el.addEventListener("touchend", onTouchEnd);
+    el.addEventListener("touchcancel", onTouchEnd);
+    return () => {
+      el.removeEventListener("click", onClick);
+      document.removeEventListener("mousemove", onMove);
+      el.removeEventListener("touchmove", onTouch);
+      el.removeEventListener("touchend", onTouchEnd);
+      el.removeEventListener("touchcancel", onTouchEnd);
+      if (document.pointerLockElement === el) document.exitPointerLock();
+    };
+  }, [enabled, gl]);
+}
+
+/** True FPS mouse-look camera locked to your barista. */
+function FirstPersonCam({ x, z }: { x: number; z: number }) {
   const ref = useRef<ThreePerspectiveCamera>(null);
-  useFrame(() => {
+  const smooth = useRef({ x, z });
+  usePointerLook(true);
+
+  useFrame((_, dt) => {
     if (!ref.current) return;
-    ref.current.position.x = x;
-    ref.current.position.y = 1.6;
-    ref.current.position.z = z;
-    ref.current.lookAt(x, 1.4, z - 2);
+    const k = 1 - Math.exp(-14 * dt);
+    smooth.current.x = MathUtils.lerp(smooth.current.x, x, k);
+    smooth.current.z = MathUtils.lerp(smooth.current.z, z, k);
+    const { yaw, pitch } = getLook();
+    ref.current.position.set(smooth.current.x, 1.55, smooth.current.z);
+    ref.current.rotation.order = "YXZ";
+    ref.current.rotation.y = yaw;
+    ref.current.rotation.x = pitch;
   });
-  return <PerspectiveCamera ref={ref} makeDefault fov={70} near={0.1} far={60} />;
+
+  return <PerspectiveCamera ref={ref} makeDefault fov={78} near={0.05} far={60} />;
+}
+
+/** Over-the-shoulder follow — great for monitoring your floor run. */
+function ThirdPersonCam({ x, z }: { x: number; z: number }) {
+  const ref = useRef<ThreePerspectiveCamera>(null);
+  const smooth = useRef({ x, z });
+  usePointerLook(true);
+
+  useFrame((_, dt) => {
+    if (!ref.current) return;
+    const k = 1 - Math.exp(-10 * dt);
+    smooth.current.x = MathUtils.lerp(smooth.current.x, x, k);
+    smooth.current.z = MathUtils.lerp(smooth.current.z, z, k);
+    const { yaw, pitch } = getLook();
+    const dist = 4.4;
+    const height = 2.55 - Math.sin(pitch) * 0.9;
+    const camX = smooth.current.x - Math.sin(yaw) * dist;
+    const camZ = smooth.current.z + Math.cos(yaw) * dist;
+    ref.current.position.set(camX, Math.max(1.4, height), camZ);
+    ref.current.lookAt(smooth.current.x, 1.25, smooth.current.z);
+  });
+
+  return <PerspectiveCamera ref={ref} makeDefault fov={55} near={0.1} far={70} />;
 }
 
 function CafeRoom({
@@ -695,40 +781,43 @@ function CustomerMesh({ customer }: { customer: Customer }) {
   const angry = customer.state === "angry" || customer.patience < 20;
   const waiting = customer.state === "waiting" || customer.state === "ordering" || customer.state === "queue";
   const body = angry ? PALETTE.angry : personaColor(customer.persona);
+  const root = useRef<Group>(null);
   const bob = useRef<Group>(null);
   const orderLabel = customer.order ?? customer.preference;
+  const target = useRef({ x: customer.x, z: customer.z });
+  target.current = { x: customer.x, z: customer.z };
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock }, dt) => {
+    if (root.current) {
+      const k = 1 - Math.exp(-9 * dt);
+      root.current.position.x = MathUtils.lerp(root.current.position.x, target.current.x, k);
+      root.current.position.z = MathUtils.lerp(root.current.position.z, target.current.z, k);
+    }
     if (!bob.current) return;
     const t = clock.elapsedTime;
     const phase = customer.x * 2.3 + customer.z;
     if (customer.state === "entering" || customer.state === "leaving") {
       bob.current.position.y = Math.abs(Math.sin(t * 6 + phase)) * 0.04;
     } else {
-      // Slight idle bob — staggered per customer, cheap sin only
       bob.current.position.y = Math.sin(t * 1.35 + phase) * 0.018;
     }
   });
 
   return (
-    <group position={[customer.x, 0, customer.z]}>
+    <group ref={root} position={[customer.x, 0, customer.z]}>
       <group ref={bob}>
-        {/* Body */}
         <mesh position={[0, 0.82, 0]} castShadow>
           <capsuleGeometry args={[0.2, 0.72, 4, 10]} />
           <meshStandardMaterial color={body} roughness={0.65} />
         </mesh>
-        {/* Shoulders hint */}
         <mesh position={[0, 1.15, 0]} castShadow>
           <capsuleGeometry args={[0.24, 0.08, 3, 8]} />
           <meshStandardMaterial color={body} roughness={0.65} />
         </mesh>
-        {/* Head */}
         <mesh position={[0, 1.48, 0]} castShadow>
           <sphereGeometry args={[0.17, 12, 12]} />
           <meshStandardMaterial color="#e8d5c4" roughness={0.7} />
         </mesh>
-        {/* Simple hair cap */}
         <mesh position={[0, 1.58, -0.02]}>
           <sphereGeometry args={[0.15, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
           <meshStandardMaterial
@@ -764,6 +853,20 @@ function CustomerMesh({ customer }: { customer: Customer }) {
           ) : null}
         </group>
       )}
+      {/* Patience ring — fills red as they wait */}
+      {waiting && (
+        <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[0.32, 0.4, 24, 1, 0, Math.PI * 2 * Math.min(1, customer.patience / 100)]} />
+          <meshStandardMaterial
+            color={angry ? PALETTE.angry : PALETTE.leafBright}
+            emissive={angry ? PALETTE.angry : PALETTE.leaf}
+            emissiveIntensity={0.4}
+            side={DoubleSide}
+            transparent
+            opacity={0.85}
+          />
+        </mesh>
+      )}
     </group>
   );
 }
@@ -772,16 +875,29 @@ function PlayerMesh({
   player,
   isYou,
   hideBody = false,
+  followLook = false,
 }: {
   player: PlayerState;
   isYou: boolean;
   hideBody?: boolean;
+  followLook?: boolean;
 }) {
+  const root = useRef<Group>(null);
+  const target = useRef({ x: player.x, z: player.z });
+  target.current = { x: player.x, z: player.z };
+
+  useFrame((_, dt) => {
+    if (!root.current) return;
+    const k = 1 - Math.exp(-14 * dt);
+    root.current.position.x = MathUtils.lerp(root.current.position.x, target.current.x, k);
+    root.current.position.z = MathUtils.lerp(root.current.position.z, target.current.z, k);
+    if (followLook) root.current.rotation.y = getLook().yaw;
+  });
+
   if (hideBody) return null;
 
   return (
-    <group position={[player.x, 0, player.z]}>
-      {/* Distinct taller silhouette */}
+    <group ref={root} position={[player.x, 0, player.z]}>
       <mesh position={[0, 0.95, 0]} castShadow>
         <capsuleGeometry args={[0.24, 0.85, 4, 10]} />
         <meshStandardMaterial
@@ -795,12 +911,10 @@ function PlayerMesh({
         <sphereGeometry args={[0.19, 12, 12]} />
         <meshStandardMaterial color="#f0e0d0" roughness={0.65} />
       </mesh>
-      {/* Collar band */}
       <mesh position={[0, 1.35, 0]}>
         <torusGeometry args={[0.2, 0.035, 6, 16]} />
         <meshStandardMaterial color={PALETTE.foam} roughness={0.6} />
       </mesh>
-      {/* Name plate */}
       <mesh position={[0, 2.12, 0]}>
         <boxGeometry args={[Math.max(0.7, player.name.length * 0.09), 0.22, 0.02]} />
         <meshStandardMaterial color={PALETTE.espresso} transparent opacity={0.85} />
@@ -812,7 +926,7 @@ function PlayerMesh({
         <mesh position={[0.38, 1.15, 0.22]} castShadow>
           <cylinderGeometry args={[0.07, 0.06, 0.14, 10]} />
           <meshStandardMaterial
-            color={player.holding === "coffee" ? "#6b3f24" : PALETTE.foam}
+            color={player.holding === "coffee" || player.holding.startsWith("drink:") ? "#6b3f24" : PALETTE.foam}
             roughness={0.55}
           />
         </mesh>

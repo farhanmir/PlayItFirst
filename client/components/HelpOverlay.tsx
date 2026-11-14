@@ -27,28 +27,26 @@ export function HelpOverlay() {
             <h3>PlayFirst shortcuts</h3>
             <ul>
               <li>
+                Click canvas · mouse look (1st / 3rd)
+              </li>
+              <li>
                 <kbd>W</kbd>
                 <kbd>A</kbd>
                 <kbd>S</kbd>
-                <kbd>D</kbd> Move
+                <kbd>D</kbd> Move (relative to look)
               </li>
               <li>
-                <kbd>E</kbd> Take order
+                <kbd>Space</kbd> Suggested next action
               </li>
               <li>
-                <kbd>F</kbd> Make coffee
+                <kbd>E</kbd> Take order · <kbd>F</kbd> Brew · <kbd>R</kbd> Serve · <kbd>Q</kbd> Restock
               </li>
-              <li>
-                <kbd>R</kbd> Serve
-              </li>
-              <li>
-                <kbd>Q</kbd> Restock
-              </li>
+              <li>Camera: 1st Person · 3rd Person · Monitor · Dollhouse</li>
               <li>
                 <kbd>?</kbd> Toggle this help
               </li>
             </ul>
-            <p className="fine">Phones: use the on-screen pad + action buttons. Scan the HUD QR to join co-op.</p>
+            <p className="fine">Phones default to 3rd person — drag the pad to move, swipe the café to look.</p>
             <button type="button" className="btn" onClick={() => setOpen(false)}>
               Close
             </button>

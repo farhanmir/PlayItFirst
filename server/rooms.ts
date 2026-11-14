@@ -53,7 +53,7 @@ interface Room {
 }
 
 const TICK_HZ = 20;
-const SNAPSHOT_HZ = 10;
+const SNAPSHOT_HZ = 20;
 
 function listings(): PropertyListing[] {
   return withMatterportDefaults(getCachedProperties().listings);

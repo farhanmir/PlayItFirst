@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useApp } from "../lib/store";
 import { CafeScene } from "../components/CafeScene";
 import { CafeCanvasFallback } from "../components/CafeCanvasFallback";
@@ -17,7 +17,7 @@ import { RivalCafePanel } from "../components/RivalCafePanel";
 import { RolePicker } from "../components/RolePicker";
 import { HelpOverlay } from "../components/HelpOverlay";
 import { PhotonCall } from "../components/PhotonCall";
-import { DollhouseToggle } from "../components/DollhouseToggle";
+import { ViewModeToggle } from "../components/ViewModeToggle";
 import { SessionRecap } from "../components/SessionRecap";
 import { WebXRHint } from "../components/WebXRHint";
 import { CrewBoard } from "../components/CrewBoard";
@@ -27,6 +27,7 @@ import { MatterportPanel } from "../components/MatterportPanel";
 import { PhotonVoice } from "../components/PhotonVoice";
 import { WebXRSession } from "../components/WebXRSession";
 import { IntegrationsBadge } from "../components/IntegrationsBadge";
+import { PlayCrosshair } from "../components/PlayCrosshair";
 import type { CafeViewMode } from "../components/CafeScene";
 import { play } from "../lib/audio";
 import { startAmbient, stopAmbient } from "../lib/ambient";
@@ -37,11 +38,20 @@ export function Game() {
   const blueprint = useApp((s) => s.blueprint);
   const mobile = useApp((s) => s.mobile);
   const [tab, setTab] = useState<"build" | "ops" | "table" | "future" | "plan">("ops");
-  const [viewMode, setViewMode] = useState<CafeViewMode>("orbit");
-  const firstPerson = useMemo(
-    () => (mobile && snapshot?.phase === "play") || viewMode === "play",
-    [mobile, snapshot?.phase, viewMode],
-  );
+  const [viewMode, setViewMode] = useState<CafeViewMode>("monitor");
+  const [userPickedView, setUserPickedView] = useState(false);
+  const [railsOpen, setRailsOpen] = useState(true);
+
+  useEffect(() => {
+    if (userPickedView) return;
+    if (snapshot?.phase === "play") {
+      setViewMode(mobile ? "third" : "first");
+      setRailsOpen(false);
+    } else if (snapshot?.phase === "build") {
+      setViewMode("monitor");
+      setRailsOpen(true);
+    }
+  }, [snapshot?.phase, mobile, userPickedView]);
 
   useEffect(() => {
     if (!snapshot) return;
@@ -69,36 +79,55 @@ export function Game() {
     );
   }
 
+  const immersive =
+    snapshot.phase === "play" && (viewMode === "first" || viewMode === "third");
+
+  const onViewChange = (m: CafeViewMode) => {
+    setUserPickedView(true);
+    setViewMode(m);
+  };
+
   return (
-    <main className="game">
-      <Hud snapshot={snapshot} />
-      <IntegrationsBadge />
+    <main
+      className={`game ${immersive ? "immersive" : ""} ${railsOpen ? "rails-open" : "rails-collapsed"}`}
+    >
+      <Hud snapshot={snapshot} live />
+      {!immersive && <IntegrationsBadge />}
       <HelpOverlay />
       <div className="game-stage">
         <CafeCanvasFallback>
-          <CafeScene
-            snapshot={snapshot}
-            firstPerson={!!firstPerson && snapshot.phase !== "build"}
-            viewMode={viewMode}
-          />
+          <CafeScene snapshot={snapshot} viewMode={viewMode} />
         </CafeCanvasFallback>
-        {!mobile && <DollhouseToggle mode={viewMode} onChange={setViewMode} />}
-        <WebXRHint onOpenTable={() => setTab("table")} />
-        <MiniMap snapshot={snapshot} />
+        <ViewModeToggle mode={viewMode} onChange={onViewChange} />
+        <PlayCrosshair snapshot={snapshot} mode={viewMode} />
+        {viewMode !== "first" && <WebXRHint onOpenTable={() => setTab("table")} />}
+        {viewMode !== "first" && <MiniMap snapshot={snapshot} />}
         <TutorialTips snapshot={snapshot} />
         <DirectorPanel snapshot={snapshot} />
         <PhotonCall snapshot={snapshot} />
-        <RolePicker snapshot={snapshot} />
+        {viewMode !== "first" && <RolePicker snapshot={snapshot} />}
         <ServeToast snapshot={snapshot} />
         {snapshot.phase === "play" && (
           <>
-            <OrderRail snapshot={snapshot} />
+            {viewMode !== "first" && <OrderRail snapshot={snapshot} />}
             <PlayControls snapshot={snapshot} />
           </>
         )}
+        <button
+          type="button"
+          className="rails-fab btn-ghost"
+          aria-expanded={railsOpen}
+          aria-label={railsOpen ? "Hide side panel" : "Show side panel"}
+          onClick={() => {
+            play("ui", 0.2);
+            setRailsOpen((v) => !v);
+          }}
+        >
+          {railsOpen ? "Hide panel" : "Ops panel"}
+        </button>
       </div>
 
-      <div className="game-rails">
+      <div className="game-rails" aria-hidden={!railsOpen}>
         <div className="rail-tabs">
           {(
             [
@@ -116,6 +145,7 @@ export function Game() {
               onClick={() => {
                 play("ui", 0.25);
                 setTab(id);
+                setRailsOpen(true);
               }}
             >
               {label}
@@ -142,7 +172,7 @@ export function Game() {
           {tab === "table" && (
             <>
               <Tabletop snapshot={snapshot} />
-              <WebXRSession onEnterDollhouse={() => setViewMode("dollhouse")} />
+              <WebXRSession onEnterDollhouse={() => onViewChange("dollhouse")} />
             </>
           )}
           {tab === "future" && (
