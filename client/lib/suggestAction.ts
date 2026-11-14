@@ -15,7 +15,7 @@ export function suggestedAction(snapshot: RoomSnapshot, playerId: string | null)
   const lowStock = inv.beans < 4 || inv.cups < 4 || inv.milk < 2;
 
   if (holding?.startsWith("drink:")) return "serve";
-  if (holding?.startsWith("ticket:")) return "make_coffee";
+  if (holding?.startsWith("brewing:") || holding?.startsWith("ticket:")) return "make_coffee";
   if (lowStock && (station === "fridge" || !station)) return "restock";
   if (station === "counter") return "take_order";
   if (station === "machine") return "make_coffee";

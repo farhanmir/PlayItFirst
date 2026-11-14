@@ -74,6 +74,8 @@ export interface Customer {
   preference: string;
   state: "entering" | "queue" | "ordering" | "waiting" | "leaving" | "happy" | "angry";
   order?: string;
+  /** Player who took the ticket — prefer this barista for brew/serve matching */
+  ticketHolder?: string;
   progress: number;
   x: number;
   z: number;

@@ -210,8 +210,44 @@
   max-width: 36ch;
   line-height: 1.55;
   opacity: 0.92;
-  margin-bottom: 1.75rem;
+  margin-bottom: 0.85rem;
   font-size: 1.02rem;
+}
+
+.biz-types {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0 0 0.35rem;
+}
+
+.biz-type {
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.28rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid rgba(245, 239, 232, 0.14);
+  color: var(--muted);
+}
+
+.biz-type.active {
+  color: var(--foam);
+  border-color: rgba(196, 165, 116, 0.55);
+  background: rgba(196, 165, 116, 0.16);
+}
+
+.biz-type.muted {
+  opacity: 0.55;
+}
+
+.biz-types-note {
+  margin: 0 0 1.25rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+  line-height: 1.4;
+  max-width: 40ch;
 }
 
 .landing-cta {

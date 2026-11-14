@@ -240,6 +240,31 @@ export function openCafe(snapshot: RoomSnapshot): RoomSnapshot {
   };
 }
 
+/** Brew time (sim seconds) before a drink becomes holdable. */
+const BREW_SEC = 1.6;
+
+function parseBrewing(holding?: string | null): { order: string; started: number } | null {
+  if (!holding?.startsWith("brewing:")) return null;
+  const rest = holding.slice("brewing:".length);
+  const at = rest.lastIndexOf("@");
+  if (at < 0) return { order: rest, started: 0 };
+  return { order: rest.slice(0, at), started: Number(rest.slice(at + 1)) || 0 };
+}
+
+function stationOk(
+  snapshot: RoomSnapshot,
+  playerId: string,
+  action: "take_order" | "make_coffee" | "serve" | "restock" | "collect",
+): boolean {
+  if (action === "collect") return true;
+  const station = nearestStation(snapshot, playerId);
+  if (action === "take_order") return station === "counter";
+  if (action === "make_coffee") return station === "machine";
+  if (action === "serve") return station === "pickup" || station === "counter";
+  if (action === "restock") return station === "fridge";
+  return true;
+}
+
 export function interact(
   snapshot: RoomSnapshot,
   playerId: string,
@@ -256,6 +281,25 @@ export function interact(
   const log = [...snapshot.eventLog];
   const needsMilk = (order?: string) => order === "latte" || order === "cappuccino" || order === "mocha";
 
+  if (!opts?.ai && !stationOk(snapshot, playerId, action)) {
+    const hint =
+      action === "take_order"
+        ? "Walk to the counter"
+        : action === "make_coffee"
+          ? "Walk to the espresso machine"
+          : action === "serve"
+            ? "Walk to pickup (or counter)"
+            : action === "restock"
+              ? "Walk to the fridge"
+              : "Get closer to the station";
+    log.unshift(`${player.name} — ${hint}`);
+    return {
+      ...snapshot,
+      eventLog: log.slice(0, 30),
+      lastHumanInteractAt: snapshot.simTime,
+    };
+  }
+
   if (action === "take_order") {
     const target = customers.find((c) => c.state === "queue" || c.state === "ordering");
     if (target) {
@@ -265,7 +309,9 @@ export function interact(
           ? target.preference
           : menu[Math.floor(Math.random() * menu.length)];
       customers = customers.map((c) =>
-        c.id === target.id ? { ...c, state: "waiting", order: preference, progress: 0.12 } : c,
+        c.id === target.id
+          ? { ...c, state: "waiting", order: preference, progress: 0.12, ticketHolder: playerId }
+          : c,
       );
       players = players.map((p) =>
         p.id === playerId ? { ...p, holding: `ticket:${preference}`, score: p.score + 1 } : p,
@@ -275,42 +321,79 @@ export function interact(
   }
 
   if (action === "make_coffee") {
-    if (inventory.beans <= 0 || inventory.cups <= 0) {
-      log.unshift(`${player.name} can’t brew — out of beans or cups`);
-      return {
-        ...snapshot,
-        inventory,
-        eventLog: log.slice(0, 30),
-        lastHumanInteractAt: opts?.ai ? snapshot.lastHumanInteractAt : snapshot.simTime,
-      };
+    const brewing = parseBrewing(player.holding);
+    if (brewing) {
+      // Manual finish if brew completed (or AI finish)
+      if (opts?.ai || snapshot.simTime - brewing.started >= BREW_SEC * 0.5) {
+        players = players.map((p) =>
+          p.id === playerId ? { ...p, holding: `drink:${brewing.order}`, score: p.score + 2 } : p,
+        );
+        customers = customers.map((c) =>
+          c.state === "waiting" && (c.ticketHolder === playerId || c.order === brewing.order)
+            ? { ...c, progress: Math.min(1, c.progress + 0.45) }
+            : c,
+        );
+        log.unshift(`${player.name} finished a ${brewing.order}`);
+      } else {
+        log.unshift(`${player.name} — still brewing ${brewing.order}…`);
+      }
+    } else {
+      if (inventory.beans <= 0 || inventory.cups <= 0) {
+        log.unshift(`${player.name} can’t brew — out of beans or cups`);
+        return {
+          ...snapshot,
+          inventory,
+          eventLog: log.slice(0, 30),
+          lastHumanInteractAt: opts?.ai ? snapshot.lastHumanInteractAt : snapshot.simTime,
+        };
+      }
+      const ticketOrder = player.holding?.startsWith("ticket:") ? player.holding.slice(7) : undefined;
+      const waiting =
+        customers.find((c) => c.state === "waiting" && c.ticketHolder === playerId) ||
+        customers.find((c) => c.state === "waiting");
+      const order = ticketOrder || waiting?.order || "espresso";
+      if (needsMilk(order) && inventory.milk <= 0) {
+        log.unshift(`${player.name} needs milk for a ${order}`);
+        return {
+          ...snapshot,
+          inventory,
+          eventLog: log.slice(0, 30),
+          lastHumanInteractAt: opts?.ai ? snapshot.lastHumanInteractAt : snapshot.simTime,
+        };
+      }
+      inventory.beans -= 1;
+      inventory.cups -= 1;
+      if (needsMilk(order)) inventory.milk -= 1;
+      // AI completes instantly so assist stays snappy; humans get a short brew timer
+      if (opts?.ai) {
+        players = players.map((p) =>
+          p.id === playerId ? { ...p, holding: `drink:${order}`, score: p.score + 2 } : p,
+        );
+        customers = customers.map((c) =>
+          c.state === "waiting" ? { ...c, progress: Math.min(1, c.progress + 0.45) } : c,
+        );
+        log.unshift(`${player.name} brewed a ${order}`);
+      } else {
+        players = players.map((p) =>
+          p.id === playerId ? { ...p, holding: `brewing:${order}@${snapshot.simTime}` } : p,
+        );
+        log.unshift(`${player.name} started brewing a ${order}`);
+      }
     }
-    const ticketOrder = player.holding?.startsWith("ticket:") ? player.holding.slice(7) : undefined;
-    const waiting = customers.find((c) => c.state === "waiting");
-    const order = ticketOrder || waiting?.order || "espresso";
-    if (needsMilk(order) && inventory.milk <= 0) {
-      log.unshift(`${player.name} needs milk for a ${order}`);
-      return {
-        ...snapshot,
-        inventory,
-        eventLog: log.slice(0, 30),
-        lastHumanInteractAt: opts?.ai ? snapshot.lastHumanInteractAt : snapshot.simTime,
-      };
-    }
-    inventory.beans -= 1;
-    inventory.cups -= 1;
-    if (needsMilk(order)) inventory.milk -= 1;
-    players = players.map((p) =>
-      p.id === playerId ? { ...p, holding: `drink:${order}`, score: p.score + 2 } : p,
-    );
-    customers = customers.map((c) =>
-      c.state === "waiting" ? { ...c, progress: Math.min(1, c.progress + 0.45) } : c,
-    );
-    log.unshift(`${player.name} brewed a ${order}`);
   }
 
   if (action === "serve") {
     const holdingDrink = player.holding?.startsWith("drink:");
-    const ready = customers.find((c) => c.state === "waiting" && (c.progress >= 0.45 || holdingDrink));
+    const drinkOrder = holdingDrink ? player.holding!.slice(6) : undefined;
+    const ready =
+      customers.find(
+        (c) =>
+          c.state === "waiting" &&
+          holdingDrink &&
+          (c.ticketHolder === playerId || c.order === drinkOrder) &&
+          (c.progress >= 0.4 || holdingDrink),
+      ) ||
+      customers.find((c) => c.state === "waiting" && (c.progress >= 0.45 || holdingDrink));
     if (ready) {
       const tip = ready.persona === "office" ? 4 : ready.persona === "regular" ? 3 : 1;
       const matchBonus = holdingDrink && player.holding === `drink:${ready.order}` ? 1.5 : 0;
@@ -322,7 +405,9 @@ export function interact(
         (metrics.customersServed / Math.max(1, snapshot.simTime / 3600)) * price,
       );
       customers = customers.map((c) =>
-        c.id === ready.id ? { ...c, state: "happy", progress: 1, satisfaction: 92 } : c,
+        c.id === ready.id
+          ? { ...c, state: "happy", progress: 1, satisfaction: 92, ticketHolder: undefined }
+          : c,
       );
       players = players.map((p) => (p.id === playerId ? { ...p, holding: null, score: p.score + 5 } : p));
       log.unshift(`${player.name} served ${ready.name}`);
@@ -355,6 +440,26 @@ export function interact(
     eventLog: log.slice(0, 30),
     lastHumanInteractAt: opts?.ai ? snapshot.lastHumanInteractAt : snapshot.simTime,
   };
+}
+
+/** Complete finished brews on the sim clock. */
+export function advanceBrewing(snapshot: RoomSnapshot): RoomSnapshot {
+  let changed = false;
+  const players = snapshot.players.map((p) => {
+    const brewing = parseBrewing(p.holding);
+    if (!brewing) return p;
+    if (snapshot.simTime - brewing.started < BREW_SEC) return p;
+    changed = true;
+    return { ...p, holding: `drink:${brewing.order}`, score: p.score + 2 };
+  });
+  if (!changed) return snapshot;
+  const finished = players.filter((p, i) => p.holding !== snapshot.players[i]?.holding);
+  const log = [...snapshot.eventLog];
+  for (const p of finished) {
+    const order = p.holding?.startsWith("drink:") ? p.holding.slice(6) : "drink";
+    log.unshift(`${p.name} finished brewing a ${order}`);
+  }
+  return { ...snapshot, players, eventLog: log.slice(0, 30) };
 }
 
 /** NPC barista — one action per call; keeps holding across ticks. */
@@ -395,11 +500,22 @@ export function runAiBaristaAssist(snapshot: RoomSnapshot): RoomSnapshot {
 
 export function stepSimulation(snapshot: RoomSnapshot, dt: number): RoomSnapshot {
   if (!snapshot.open || !snapshot.property || !snapshot.layout) {
-    return { ...snapshot, tick: snapshot.tick + 1, simTime: snapshot.simTime + dt };
+    return advanceBrewing({
+      ...snapshot,
+      tick: snapshot.tick + 1,
+      simTime: snapshot.simTime + dt,
+    });
   }
 
   const property = snapshot.property;
   const layout = snapshot.layout;
+
+  snapshot = advanceBrewing({
+    ...snapshot,
+    tick: snapshot.tick + 1,
+    simTime: snapshot.simTime + dt,
+  });
+
   const machines = layout.furniture.filter((f) => f.kind === "coffee_machine").length;
   const throughput = Math.max(1, machines);
   const seats = layout.furniture.reduce((s, f) => s + (f.seats ?? 0), 0);
@@ -544,8 +660,6 @@ export function stepSimulation(snapshot: RoomSnapshot, dt: number): RoomSnapshot
     metrics,
     rushBoost,
     eventLog: log.slice(0, 30),
-    tick: snapshot.tick + 1,
-    simTime: snapshot.simTime + dt,
   };
 
   // Jamie (AI) barista: help on long queues or when humans go idle — paced so players still matter
@@ -623,27 +737,40 @@ export function buildBlueprint(snapshot: RoomSnapshot): string {
     .map((item) => `- ${item.label} @ (${item.x.toFixed(1)}, ${item.z.toFixed(1)}) — $${item.cost}`)
     .join("\n");
 
+  const sourceLabel =
+    p.source === "costar-live"
+      ? "CoStar live feed (verify with broker)"
+      : p.source === "local"
+        ? "Local fixture listing"
+        : "CoStar-shaped mock listing (set COSTAR_API_URL for live)";
+
   return `# PlayFirst Business Launch Blueprint
 
 Generated from your gameplay at **${p.name}**
+
+## Data provenance
+- **Property source:** ${sourceLabel}
+- **Listing id:** ${p.costarId}
+- **Gameplay assumptions:** starting capital, menu prices, spawn rates, and wages are simulated — not market forecasts.
+- **Matterport:** floorplate notes + optional showcase embed; playable room is a reconstruction from listing dimensions.
 
 ## Selected commercial property
 - **Listing:** ${p.name} (${p.costarId})
 - **Address:** ${p.address}
 - **Size:** ${p.sqft} sqft · capacity ${p.capacity}
-- **Monthly rent:** $${p.monthlyRent.toLocaleString()}
+- **Monthly rent:** $${p.monthlyRent.toLocaleString()} ${p.source === "costar-live" ? "(from listing)" : "(fixture / assumption)"}
 - **Matterport notes:** ${p.matterportHint}
 
 ## Customized floor plan & equipment
 ${equipment}
 
-**Budget spent on build-out:** $${layout.budgetSpent.toLocaleString()}
+**Budget spent on build-out (simulated):** $${layout.budgetSpent.toLocaleString()}
 
 ## Estimated startup budget & operating expenses
-- Starting capital: $${snapshot.startingBudget.toLocaleString()}
+- Starting capital *(gameplay assumption)*: $${snapshot.startingBudget.toLocaleString()}
 - Current simulated balance: $${Math.round(f.balance).toLocaleString()}
-- Simulated revenue: $${Math.round(f.revenue).toLocaleString()}
-- Simulated expenses: $${Math.round(f.expenses).toLocaleString()}
+- Simulated revenue *(session)*: $${Math.round(f.revenue).toLocaleString()}
+- Simulated expenses *(session)*: $${Math.round(f.expenses).toLocaleString()}
 
 ## Staffing & operational plan
 - Roles observed: ${snapshot.players.map((pl) => `${pl.name} (${pl.role})`).join(", ") || "Owner-operated"}

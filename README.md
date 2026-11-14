@@ -35,7 +35,7 @@ Manual path:
 | CoStar property selection | ✅ Live when `COSTAR_API_URL` set · else stamped mock |
 | Matterport twin | ✅ Showcase embed + Model API when `MATTERPORT_TOKEN` set |
 | Playable 3D café (Three.js / R3F) | ✅ Warm procedural interior |
-| Desktop orbit + mobile follow-cam | ✅ |
+| 1st / 3rd / Monitor / Dollhouse cameras | ✅ |
 | Real-time multiplayer + QR join | ✅ |
 | Customers, tickets, inventory | ✅ |
 | Live tabletop marker sync | ✅ Pitch wow |

@@ -44,6 +44,15 @@ export function Landing({ onStart, onJoin, onJudgeDemo, demoBusy }: Props) {
           <p className="lede rise-delay">
             Practice ownership inside a real storefront — layout, queues, cash — then leave with a launch blueprint, not a burned lease.
           </p>
+          <div className="biz-types" aria-label="Business types">
+            <span className="biz-type active">Café</span>
+            <span className="biz-type muted" title="Coming after the café MVP">Restaurant</span>
+            <span className="biz-type muted" title="Coming after the café MVP">Bookstore</span>
+            <span className="biz-type muted" title="Coming after the café MVP">Gaming lounge</span>
+            <span className="biz-type muted" title="Coming after the café MVP">Retail</span>
+            <span className="biz-type muted" title="Coming after the café MVP">Gym</span>
+          </div>
+          <p className="biz-types-note">Hackathon build: café is fully playable — other types preview the roadmap.</p>
           <IntegrationsBadge />
           <div className="landing-cta rise-delay-2">
             <input

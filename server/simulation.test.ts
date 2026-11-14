@@ -68,6 +68,7 @@ describe("café simulation", () => {
     expect(md).toContain("Business Launch Blueprint");
     expect(md).toContain(listing.name);
     expect(md).toMatch(/Disclaimer|educational simulation/i);
+    expect(md).toMatch(/Data provenance|Gameplay assumptions/i);
   });
 
   it("nearestStation returns the closest in-range station", () => {
@@ -141,13 +142,50 @@ describe("café simulation", () => {
     let snap = selectProperty(createRoomSnapshot("demo"), listing);
     snap = addPlayer(snap, "p1", "Alex", "barista");
     snap = openCafe(snap);
-    snap = { ...snap, simTime: 12, lastHumanInteractAt: 0 };
+    const counter = snap.layout!.furniture.find((f) => f.kind === "counter")!;
     snap = {
       ...snap,
+      simTime: 12,
+      lastHumanInteractAt: 0,
+      players: snap.players.map((p) => (p.id === "p1" ? { ...p, x: counter.x, z: counter.z } : p)),
       customers: [seedCustomer({ state: "ordering" })],
     };
     snap = interact(snap, "p1", "take_order");
     expect(snap.lastHumanInteractAt).toBe(12);
+    expect(snap.players[0]?.holding?.startsWith("ticket:")).toBe(true);
+  });
+
+  it("rejects take_order when player is far from the counter", () => {
+    let snap = selectProperty(createRoomSnapshot("demo"), listing);
+    snap = addPlayer(snap, "p1", "Alex", "barista");
+    snap = openCafe(snap);
+    snap = {
+      ...snap,
+      players: snap.players.map((p) => (p.id === "p1" ? { ...p, x: 20, z: 20 } : p)),
+      customers: [seedCustomer({ state: "ordering" })],
+    };
+    snap = interact(snap, "p1", "take_order");
+    expect(snap.players[0]?.holding).toBeFalsy();
+    expect(snap.eventLog[0]).toMatch(/Walk to the counter/i);
+  });
+
+  it("starts a brew timer then finishes into a drink", () => {
+    let snap = selectProperty(createRoomSnapshot("demo"), listing);
+    snap = addPlayer(snap, "p1", "Alex", "barista");
+    snap = openCafe(snap);
+    const machine = snap.layout!.furniture.find((f) => f.kind === "coffee_machine")!;
+    snap = {
+      ...snap,
+      simTime: 5,
+      players: snap.players.map((p) =>
+        p.id === "p1" ? { ...p, x: machine.x, z: machine.z, holding: "ticket:latte" } : p,
+      ),
+      customers: [seedCustomer({ state: "waiting", order: "latte", ticketHolder: "p1" })],
+    };
+    snap = interact(snap, "p1", "make_coffee");
+    expect(snap.players[0]?.holding?.startsWith("brewing:latte")).toBe(true);
+    for (let i = 0; i < 20; i++) snap = stepSimulation(snap, 0.2);
+    expect(snap.players[0]?.holding).toBe("drink:latte");
   });
 
   it("seedDemoCrowd adds a visible queue for judge demo", () => {

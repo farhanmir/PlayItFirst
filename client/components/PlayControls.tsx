@@ -87,9 +87,11 @@ export function PlayControls({ snapshot }: { snapshot: RoomSnapshot }) {
   const holding = me?.holding
     ? me.holding.startsWith("ticket:")
       ? `Ticket · ${me.holding.slice(7)}`
-      : me.holding.startsWith("drink:")
-        ? `Drink · ${me.holding.slice(6)}`
-        : me.holding
+      : me.holding.startsWith("brewing:")
+        ? `Brewing · ${me.holding.slice(8).split("@")[0]}…`
+        : me.holding.startsWith("drink:")
+          ? `Drink · ${me.holding.slice(6)}`
+          : me.holding
     : "Hands empty";
 
   const actions: { id: PlayAction; label: string; key?: string }[] = [
