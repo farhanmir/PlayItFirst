@@ -143,3 +143,28 @@ The existing `render.yaml` remains the preferred **free, single-service** deploy
 - Vite reports the existing large bundle warning (about 1.35 MB uncompressed / 389 KB gzip). Tests/build pass; this is not a phone performance benchmark.
 - No durable room saves. Bundled fallback data is mock; the authorized matched suite requires its private normalized file. Public deployment and the remaining provider integrations are not complete.
 
+
+
+## November 14 — master-plan reconciliation and current finishing pass
+
+Safely fast-forwarded main from `02219b7` to `03497a4`, preserving all uncommitted visual/control work. Read the canonical plan and related handoff documents. The documentation audit baseline is superseded by these fresh public observations at 2026-11-14 22:57 UTC:
+
+- Public `/api/health.commit` reports `03497a43337b517e1c8988dece1d1175eb81b5c6`. Public properties now report `costar-extract` with the measured suite: 12 rooms, 66 walls, 11 doorways, four windows and the documented asking rent. No private source records were added to Git.
+- Matching `/api/matterport` returns `matterport-live`. The matching panorama renders in a test iframe under the Render origin. This proves viewer origin access, not the complete property-picker flow or publication permission.
+- `node scripts/check-deployment.mjs https://playitfirst.onrender.com` passed HTTPS/assets, two WSS clients, shared plant move/rotation and resume. This does not prove counter rerouting or physical-phone service.
+- Chromium software-WebGL desktop and iPhone 13 emulation render the public measured suite without page errors. Restricted-property screenshots remain local pending publication clearance. The deployed HUD/art still predates the current local improvements.
+- Actual public Deepagents execution succeeded in a synthetic room with no property selected. Owner-approved restock changed cash from $20,000 to $19,965 and added 12 milk, 20 cups and 15 beans on two clients. Guest approval failed; duplicate approval did not charge again. Sanitized trace: [provider-public-synthetic-verification.json](screenshots/provider-public-synthetic-verification.json). Provider/model attribution is not exposed by that deployment, so this is actual provider evidence, not yet Gemini-specific evidence. No sponsor context was sent.
+
+Current local finishing work fixes reversed camera-relative movement, menu/orbit keyboard leakage, misleading out-of-range action prompts, and furniture collision. Visual work improves original character silhouettes, equipment, foliage, oak floor, window scenery and compact mobile HUD. These uncommitted changes are under integrated verification; public acceptance does not yet cover them.
+
+Remaining external gates: physical-phone QR/touch/real-device performance, public shared counter routing evidence, sponsor publication/external-processing permission, Render Free-plan and restart confirmation, Gemini attribution, provisioned Photon identities/voice/callback authentication, actual Nessie credentials and remote receipts. Preserve the existing manager, Render service and measured reconstruction. No Vercel or ChatOverflow work.
+
+### Local integration verification
+
+Current combined run: `npm test` **106 passing across 22 files**, `npm run typecheck` passed, `npm run build` passed (existing large-bundle warning), `python -m unittest discover -s scripts -p 'test_*.py'` **3 passing**. An earlier run during concurrent provider edits failed imports/typecheck; integration repaired those failures before this successful run.
+
+Chromium software WebGL actual keyboard service on the revised collision path: take cappuccino, walk around counter, brew, serve; authoritative state recorded one $10 sale, one milk/cup/bean consumed, empty hands. No injected gameplay state. iPhone 13 touch emulation on a stable production server verified held joystick movement, simultaneous second-touch look changing movement direction, release stopping movement, and no page errors. These are browser tests, not a physical-phone playtest.
+
+Nessie migration now uses the documented v2 HTTPS/bearer/cents contract, opening balance, queued receipts during provisioning, bounded synchronization, read-only reconciliation, and explicit ambiguous/failure states without automatic replay. Six mocked-network tests pass; no sandbox key or real bank receipt was available. Photon has tested signature/text-transport primitives only; no inbound route, owner pairing or actual telephone provider is activated. See PHOTON_SETUP.md. Local crew voice and ledger no longer claim Photon/Nessie success.
+
+Blueprint export now includes actual provenance, cents, measured geometry, equipment/rotation, retained costs/receipts, executed manager decisions, inventory, shift results, and explicit assumptions. Provider identity metadata is exposed only after a successful actual model run; failed/local/blocked runs clear stale provider proof.
