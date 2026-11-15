@@ -784,9 +784,7 @@ function FurnitureMesh({ item, highlight = false }: { item: FurnitureItem; highl
     default:
       return null;
   }
-  if (!highlight) return prop;
-  return (
-    <group>
+  return <SelectableFurniture item={item}>{highlight ? <group>
       {prop}
       <mesh position={[item.x, 0.04, item.z]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[0.55, 0.78, 32]} />
@@ -799,6 +797,31 @@ function FurnitureMesh({ item, highlight = false }: { item: FurnitureItem; highl
           side={DoubleSide}
         />
       </mesh>
+    </group> : prop}</SelectableFurniture>;
+}
+
+/** In build mode (and not mid-placement), tapping a placed piece selects it for Move/Delete. */
+function SelectableFurniture({ item, children }: { item: FurnitureItem; children: ReactNode }) {
+  const active = useApp((s) => s.buildActive && !s.buildKind);
+  const selected = useApp((s) => s.buildSelectedId === item.id);
+  if (!active) return <>{children}</>;
+  return (
+    <group
+      onClick={(e) => {
+        if (e.delta > 4) return; // a drag orbits the camera; it is not a selection
+        e.stopPropagation();
+        useApp.getState().set({ buildSelectedId: selected ? null : item.id });
+      }}
+      onPointerOver={(e) => { e.stopPropagation(); document.body.style.cursor = "pointer"; }}
+      onPointerOut={() => { document.body.style.cursor = ""; }}
+    >
+      {children}
+      {selected ? (
+        <mesh position={[item.x, 0.05, item.z]} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[0.7, 0.95, 40]} />
+          <meshBasicMaterial color="#f4c76a" transparent opacity={0.9} side={DoubleSide} />
+        </mesh>
+      ) : null}
     </group>
   );
 }

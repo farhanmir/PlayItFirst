@@ -2146,6 +2146,8 @@
 .build-catalog .catalog-item em { color: #59402f; font: 750 12px var(--font-body); }
 .build-catalog .catalog-quick { padding: 0 9px; font-size: 10px; border: 0; border-left: 1px solid #173c3515; border-radius: 0; color: #63756a; background: transparent; }
 .build-catalog .btn-ghost { color: #173c35; border-color: #173c3530; }
+.build-catalog .btn-danger { color: #a3362a; border-color: #a3362a55; }
+.build-catalog .build-selected { background: #f4e2b0; }
 .build-feedback { color: #63756a; font-size: 11px; }
 .placed-furniture { margin-top: 16px; border-top: 1px solid #173c3530; }
 .placed-furniture summary { min-height: 44px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-size: 12px; font-weight: 750; }

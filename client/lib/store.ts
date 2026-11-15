@@ -22,6 +22,10 @@ interface AppState {
   buildKind: FurnitureKind | null;
   buildRotation: number;
   buildMovingId: string | null;
+  /** Build mode is open on this client (enables tapping placed furniture to select it). */
+  buildActive: boolean;
+  /** Placed furniture selected by tapping it in build mode. */
+  buildSelectedId: string | null;
   managerError: string | null;
   photonPairing: { pairing: PhotonPairingView; status: PhotonStatus } | null;
   photonPairError: string | null;
@@ -49,6 +53,8 @@ export const useApp = create<AppState>((set) => ({
   buildKind: null,
   buildRotation: 0,
   buildMovingId: null,
+  buildActive: false,
+  buildSelectedId: null,
   managerError: null,
   photonPairing: null,
   photonPairError: null,

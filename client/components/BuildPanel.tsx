@@ -13,8 +13,16 @@ export function BuildPanel({
   const buildKind = useApp((s) => s.buildKind);
   const buildRotation = useApp((s) => s.buildRotation);
   const buildMovingId = useApp((s) => s.buildMovingId);
+  const buildSelectedId = useApp((s) => s.buildSelectedId);
   const set = useApp((s) => s.set);
   const property = snapshot.property;
+  const selected = buildSelectedId ? snapshot.layout?.furniture.find((f) => f.id === buildSelectedId) : undefined;
+
+  const deleteItem = (id: string) => {
+    conn?.send({ t: "remove_furniture", id });
+    play("ui", 0.25);
+    set({ buildSelectedId: null, ...(buildMovingId === id ? { buildKind: null, buildMovingId: null } : {}) });
+  };
 
   const select = (kind: FurnitureKind) => {
     play("ui", 0.2);
@@ -36,7 +44,20 @@ export function BuildPanel({
         Choose a piece, then <strong>tap the floor</strong> to place it.
         {liveEdit ? " Service keeps running for everyone else." : " Layout changes hit everyone in the room live."}
       </p>
-      {buildKind ? (
+      {!buildKind && selected ? (
+        <p className="build-place-hint build-selected" aria-live="polite">
+          <span className="hint-text">Selected <strong>{selected.label}</strong></span>
+          <button type="button" className="btn-ghost btn-small" onClick={() => set({ buildKind: selected.kind, buildMovingId: selected.id, buildRotation: selected.rotation, buildSelectedId: null })}>
+            Move
+          </button>
+          <button type="button" className="btn-ghost btn-small btn-danger" onClick={() => deleteItem(selected.id)} title={`Delete and get $${Math.round(selected.cost * 0.6)} back`}>
+            Delete +${Math.round(selected.cost * 0.6)}
+          </button>
+          <button type="button" className="btn-ghost btn-small" aria-label="Deselect" onClick={() => set({ buildSelectedId: null })}>
+            ✕
+          </button>
+        </p>
+      ) : buildKind ? (
         <p className="build-place-hint" aria-live="polite">
           <span className="hint-text">{buildMovingId ? "Moving" : "Placing"} <strong>{FURNITURE_CATALOG.find((c) => c.kind === buildKind)?.label ?? buildKind}</strong><span className="hint-snap"> · ½ m snap</span></span>
           <button type="button" className="btn-ghost btn-small" onClick={() => set({ buildRotation: (buildRotation + Math.PI / 2) % (Math.PI * 2) })}>
@@ -47,7 +68,7 @@ export function BuildPanel({
           </button>
         </p>
       ) : (
-        <p className="build-place-hint muted">Pick from the catalog to start placing.</p>
+        <p className="build-place-hint muted">Pick from the catalog to place, or tap furniture to move or delete it.</p>
       )}
       <div className="catalog">
         {FURNITURE_CATALOG.map((item) => (
@@ -110,8 +131,8 @@ export function BuildPanel({
               <button type="button" className="btn-ghost btn-small" onClick={() => set({ buildKind: f.kind, buildMovingId: f.id, buildRotation: f.rotation })}>
                 Move
               </button>
-              <button type="button" className="btn-ghost btn-small" onClick={() => conn?.send({ t: "remove_furniture", id: f.id })}>
-                Remove
+              <button type="button" className="btn-ghost btn-small btn-danger" onClick={() => deleteItem(f.id)}>
+                Delete
               </button>
             </li>
           ))}

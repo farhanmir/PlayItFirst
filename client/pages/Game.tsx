@@ -61,6 +61,11 @@ export function Game() {
     hadDrawer.current = drawerOpen;
   }, [drawerOpen]);
 
+  // Lets the 3D scene make placed furniture tappable only while this client is editing.
+  useEffect(() => {
+    useApp.getState().set(buildMode ? { buildActive: true } : { buildActive: false, buildSelectedId: null });
+  }, [buildMode]);
+
   // Selections from either the catalog or management drawer enter the same orbit editor.
   useEffect(() => {
     if (!buildKind && !buildMovingId) return;
