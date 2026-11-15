@@ -184,7 +184,7 @@ server.on("request", (req, res) => {
           return;
         }
         const owner = rooms.phoneOwner(body.room, auth.slice(7));
-        const result = body.action === "start" ? phones.start(owner)
+        const result = body.action === "start" ? phones.start(owner, typeof body.activationCode === "string" ? body.activationCode : "")
           : body.action === "status" ? phones.getStatus(owner)
           : body.action === "end" ? phones.end(owner)
           : body.action === "voice_approval" && typeof body.proposalId === "string" ? phones.issueVoiceApproval(owner, body.proposalId)

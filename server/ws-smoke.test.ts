@@ -35,6 +35,9 @@ describe("multiplayer room smoke", () => {
 
       const guest = await connectClient(port, created.code, "Guest", "barista");
       clients.push(guest.ws);
+      expect(()=>rooms.phoneOwner(created.code, guest.welcome.token)).toThrow(/owner/);
+      expect(()=>rooms.phoneOwner(created.code, "wrong")).toThrow(/owner/);
+      expect(rooms.phoneOwner(created.code,owner.welcome.token).actor.memberId).toBe(owner.welcome.you);
       const denied = waitFor(guest.ws, (m) => m.t === "error");
       guest.ws.send(JSON.stringify({ t: "select_property", propertyId }));
       expect((await denied).message).toMatch(/Only the owner/);

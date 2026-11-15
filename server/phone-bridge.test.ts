@@ -4,7 +4,7 @@ import type { PhoneOwner } from "./phone-bridge.ts";
 import type { ManagerView } from "../shared/manager.ts";
 import type { RoomSnapshot } from "../shared/types.ts";
 const projectId="pho_prj_00000000000000000000000001", senderId="pho_usr_00000000000000000000000002", agentId="pho_usr_00000000000000000000000003", spaceId="pho_spc_00000000000000000000000004";
-const config={apiKey:"pho_sk_test",projectId,senderHandle:"+14155550123",agentHandle:"+14155550124",voiceSecret:"secret-012345678901234567890123456789",voiceNumber:"+14155550125",allowSponsor:false};
+const config={apiKey:"pho_sk_test",projectId,senderHandle:"+14155550123",agentHandle:"+14155550124",voiceSecret:"secret-012345678901234567890123456789",voiceNumber:"+14155550125",allowSponsor:false,activationCode:"team-activation-012345678901234567890123"};
 const proposalId="10000000-0000-4000-8000-000000000001";
 function fixture() {
   let view:ManagerView={runtime:"local",providerVerified:false,busy:false,summary:"Actual state",trace:[],proposals:[{id:proposalId,action:"reorder_supplies",reason:"Stock",cost:35,requestedBy:"owner",expiresAt:Date.now()+120000,status:"pending"}]};
@@ -27,15 +27,17 @@ describe("bounded phone demo",()=>{
     expect(parseIncoming(m,config,now+1000)).toBeNull();
   });
   it("requires session and separate exact one-use owner approval for voice",async()=>{
+    vi.useFakeTimers();
     const {owner}=fixture();
     const bridge=new PhoneBridge({...config,apiKey:""},fetch);
-    const s=bridge.start(owner),auth="Bearer "+config.voiceSecret;
+    expect(()=>bridge.start(owner,"incorrect")).toThrow(/activation code/);
+    const s=bridge.start(owner,config.activationCode),auth="Bearer "+config.voiceSecret;
     await expect(bridge.voice("Bearer wrong",{code:s.code,action:"status"})).rejects.toThrow();
     await expect(bridge.voice(auth,{code:"wrong",action:"status"})).rejects.toThrow();
     await expect(bridge.voice(auth,{code:s.code,action:"approve",proposalId,approvalCode:"invented"})).rejects.toThrow();
     expect(owner.manager.approve).not.toHaveBeenCalled();
     const approval=bridge.issueVoiceApproval(owner,proposalId);
-    vi.useFakeTimers();vi.setSystemTime(Date.now()+3000);
+    vi.setSystemTime(Date.now()+3000);
     const result=await bridge.voice(auth,{code:s.code,action:"approve",proposalId,approvalCode:approval.approvalCode});
     expect(result.callVerified).toBe(false);
     expect(owner.manager.approve).toHaveBeenCalledTimes(1);
@@ -46,11 +48,11 @@ describe("bounded phone demo",()=>{
   it("does not allow another room to take over an active demo or send restricted context",()=>{
     const {owner,snapshot}=fixture();
     const bridge=new PhoneBridge({...config,apiKey:""});
-    bridge.start(owner);
-    expect(()=>bridge.start({...owner,actor:{roomCode:"other",memberId:"owner"}})).toThrow();
+    bridge.start(owner,config.activationCode);
+    expect(()=>bridge.start({...owner,actor:{roomCode:"other",memberId:"owner"}},config.activationCode)).toThrow();
     bridge.end(owner);
     snapshot.property={id:"real",source:"costar-extract"} as RoomSnapshot["property"];
-    expect(()=>bridge.start(owner)).toThrow(/not authorized/);
+    expect(()=>bridge.start(owner,config.activationCode)).toThrow(/not authorized/);
   });
   it("uses an exact message approval, rejects group/wrong-space input and never charges a duplicate message twice",async()=>{
     vi.useFakeTimers();
@@ -58,7 +60,7 @@ describe("bounded phone demo",()=>{
     let items:unknown[]=[];
     const fetcher=vi.fn(async(_url:string|URL|Request,init?:RequestInit)=>new Response(JSON.stringify(init?.method==="POST"?{id:"pho_msg_00000000000000000000000006",projectId}:{items}),{status:init?.method==="POST"?202:200}));
     const bridge=new PhoneBridge(config,fetcher as typeof fetch);
-    const session=bridge.start(owner);
+    const session=bridge.start(owner,config.activationCode);
     const pair=message("PAIR "+session.code);
     items=[pair]; await vi.advanceTimersByTimeAsync(1);
     const ask={...message("Please check supplies"),id:"pho_msg_00000000000000000000000007"};
@@ -78,7 +80,7 @@ describe("bounded phone demo",()=>{
     let items:unknown[]=[];
     const fetcher=vi.fn(async(_url:string|URL|Request,init?:RequestInit)=>new Response(JSON.stringify(init?.method==="POST"?{id:"pho_msg_00000000000000000000000006",projectId}:{items}),{status:init?.method==="POST"?202:200}));
     const bridge=new PhoneBridge(config,fetcher as typeof fetch);
-    const s=bridge.start(owner);
+    const s=bridge.start(owner,config.activationCode);
     items=[message("PAIR "+s.code)];
     await vi.advanceTimersByTimeAsync(1);
     expect(bridge.getStatus(owner).paired).toBe(true);

@@ -17,7 +17,7 @@ export interface PhoneOwner {
 }
 type Config = {
   apiKey: string; projectId: string; senderHandle: string; agentHandle: string;
-  voiceSecret: string; voiceNumber: string; allowSponsor: boolean;
+  voiceSecret: string; voiceNumber: string; allowSponsor: boolean; activationCode: string;
 };
 type Incoming = { id: string; senderId: string; agentId: string; spaceId: string; text: string };
 const id = (prefix: string, value: unknown): value is string => typeof value === "string" && new RegExp("^pho_" + prefix + "_[0-7][0-9a-hjkmnp-tv-z]{25}$").test(value);
@@ -35,6 +35,7 @@ export function phoneConfig(): Config {
     voiceSecret: process.env.PHOTON_VOICE_TOOL_SECRET?.trim() || "",
     voiceNumber: process.env.PHOTON_VOICE_NUMBER?.trim() || "",
     allowSponsor: process.env.ALLOW_SPONSOR_PHONE_CONTEXT === "true",
+    activationCode: process.env.PHOTON_ACTIVATION_CODE?.trim() || "",
   };
 }
 const messagingConfigured = (c: Config) => c.apiKey.startsWith("pho_sk_") && id("prj", c.projectId) && !!c.senderHandle && !!c.agentHandle;
@@ -58,7 +59,7 @@ type Session = {
 export class PhoneBridge {
   private session: Session | null = null;
   private timer: ReturnType<typeof setTimeout> | undefined;
-  constructor(private c = phoneConfig(), private fetcher: typeof fetch = fetch, private now = Date.now) {}
+  constructor(private c = phoneConfig(), private fetcher: typeof fetch = fetch, private now = () => Date.now()) {}
   status() {
     return { messagingConfigured: messagingConfigured(this.c), voiceConfigured: voiceConfigured(this.c),
       messaging: this.session?.messageState || "not-started",
@@ -83,7 +84,8 @@ export class PhoneBridge {
       paired: !!s.paired, agentHandle: messagingConfigured(this.c) ? this.c.agentHandle : null,
       voiceNumber: voiceConfigured(this.c) ? this.c.voiceNumber : null };
   }
-  start(owner: PhoneOwner) {
+  start(owner: PhoneOwner, activationCode: string) {
+    if (this.c.activationCode.length < 32 || !secretEqual(activationCode, this.c.activationCode)) throw new Error("Valid team phone activation code required.");
     if (!owner.active()) throw new Error("Connect as the café owner first.");
     if (!messagingConfigured(this.c) && !voiceConfigured(this.c)) throw new Error("Phone provider configuration is incomplete.");
     const property = owner.read().property;

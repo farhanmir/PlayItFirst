@@ -312,3 +312,5 @@ Owner reactivated Nessie live verification, alongside Photon Messaging and Voice
 ### Activation safety follow-up
 
 Prevented an old socket closed by explicit resume from automatically taking the identity back; reconnect queue capped at64. Guarded STOP against ending a newer session and added exact text-approval duplicate regression. Added an owner-authenticated Nessie activation endpoint/menu, separate operator code, three account provisioning attempts per server process, no auto-provision on Render and separate sponsor bank-context authorization. Existing local auto-provision retained only without an activation code. No actual keys, external provisioning or live calls were made. Tests added, not independently executed; run full suite/typecheck/build before provider demo.
+
+Phone activation now also requires a team-issued 32+ character random PHOTON_ACTIVATION_CODE (distinct from provider keys), preventing arbitrary public room owners from monopolizing the single provider session. Added explicit wrong-code/owner-token assertions and corrected test-clock injection. Source-only verification; full suite and live calls pending.

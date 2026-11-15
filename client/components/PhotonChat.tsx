@@ -12,6 +12,7 @@ export function PhotonChat({ snapshot }: { snapshot: RoomSnapshot }) {
   const [text, setText] = useState("");
   const [phone, setPhone] = useState<{code:string; expiresAt:number; paired:boolean; messaging:string; voice:string; agentHandle:string|null; voiceNumber:string|null}|null>(null);
   const [phoneError, setPhoneError] = useState("");
+  const [phoneActivation, setPhoneActivation] = useState("");
   const [phoneBusy, setPhoneBusy] = useState(false);
   const [voiceApproval, setVoiceApproval] = useState<{approvalCode:string; proposalId:string; cost:number}|null>(null);
   async function phoneAction(action: string, proposalId?: string) {
@@ -20,12 +21,12 @@ export function PhotonChat({ snapshot }: { snapshot: RoomSnapshot }) {
     setPhoneBusy(true); setPhoneError("");
     try {
       const r = await fetch("/api/phone/session", { method:"POST", headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},
-        body:JSON.stringify({room:snapshot.code,action,proposalId}), signal:AbortSignal.timeout(12000) });
+        body:JSON.stringify({room:snapshot.code,action,proposalId,...(action === "start" ? {activationCode:phoneActivation} : {})}), signal:AbortSignal.timeout(12000) });
       const value = await r.json();
       if (!r.ok) throw new Error(value.error || "Phone request failed");
       if (action === "end") { setPhone(null); setVoiceApproval(null); }
       else if (action === "voice_approval") setVoiceApproval(value);
-      else setPhone(value);
+      else { setPhone(value); if (action === "start") setPhoneActivation(""); }
     } catch (error) { setPhoneError(error instanceof Error ? error.message : "Phone request failed"); }
     finally { setPhoneBusy(false); }
   }
@@ -41,8 +42,9 @@ export function PhotonChat({ snapshot }: { snapshot: RoomSnapshot }) {
       {owner ? <details>
         <summary>Connect your phone (Photon demo)</summary>
         <p>Start a private 10-minute session. Only the configured iMessage sender can pair. Voice requires a provisioned number and connected voice agent.</p>
+        <label>Team phone activation code <input type="password" autoComplete="off" maxLength={256} value={phoneActivation} onChange={e=>setPhoneActivation(e.target.value)} /></label>
         <div className="manager-actions">
-          <button type="button" className="btn btn-small" disabled={phoneBusy} onClick={() => void phoneAction("start")}>Start phone session</button>
+          <button type="button" className="btn btn-small" disabled={phoneBusy || !phoneActivation.trim()} onClick={() => void phoneAction("start")}>Start phone session</button>
           {phone ? <><button type="button" className="btn-ghost btn-small" disabled={phoneBusy} onClick={() => void phoneAction("status")}>Refresh status</button>
           <button type="button" className="btn-ghost btn-small" disabled={phoneBusy} onClick={() => void phoneAction("end")}>Disconnect</button></> : null}
         </div>
