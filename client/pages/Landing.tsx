@@ -19,10 +19,10 @@ export function Landing({ onStart, onJoin, onJudgeDemo, demoBusy, connectionErro
   const [mode, setMode] = useState<"host" | "join" | null>(null);
   const locked = busy || !!demoBusy;
   return (
-    <main className="landing">
+    <main className={`landing${mode ? " landing-form-open" : ""}`}>
       <section className="landing-menu" aria-labelledby="game-title">
         <div className="landing-wordmark" aria-hidden="true"><svg className="wordmark-cup" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M4 9h12v6a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V9Z"/><path d="M16 10h2a3 3 0 0 1 0 6h-2M3 22h15M8 3v3m5-3v3" strokeLinecap="round"/></svg> A café of your own</div>
-        <h1 id="game-title">Play It<br />First<span className="title-period">.</span></h1>
+        <h1 id="game-title">Play It<br />{" "}First<span className="title-period">.</span></h1>
         <p className="landing-tagline">Your grand opening starts here.</p>
         <p className="landing-description">Pick a space. Pour the first cup. Run a café with friends, and discover what makes a business work.</p>
         <div className="landing-actions">

@@ -33,3 +33,40 @@
 .landing-install { margin-top:1rem; width:100%; max-width:360px; }
 
 .landing-error { margin:0; padding:.75rem; border-left:3px solid #f3b1a1; color:#ffe2d9; background:#412b29; font-size:.9rem; line-height:1.5; }
+
+/* Size the start menu against available height, without locking or clipping it.
+   Expanded forms use the existing width instead of pushing the submit below the fold. */
+@media (min-width: 761px) {
+  .landing-menu { padding: clamp(1.5rem, 3.5dvh, 3.5rem) clamp(2rem, 4vw, 5rem); }
+  .landing-wordmark { margin-bottom: clamp(1rem, 2.5dvh, 2rem); }
+  .landing h1 { font-size: clamp(3.5rem, 9dvh, 7rem); }
+  .landing-tagline { margin: clamp(1rem, 2.5dvh, 2rem) 0 .6rem; }
+  .landing-description { margin-bottom: 1rem; max-width: 40ch; }
+  .landing-play { min-height: 56px; padding-block: .8rem; }
+  .landing-demo-note { margin: .65rem 0 .9rem; }
+  .landing-secondary { padding-top: .5rem; }
+  .landing-footer { padding-top: 1.25rem; }
+  .landing-form-open h1 { font-size: clamp(2.75rem, 6dvh, 4.5rem); line-height: 1; }
+  .landing-form-open h1 br { display: none; }
+
+  .landing-form-open .landing-wordmark { margin-bottom: 1rem; }
+  .landing-form-open .landing-tagline { margin-top: 1rem; }
+  .landing-room-form { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; padding-top: .75rem; }
+  .landing-room-form label:only-of-type { grid-column: 1 / -1; }
+  .landing-form-submit, .landing-room-form .landing-error { grid-column: 1 / -1; }
+}
+@media (max-width: 760px) {
+  .landing { display: block; }
+  .landing-menu { min-height: 100dvh; padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left)); }
+  .landing-scene { display: none; }
+  .landing-wordmark { margin-bottom: 1.25rem; }
+  .landing h1 { font-size: clamp(3.5rem, 14vw, 5rem); }
+  .landing-tagline { margin-top: 1.25rem; }
+  .landing-description { margin-bottom: 1rem; }
+  .landing-demo-note { margin-bottom: 1rem; }
+  .landing-footer { padding-top: 1.25rem; }
+  .landing-form-open h1 { font-size: 2.75rem; line-height: 1; }
+  .landing-form-open h1 br { display: none; }
+  .landing-form-open .landing-wordmark { margin-bottom: .75rem; }
+  .landing-form-open .landing-tagline { margin-top: .75rem; }
+}
