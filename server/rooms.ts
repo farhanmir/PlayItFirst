@@ -189,7 +189,7 @@ export class CafeRoomServer {
     if ((property.source === "costar-extract" || property.source === "costar-live") && process.env.ALLOW_SPONSOR_BANK_CONTEXT !== "true")
       throw new Error("Sponsor-property banking context is not authorized. Use a synthetic room.");
     // Global demo budget: cap provisioning attempts, including uncertain writes.
-    const limit = 3;
+    const limit = Math.max(0, Number(process.env.NESSIE_ACCOUNT_LIMIT) || 3);
     if (this.bankProvisioned >= limit) throw new Error("This server reached its sandbox account limit.");
     this.bankProvisioned++;
     attachNessieAccount(room.snapshot.finance, () => this.broadcast(room), { monthlyRent: property.monthlyRent });
@@ -333,9 +333,10 @@ export class CafeRoomServer {
           return;
         }
         room.snapshot = selectProperty(room.snapshot, property);
-        // Public judges must not create external accounts just by opening a room.
-        // Retain automatic attachment for local development only without an activation code.
-        if (!process.env.NESSIE_ACTIVATION_CODE && !process.env.RENDER) {
+        // Owner decision: auto-attach a sandbox account on property selection. attachRoomBank still
+        // refuses sponsor (CoStar) properties and enforces the per-process account cap. Set
+        // NESSIE_REQUIRE_ACTIVATION=true to fall back to the owner activation-code flow.
+        if (process.env.NESSIE_REQUIRE_ACTIVATION !== "true") {
           try { this.attachRoomBank(room); } catch { /* local simulation remains playable */ }
         }
         this.broadcast(room);
