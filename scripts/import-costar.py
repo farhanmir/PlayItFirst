@@ -90,7 +90,7 @@ def import_suite(archive, password, listing_id, space_id, key, token):
         "width": width, "depth": depth, "floorPlan": floor_plan, "capacity": 28, "footTraffic": 0.6,
         "costarId": str(listing["propertyId"]), "matterportModelId": model,
         "matterportEmbedUrl": f"https://my.matterport.com/show/?m={model}", "source": "costar-extract", "imageTone": "#6b8068",
-        "description": "Authorized event extract: active retail suite, marketed as a second-generation restaurant. Asking terms are not an executed lease.",
+        "description": "Authorized event extract: active commercial suite. Asking terms are not an executed lease; permitted café use has not been independently verified.",
         "matterportHint": f"Measured walls, rooms and openings from matched scan: {live.get('name', model)}. Original game materials and equipment.",
         "provenance": {"listingId": str(listing_id), "spaceId": str(space_id), "suite": space.get("suite", ""), "askingRate": rate,
             "rateBasis": "USD/sqft/year" if basis == 2 else "USD/sqft/month", "scanAreaM2": scan_area,

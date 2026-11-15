@@ -2,6 +2,12 @@
 
 Tracking https://github.com/farhanmir/PlayItFirst/issues/2. Work directly on `main` under AGENTS.md.
 
+## More real measured property choices
+
+Inspected all16 eligible active suite/model matches from the supplied kit using the existing batch importer. Seven passed actual Model API verification and measured-floor conversion; nine were rejected for disconnected room boundaries, unavailable area metadata, unsupported multi-floor scans or no safe starter-service area. Two of the seven have asking rents above the unchanged $20,000 startup budget, so the deployable private `.sponsor/property.json` contains **five affordable real measured layouts**. The original known-good suite remains first and intact. All five pass authoritative property selection with starter equipment and nonnegative opening funds. The seven-result expanded file and rejection report remain ignored, as does the original backup. No sponsor records or geometry are committed.
+
+Render still needs the refreshed private Secret File `property.json` contents to expose these choices. Source code alone cannot update that secret. Keep `COSTAR_DATA_FILE=/etc/secrets/property.json`; after redeploy expect five `costar-extract` choices plus the two explicitly fictional practice properties. Real-model import description is now neutral commercial space rather than incorrectly calling every matched suite a second-generation restaurant. Café-use permission remains unverified. Geometry and equipment initialization were checked locally; complete browser service/build acceptance for each new layout remains pending.
+
 ## Public deployment re-check — November 14
 
 Public Render reports commit `9ccc007`. `scripts/check-deployment.mjs` passed health, built page/asset, listings (`costar-extract`), room/invite origin, two-client wss join, furniture move/rotate sync during service and reconnect. `/api/integrations` still reports `nessie:false` and Photon messaging unconfigured (missing `PHOTON_TEST_SENDER`, `PHOTON_ACTIVATION_CODE`, `PHOTON_SENDER_ID`, `PHOTON_WEBHOOK_SECRET`); voice is `webrtc-crew-not-photon-2`. These need owner-held credentials in Render. Gemini quota was not re-tested (no local key). Physical iPhone QR/WebGL/audio playtest remains manual.
