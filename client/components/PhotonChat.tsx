@@ -17,7 +17,7 @@ export function PhotonChat({ snapshot }: { snapshot: RoomSnapshot }) {
       <h3>Jamie, your second pair of hands</h3>
       <p className="manager-runtime">{manager?.runtime === "deepagents"
         ? manager.providerVerified ? "Deepagents · provider run verified in this room" : "Deepagents · awaiting a verified run"
-        : "Local rules · no model call"}. External Photon messaging and phone calls are not connected.</p>
+        : "Local rules · no model call"}. Phone messaging is available through the pairing section when configured. Telephone calls are not connected.</p>
       <form className="photon-compose" onSubmit={(e) => {
         e.preventDefault();
         if (!text.trim()) return;
@@ -35,18 +35,20 @@ export function PhotonChat({ snapshot }: { snapshot: RoomSnapshot }) {
       <div className="manager-proposals">
         {manager?.proposals.slice(-4).reverse().map((proposal) => (
           <section key={proposal.id} className="manager-proposal">
-            <strong>{proposal.action === "reorder_supplies" ? "Supply delivery · $35" : "Simplify the menu · free"}</strong>
+            <strong>{proposal.action === "reorder_supplies" ? "Supply delivery · $35" : proposal.action === "move_pickup" ? "Move pickup · free" : "Simplify the menu · free"}</strong>
             <p>{proposal.reason}</p>
+            {proposal.pickupMove ? <p>Move pickup from ({proposal.pickupMove.from.x}, {proposal.pickupMove.from.z}) to ({proposal.pickupMove.to.x}, {proposal.pickupMove.to.z}). Modeled walk: {proposal.pickupMove.beforeDistance.toFixed(1)} → {proposal.pickupMove.afterDistance.toFixed(1)} {proposal.pickupMove.unit}. Service-time gain is unverified.</p> : null}
             {proposal.status === "pending" ? (
               <div className="manager-actions">
                 <button type="button" className="btn btn-small" disabled={!owner || manager.busy || proposal.expiresAt <= Date.now()}
                   onClick={() => { set({ managerError: null }); conn?.send({ t: "manager_approve", proposalId: proposal.id }); }}>
-                  {proposal.expiresAt <= Date.now() ? "Expired" : proposal.cost ? "Approve $35 delivery" : "Approve menu change"}
+                  {proposal.expiresAt <= Date.now() ? "Expired" : proposal.cost ? "Approve $35 delivery" : proposal.action === "move_pickup" ? "Approve pickup move" : "Approve menu change"}
                 </button>
                 <button type="button" className="btn-ghost btn-small" disabled={!owner || manager.busy}
                   onClick={() => { set({ managerError: null }); conn?.send({ t: "manager_decline", proposalId: proposal.id }); }}>Decline</button>
               </div>
             ) : <p>{proposal.result ?? proposal.status}</p>}
+            {proposal.actionReceiptId ? <small>Layout receipt {proposal.actionReceiptId}</small> : null}
             {proposal.transactionId ? <small>Ledger receipt {proposal.transactionId.slice(0, 8)}</small> : null}
           </section>
         ))}

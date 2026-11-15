@@ -3,6 +3,7 @@ import { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import { AIMessage } from "@langchain/core/messages";
 import properties from "../data/properties.json";
 import type { PropertyListing, RoomSnapshot } from "../shared/types.ts";
+import { pickupRouteDistance, executePickupMove, suggestPickupMove } from "./manager-spatial.ts";
 import { CafeManager, type ManagerActor } from "./manager.ts";
 import { createManagerRunner, type ManagerRun } from "./manager-runtime.ts";
 import { addPlayer, createRoomSnapshot, openCafe, selectProperty } from "./simulation.ts";
@@ -256,5 +257,80 @@ describe("actual Deepagents SDK graph with scripted model (not live provider evi
     expect(result.trace.map((t) => t.tool)).toContain("read_outcome");
     await manager.approve(owner, approvedId);
     expect(read().finance.balance).toBe(before - 35);
+  });
+});
+
+describe("approved spatial pickup action", () => {
+  it("compares actual clearance routes, moves once after approval, and records a layout receipt", async () => {
+    const { manager, read } = setup();
+    const original = structuredClone(read().layout);
+    const plan = await manager.request(owner, "Inspect the layout and shorten the pickup walking route");
+    const proposal = plan.proposals.find((p) => p.action === "move_pickup")!;
+    expect(proposal).toBeDefined();
+    expect(read().layout).toEqual(original);
+    expect(proposal.pickupMove!.beforeDistance - proposal.pickupMove!.afterDistance).toBeGreaterThanOrEqual(0.6);
+    expect(proposal.pickupMove!.unit).toBe("simulation units");
+    expect(pickupRouteDistance(read(), proposal.pickupMove!.start)).toBe(proposal.pickupMove!.beforeDistance);
+    const executed = await manager.approve(owner, proposal.id);
+    const receipt = executed.proposals.find((p) => p.id === proposal.id)!;
+    expect(receipt.status).toBe("executed");
+    expect(receipt.actionReceiptId).toBe(`layout:${proposal.id}`);
+    expect(receipt.result).toContain("Service-time improvement is not yet measured");
+    expect(pickupRouteDistance(read(), proposal.pickupMove!.start)).toBe(proposal.pickupMove!.afterDistance);
+    const target = read().layout!.furniture.find((f) => f.id === proposal.pickupMove!.furnitureId)!;
+    expect({ x: target.x, z: target.z }).toEqual(proposal.pickupMove!.to);
+    const after = structuredClone(read());
+    await manager.approve(owner, proposal.id);
+    expect(read()).toEqual(after);
+    expect(read().finance).toEqual(after.finance);
+  });
+  it("rejects intervening layout changes without overwriting a teammate's edit", async () => {
+    const { manager, read, change } = setup();
+    const plan = await manager.request(owner, "Improve pickup layout");
+    const proposal = plan.proposals.find((p) => p.action === "move_pickup")!;
+    expect(proposal).toBeDefined();
+    change((s) => ({ ...s, layout: { ...s.layout!, furniture: s.layout!.furniture.map((f, i) => i ? f : { ...f, rotation: f.rotation + 1 }) } }));
+    const edited = structuredClone(read().layout);
+    const result = await manager.approve(owner, proposal.id);
+    expect(result.proposals.find((p) => p.id === proposal.id)).toMatchObject({ status: "failed" });
+    expect(result.proposals.find((p) => p.id === proposal.id)!.result).toContain("Layout changed");
+    expect(read().layout).toEqual(edited);
+  });
+  it("uses measured-floor walls and meter units in spatial comparisons", () => {
+    const { read } = setup();
+    const original = read();
+    const measured: RoomSnapshot = { ...original, property: { ...original.property!, floorPlan: {
+      modelId: "synthetic", floorId: "test", units: "meters", entry: { x: 1, z: 1 }, serviceOrigin: { x: 1, z: 1 },
+      rooms: [{ id: "room", areaM2: 140, polygon: [{ x: 0, z: 0 }, { x: 14, z: 0 }, { x: 14, z: 10 }, { x: 0, z: 10 }] }],
+      walls: [{ id: "partition", a: { x: 4, z: 0 }, b: { x: 4, z: 10 }, thickness: 0.16,
+        openings: [{ id: "door", type: "doorway", center: 0.55, width: 1.2, height: 2.1 }] }],
+    } } };
+    const move = suggestPickupMove(measured)!;
+    expect(move).toBeTruthy();
+    expect(move.unit).toBe("meters");
+    const executed = executePickupMove(measured, move);
+    expect(executed.ok).toBe(true);
+    expect(pickupRouteDistance(executed.snapshot, move.start)).toBeLessThan(pickupRouteDistance(measured, move.start)!);
+    expect(executePickupMove(measured, { ...move, to: { x: 4, z: 2 } }).ok).toBe(false);
+  });
+  it("rejects invalid coordinates through the existing placement validator", async () => {
+    const { manager, read } = setup();
+    const plan = await manager.request(owner, "Improve pickup route");
+    const move = plan.proposals.find((p) => p.action === "move_pickup")!.pickupMove!;
+    const result = executePickupMove(read(), { ...move, to: { x: -10, z: -10 } });
+    expect(result.ok).toBe(false);
+    expect(result.snapshot.layout).toBe(read().layout);
+  });
+  it("revalidates occupants and cannot move another room's furniture", async () => {
+    const { manager, read, change } = setup();
+    const plan = await manager.request(owner, "Improve pickup route");
+    const proposal = plan.proposals.find((p) => p.action === "move_pickup")!;
+    expect(proposal).toBeDefined();
+    await expect(manager.approve({ ...owner, roomCode: "other-room" }, proposal.id)).rejects.toThrow("authenticated owner");
+    const original = structuredClone(read().layout);
+    change((s) => ({ ...s, players: s.players.map((p) => p.id === "guest" ? { ...p, ...proposal.pickupMove!.to } : p) }));
+    const result = await manager.approve(owner, proposal.id);
+    expect(result.proposals.find((p) => p.id === proposal.id)!.result).toContain("occupied");
+    expect(read().layout).toEqual(original);
   });
 });

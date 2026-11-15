@@ -1,3 +1,4 @@
+import { suggestPickupMove, executePickupMove } from "./manager-spatial.ts";
 import { randomUUID } from "node:crypto";
 import type { RoomSnapshot } from "../shared/types.ts";
 import type { ManagerAction, ManagerProposal, ManagerView } from "../shared/manager.ts";
@@ -113,16 +114,19 @@ export class CafeManager {
       ledger: s.finance.transactions.slice(0, 6).map(({ id, label, amount, category }) => ({ id, label, amount, category })),
       staff: { jamie: s.aiBarista ?? null, recentActivity: s.eventLog.slice(0, 8), note: "Jamie service is performed by the visible simulated character. Report only recorded actions; team sales are not necessarily Jamie sales." },
       financialContext: financialContext(s, this.now()),
-      approvedActionCosts: { reorder_supplies: 35, simplify_menu: 0 },
+      spatialSuggestion: suggestPickupMove(s),
+      approvedActionCosts: { reorder_supplies: 35, simplify_menu: 0, move_pickup: 0 },
     };
   }
   private propose(actor: ManagerActor, action: ManagerAction, reason: string) {
     this.authorize(actor);
-    if (!["reorder_supplies", "simplify_menu"].includes(action) || typeof reason !== "string" || !reason.trim() || reason.length > 300) throw new Error("Invalid business proposal");
+    if (!["reorder_supplies", "simplify_menu", "move_pickup"].includes(action) || typeof reason !== "string" || !reason.trim() || reason.length > 300) throw new Error("Invalid business proposal");
     const existing = this.view.proposals.find((p) => p.action === action && p.requestedBy === actor.memberId && p.status === "pending" && p.expiresAt > this.now());
     if (existing) return structuredClone(existing);
+    const pickupMove = action === "move_pickup" ? suggestPickupMove(this.room.read()) : undefined;
+    if (action === "move_pickup" && !pickupMove) throw new Error("No verified shorter pickup route is available in this layout");
     const proposal: ManagerProposal = { id: randomUUID(), action, reason: reason.trim(), cost: action === "reorder_supplies" ? 35 : 0,
-      requestedBy: actor.memberId, expiresAt: this.now() + 120_000, status: "pending" };
+      requestedBy: actor.memberId, expiresAt: this.now() + 120_000, status: "pending", ...(pickupMove ? { pickupMove } : {}) };
     this.view.proposals = [...this.view.proposals, proposal].slice(-10);
     this.trace("propose_action", `${action}: $${proposal.cost}; awaiting owner approval`);
     return structuredClone(proposal);
@@ -137,6 +141,14 @@ export class CafeManager {
     // Synchronous reducer reads the latest tick and commits once. Never write the
     // snapshot that was captured before a model/network await.
     this.room.update((current) => {
+      if (proposal.action === "move_pickup") {
+        if (!proposal.pickupMove) { proposal.status = "failed"; proposal.result = "Missing spatial proposal; request a fresh comparison."; return current; }
+        const moved = executePickupMove(current, proposal.pickupMove);
+        proposal.status = moved.ok ? "executed" : "failed";
+        proposal.result = moved.detail;
+        if (moved.ok) proposal.actionReceiptId = `layout:${proposal.id}`;
+        return moved.snapshot;
+      }
       const result = proposal.action === "reorder_supplies" ? reorderSupplies(current) : adjustStaffing(current, "simplify_menu");
       proposal.status = result.ok ? "executed" : "failed";
       proposal.result = result.ok ? (proposal.action === "reorder_supplies" ? "Supplies delivered; $35 recorded in the game ledger." : "Menu simplified; future orders use the reduced menu.") : result.detail;
@@ -245,6 +257,9 @@ export class CafeManager {
       tools.outcome();
       this.view.summary = `Local rules (no model call): ${result.result} Keep serving to measure any wait-time change.`;
       return;
+    }
+    if (/pickup|layout|route|walking|furniture/i.test(prompt) && suggestPickupMove(state)) {
+      tools.propose("move_pickup", "A clearance-aware route comparison found a shorter modeled espresso-to-pickup walk. Review exact coordinates and distances before approving.");
     }
     if (state.inventory.milk < 4 || state.inventory.beans < 5 || state.inventory.cups < 6 || /milk|suppl|restock|reorder/i.test(prompt)) {
       tools.propose("reorder_supplies", `Stock is milk ${state.inventory.milk}, beans ${state.inventory.beans}, cups ${state.inventory.cups}; delivery costs $35.`);

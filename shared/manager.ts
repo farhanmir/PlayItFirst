@@ -1,4 +1,15 @@
-export type ManagerAction = "reorder_supplies" | "simplify_menu";
+export interface PickupMove {
+  furnitureId: string;
+  from: { x: number; z: number };
+  to: { x: number; z: number };
+  start: { x: number; z: number };
+  layoutSignature: string;
+  beforeDistance: number;
+  afterDistance: number;
+  unit: "meters" | "simulation units";
+  method: string;
+}
+export type ManagerAction = "reorder_supplies" | "simplify_menu" | "move_pickup";
 export interface ManagerProposal {
   id: string;
   action: ManagerAction;
@@ -9,6 +20,8 @@ export interface ManagerProposal {
   status: "pending" | "approved" | "executed" | "declined" | "failed" | "expired";
   result?: string;
   transactionId?: string;
+  actionReceiptId?: string;
+  pickupMove?: PickupMove;
 }
 export interface ManagerProviderIdentity {
   provider: "google" | "openai" | "anthropic";
