@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { PhoneBridge, parseIncoming } from "./phone-bridge.ts";
+import { PhoneBridge, parseIncoming, rejectReason } from "./phone-bridge.ts";
 import type { PhoneOwner } from "./phone-bridge.ts";
 import type { ManagerView } from "../shared/manager.ts";
 import type { RoomSnapshot } from "../shared/types.ts";
@@ -25,6 +25,13 @@ describe("bounded phone demo",()=>{
     expect(parseIncoming({...m,space:{...m.space,kind:"group"}},config,now-1000)).toBeNull();
     expect(parseIncoming({...m,status:"dispatched"},config,now-1000)).toBeNull();
     expect(parseIncoming(m,config,now+1000)).toBeNull();
+  });
+  it("accepts Photon's real shape: non-agent sender kind, agent from participants when receivedBy is absent",()=>{
+    const now=Date.now(),m=message("PAIR abc");
+    const real={...m,sentBy:{...m.sentBy,kind:"user"},receivedBy:undefined,space:{...m.space,participantIds:[senderId,agentId]}};
+    expect(parseIncoming(real,config,now-1000)?.agentId).toBe(agentId);
+    expect(rejectReason({...m,sentBy:{...m.sentBy,kind:"agent"}},config,now-1000)).toBe("sender-is-agent");
+    expect(rejectReason({...m,sentBy:{...m.sentBy,handle:"+19999999999"}},config,now-1000)).toBe("sender-not-allowed");
   });
   it("accepts any handle in a comma-separated sender list and nothing else",()=>{
     const now=Date.now(),m=message("hello"),team={...config,senderHandle:" +14155550999 , "+config.senderHandle};

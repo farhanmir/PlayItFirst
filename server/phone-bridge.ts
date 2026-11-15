@@ -45,20 +45,40 @@ export function phoneConfig(): Config {
 export const allowedSenders = (c: Config) => c.senderHandle.split(",").map((h) => h.trim()).filter(Boolean);
 const messagingConfigured = (c: Config) => c.transport === "bounded-inbox" && c.apiKey.startsWith("pho_sk_") && id("prj", c.projectId) && !!c.senderHandle && !!c.agentHandle;
 const voiceConfigured = (c: Config) => c.voiceSecret.length >= 32 && /^\+[1-9]\d{7,14}$/.test(c.voiceNumber);
+/** Why a polled message was ignored (no message content or phone numbers), for the live status line. */
+export function rejectReason(raw: unknown, c: Config, since: number): string | null {
+  const m = obj(raw), sender = obj(m.sentBy), space = obj(m.space), content = obj(m.content);
+  const agent = obj(m.receivedBy ?? m.addressedTo);
+  if (m.projectId !== c.projectId) return "project";
+  if (m.platform !== "imessage") return "platform";
+  if (m.status !== "received") return "status:" + String(m.status).slice(0, 20);
+  if (typeof m.createdAt !== "string" || !Number.isFinite(Date.parse(m.createdAt)) || Date.parse(m.createdAt) < since) return "before-session";
+  if (!id("msg", m.id)) return "message-id";
+  // Photon marks its own lines kind "agent"; the human side's kind name is not documented, so only exclude agents.
+  if (sender.kind === "agent") return "sender-is-agent";
+  if (!allowedSenders(c).includes(String(sender.handle))) return "sender-not-allowed";
+  if (!id("usr", sender.id)) return "sender-id";
+  if (Object.keys(agent).length) {
+    if (agent.handle !== c.agentHandle) return "agent-handle";
+    if (!id("usr", agent.id) || sender.id === agent.id) return "agent-id";
+  } else if (!Array.isArray(space.participantIds) || !space.participantIds.some(p => p !== sender.id && id("usr", p))) return "no-agent";
+  if (!id("spc", space.id)) return "space-id";
+  if (space.kind !== "direct") return "space-kind:" + String(space.kind).slice(0, 20);
+  if (content.type !== "text") return "content-type:" + String(content.type).slice(0, 20);
+  if (typeof content.text !== "string" || !content.text.trim() || content.text.length > 1200) return "content-text";
+  return null;
+}
 export function parseIncoming(raw: unknown, c: Config, since: number): Incoming | null {
-  const m = obj(raw), sender = obj(m.sentBy), agent = obj(m.receivedBy), space = obj(m.space), content = obj(m.content);
-  if (m.projectId !== c.projectId || m.platform !== "imessage" || m.status !== "received" ||
-      typeof m.createdAt !== "string" || !Number.isFinite(Date.parse(m.createdAt)) || Date.parse(m.createdAt) < since ||
-      !id("msg", m.id) || sender.kind !== "human" || !allowedSenders(c).includes(String(sender.handle)) ||
-      agent.kind !== "agent" || agent.handle !== c.agentHandle || !id("usr", sender.id) || !id("usr", agent.id) ||
-      sender.id === agent.id || !id("spc", space.id) || space.kind !== "direct" ||
-      content.type !== "text" || content.format !== "plain" || typeof content.text !== "string" ||
-      !content.text.trim() || content.text.length > 1200) return null;
-  return { id: m.id, senderId: sender.id, agentId: agent.id, spaceId: space.id, text: content.text.trim() };
+  if (rejectReason(raw, c, since)) return null;
+  const m = obj(raw), sender = obj(m.sentBy), space = obj(m.space), content = obj(m.content);
+  const agent = obj(m.receivedBy ?? m.addressedTo);
+  const agentId = typeof agent.id === "string" ? agent.id
+    : (space.participantIds as unknown[]).find((p): p is string => p !== sender.id && id("usr", p))!;
+  return { id: m.id as string, senderId: sender.id as string, agentId, spaceId: space.id as string, text: (content.text as string).trim() };
 }
 type Session = {
   owner: PhoneOwner; code: string; started: number; expires: number; propertyId: string | null;
-  paired: Incoming | null; seen: Set<string>; messageState: string; voiceSeen: boolean;
+  paired: Incoming | null; seen: Set<string>; messageState: string; lastIgnored?: string; voiceSeen: boolean;
   busy: boolean; nextVoiceAt: number; approvals: Map<string, { code: string; expires: number }>;
 };
 export class PhoneBridge {
@@ -68,6 +88,7 @@ export class PhoneBridge {
   status() {
     return { transport: this.c.transport, messagingConfigured: messagingConfigured(this.c), voiceConfigured: voiceConfigured(this.c),
       messaging: this.session?.messageState || "not-started",
+      ...(this.session?.lastIgnored ? { lastIgnored: this.session.lastIgnored } : {}),
       voice: this.session?.voiceSeen ? "tool-called-not-call-verified" : "not-verified" };
   }
   private live(s: Session) {
@@ -139,7 +160,9 @@ export class PhoneBridge {
         if (!Array.isArray(data.items)) throw new Error("Unexpected inbox response");
         for (const raw of data.items) {
           if (!this.live(s)) return;
-          const m = parseIncoming(raw, this.c, s.started);
+          const why = rejectReason(raw, this.c, s.started);
+          if (why && why !== "before-session") s.lastIgnored = why;
+          const m = why ? null : parseIncoming(raw, this.c, s.started);
           if (!m || s.seen.has(m.id)) continue;
           // Mark before work. Unknown delivery/execution is never automatically replayed.
           if (s.seen.size >= 100) throw new Error("Session message limit");
