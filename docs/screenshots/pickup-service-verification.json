@@ -1,0 +1,24 @@
+{
+  "time": "2026-11-15T01:02:29.351Z",
+  "before": {
+    "served": 0,
+    "revenue": 0,
+    "inventory": {
+      "milk": 24,
+      "cups": 40,
+      "beans": 30
+    }
+  },
+  "after": {
+    "served": 1,
+    "revenue": 7,
+    "inventory": {
+      "milk": 24,
+      "cups": 39,
+      "beans": 29
+    },
+    "holding": null
+  },
+  "errors": [],
+  "passed": true
+}

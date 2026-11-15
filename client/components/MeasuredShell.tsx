@@ -51,7 +51,7 @@ export function MeasuredShell({ property, overhead, cutaway, placeEnabled, onFlo
   return <group>
     {shapes.map((shape, i) => <mesh key={plan.rooms[i].id} rotation={[-Math.PI / 2, 0, 0]} receiveShadow
       onPointerMove={e => { if (placeEnabled) onFloorHover?.(e.point.x, e.point.z); }}
-      onClick={e => { if (placeEnabled) { e.stopPropagation(); onFloorPlace?.(e.point.x, e.point.z); } }}>
+      onClick={e => { if (placeEnabled && e.delta <= 4) { e.stopPropagation(); onFloorPlace?.(e.point.x, e.point.z); } }}>
       <shapeGeometry args={[shape]} /><meshStandardMaterial map={floor} roughness={.84} side={DoubleSide} />
     </mesh>)}
     {plan.walls.map(wall => <MeasuredWall key={wall.id} wall={wall} height={height} cutaway={cutaway} overhead={overhead} />)}

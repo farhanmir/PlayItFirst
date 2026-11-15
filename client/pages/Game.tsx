@@ -28,7 +28,6 @@ import { IntegrationsBadge } from "../components/IntegrationsBadge";
 import { PlayCrosshair } from "../components/PlayCrosshair";
 import type { CafeViewMode } from "../components/CafeScene";
 import { play } from "../lib/audio";
-import { startAmbient, stopAmbient } from "../lib/ambient";
 import "./game.css";
 
 type DrawerTab = "manage" | "build" | "table" | "future" | "plan";
@@ -39,6 +38,7 @@ export function Game() {
   const mobile = useApp((s) => s.mobile);
   const conn = useApp((s) => s.conn);
   const buildKind = useApp((s) => s.buildKind);
+  const buildMovingId = useApp((s) => s.buildMovingId);
   const set = useApp((s) => s.set);
 
   // Third-person default keeps the whole café readable; first-person stays one click away.
@@ -61,6 +61,17 @@ export function Game() {
     hadDrawer.current = drawerOpen;
   }, [drawerOpen]);
 
+  // Selections from either the catalog or management drawer enter the same orbit editor.
+  useEffect(() => {
+    if (!buildKind && !buildMovingId) return;
+    setBuildMode(true);
+    setDrawerOpen(false);
+    setDrawerTab("build");
+    setViewMode("monitor");
+    setUserPickedView(true);
+    if (document.pointerLockElement) document.exitPointerLock();
+  }, [buildKind, buildMovingId]);
+
   useEffect(() => {
     if (userPickedView || buildMode) return;
     setViewMode("third");
@@ -71,12 +82,6 @@ export function Game() {
     if (snapshot.open && snapshot.phase === "play" && snapshot.eventLog[0]?.includes("Doors open")) {
       play("open");
     }
-  }, [snapshot?.open]);
-
-  useEffect(() => {
-    if (snapshot?.open) void startAmbient();
-    else stopAmbient();
-    return () => stopAmbient();
   }, [snapshot?.open]);
 
   useEffect(() => {
@@ -107,7 +112,7 @@ export function Game() {
             setUserPickedView(true);
             if (!useApp.getState().snapshot?.open) useApp.getState().conn?.send({ t: "set_phase", phase: "build" });
           } else {
-            useApp.getState().set({ buildKind: null });
+            useApp.getState().set({ buildKind: null, buildMovingId: null });
             setViewMode("third");
             if (useApp.getState().snapshot?.open) useApp.getState().conn?.send({ t: "set_phase", phase: "play" });
           }
@@ -117,7 +122,7 @@ export function Game() {
       if (e.key === "Escape") {
         setBuildMode((open) => {
           if (open) {
-            useApp.getState().set({ buildKind: null });
+            useApp.getState().set({ buildKind: null, buildMovingId: null });
             setViewMode("third");
             return false;
           }
@@ -146,7 +151,7 @@ export function Game() {
     setViewMode(mode);
     if (mode === "first" || mode === "third") {
       setBuildMode(false);
-      set({ buildKind: null });
+      set({ buildKind: null, buildMovingId: null });
     }
   };
 
@@ -164,7 +169,7 @@ export function Game() {
   const exitBuild = () => {
     play("ui", 0.2);
     setBuildMode(false);
-    set({ buildKind: null });
+    set({ buildKind: null, buildMovingId: null });
     setViewMode("third");
     if (snapshot.open) conn?.send({ t: "set_phase", phase: "play" });
   };

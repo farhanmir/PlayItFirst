@@ -424,7 +424,7 @@ function CafeRoom({
         receiveShadow
         onPointerMove={(e) => { if (placeEnabled) onFloorHover?.(e.point.x, e.point.z); }}
         onClick={(e) => {
-          if (!placeEnabled || !onFloorPlace) return;
+          if (!placeEnabled || !onFloorPlace || e.delta > 4) return;
           e.stopPropagation();
           onFloorPlace(e.point.x, e.point.z);
         }}
