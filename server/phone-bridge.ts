@@ -89,8 +89,8 @@ export class PhoneBridge {
       paired: !!s.paired, agentHandle: messagingConfigured(this.c) ? this.c.agentHandle : null,
       voiceNumber: voiceConfigured(this.c) ? this.c.voiceNumber : null };
   }
-  start(owner: PhoneOwner, activationCode: string) {
-    if (this.c.activationCode.length < 32 || !secretEqual(activationCode.trim(), this.c.activationCode)) throw new Error("Valid team phone activation code required.");
+  // No activation code: only the café owner can start a session, and only PHOTON_TEST_SENDER handles can pair to it.
+  start(owner: PhoneOwner, _activationCode = "") {
     if (!owner.active()) throw new Error("Connect as the café owner first.");
     if (!messagingConfigured(this.c) && !voiceConfigured(this.c)) throw new Error("Phone provider configuration is incomplete.");
     const property = owner.read().property;
