@@ -91,7 +91,11 @@ export function createManagerRunner(modelFactory: () => BaseChatModel = configur
     });
     const result = await agent.invoke({ messages: [{ role: "user", content: `${history.join("\n")}\n${prompt}` }] }, { signal, recursionLimit: 12 });
     const last = result.messages.at(-1);
-    return { summary: typeof last?.content === "string" ? last.content.slice(0, 1200) : "Review the recorded tool results and proposals.",
+    // Claude returns content blocks (thinking + text); keep only visible text blocks.
+    const text = typeof last?.content === "string" ? last.content
+      : Array.isArray(last?.content) ? last.content.flatMap((b) => typeof b === "object" && b && "type" in b && b.type === "text" && "text" in b && typeof b.text === "string" ? [b.text] : []).join("\n").trim()
+      : "";
+    return { summary: text ? text.slice(0, 1200) : "Review the recorded tool results and proposals.",
       providerIdentity };
   };
 }

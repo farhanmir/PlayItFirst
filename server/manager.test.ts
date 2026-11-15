@@ -258,6 +258,16 @@ describe("actual Deepagents SDK graph with scripted model (not live provider evi
     await manager.approve(owner, approvedId);
     expect(read().finance.balance).toBe(before - 35);
   });
+
+  it("reads the visible text from block-form replies (thinking + text), as Claude returns", async () => {
+    const runner = createManagerRunner(() => new ScriptedModel([
+      call("get_cafe_state"),
+      new AIMessage({ content: [{ type: "thinking", thinking: "", signature: "sig" }, { type: "text", text: "Queue is empty; stock looks healthy." }] }),
+    ]));
+    const { manager } = setup({ configured: () => true, runner });
+    const plan = await manager.request(owner, "Inspect the café");
+    expect(plan.summary).toBe("Queue is empty; stock looks healthy.");
+  });
 });
 
 describe("approved spatial pickup action", () => {
