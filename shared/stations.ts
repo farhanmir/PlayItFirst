@@ -14,6 +14,7 @@ const STATION_MAP: { kind: FurnitureKind; station: StationHint }[] = [
 
 /** Max distance (world units) to count as "near" a station. */
 const NEAR_RADIUS = 2.4;
+const PICKUP_HANDOFF_RADIUS = 1.5;
 
 export function nearStation(snapshot: RoomSnapshot, playerId: string, kinds: FurnitureKind[]): boolean {
   const player = snapshot.players.find((p) => p.id === playerId);
@@ -49,9 +50,13 @@ export function nearestStation(snapshot: RoomSnapshot, playerId: string, kinds?:
   return bestDist <= NEAR_RADIUS ? best : null;
 }
 
-/** A dedicated pickup must be the closer handoff station, even when ranges overlap. */
+/** Serving requires reaching the pickup shelf, not merely entering its broad interaction range. */
 export function nearServingStation(snapshot: RoomSnapshot, playerId: string): boolean {
   const hasPickup = snapshot.layout?.furniture.some(item => item.kind === "pickup");
   if (!hasPickup) return nearStation(snapshot, playerId, ["counter"]);
-  return nearestStation(snapshot, playerId, ["counter", "pickup"]) === "pickup";
+  const player = snapshot.players.find(p => p.id === playerId);
+  return !!player && nearestStation(snapshot, playerId, ["counter", "pickup"]) === "pickup" &&
+    !!snapshot.layout?.furniture.some(item => item.kind === "pickup" &&
+      Math.hypot(item.x - player.x, item.z - player.z) <= PICKUP_HANDOFF_RADIUS &&
+      (!snapshot.property?.floorPlan || floorMoveClear(snapshot.property.floorPlan, player, item, .05)));
 }

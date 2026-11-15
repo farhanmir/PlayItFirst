@@ -289,6 +289,17 @@ describe("dedicated pickup handoff", () => {
     expect(served.players[0].holding).toBeNull();
     expect(interact(served, "p", "serve").finance).toEqual(served.finance);
   });
+  it("requires reaching the pickup shelf even when it is the nearest station", () => {
+    const before = ready();
+    before.players = [{ ...before.players[0], x: 4, z: 1.2 }];
+    const rejected = interact(before, "p", "serve");
+    expect(rejected.metrics.customersServed).toBe(0);
+    expect(rejected.finance).toEqual(before.finance);
+    expect(rejected.players[0].holding).toBe("drink:latte");
+    expect(rejected.eventLog[0]).toContain("Walk to pickup");
+    rejected.players = [{ ...rejected.players[0], x: 4, z: 2 }];
+    expect(interact(rejected, "p", "serve").metrics.customersServed).toBe(1);
+  });
   it("retains counter service only when the layout has no pickup", () => {
     const snap = ready();
     snap.layout!.furniture = snap.layout!.furniture.filter(item => item.kind !== "pickup");
