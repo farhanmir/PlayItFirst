@@ -16,7 +16,7 @@ export function PhotonPairing() {
   const pairing = state?.pairing;
   const configured = state?.status.configured === true;
   const online = connection === "open";
-  return <aside className="side-panel panel" aria-label="Phone messaging">
+  return <details className="management-section"><summary>Phone messaging</summary><aside className="side-panel panel" aria-label="Phone messaging">
     <h3>Message Jamie from your phone</h3>
     <p>Connect your phone to this café through the provisioned Photon iMessage line.</p>
     {!state && !error ? <p role="status">Checking messaging availability…</p> : state && !configured ? <p role="status">Messaging setup is incomplete on the server. Your café still works without it.</p> : null}
@@ -38,5 +38,5 @@ export function PhotonPairing() {
     </>}
     {pairing?.lastReply && <p role="status">Last reply accepted by Photon. Phone delivery remains unverified. Receipt: <code>{pairing.lastReply.messageId}</code></p>}
     <p className="hint">Pairing ends when this café expires or the server restarts. Provider acceptance alone does not confirm delivery to your phone.</p>
-  </aside>;
+  </aside></details>;
 }

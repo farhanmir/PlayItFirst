@@ -270,7 +270,7 @@ export function Game() {
             <>
               <DirectorPanel snapshot={snapshot} />
               <PhotonChat snapshot={snapshot} />
-              <details className="management-section"><summary>Phone messaging</summary><PhotonPairing /></details>
+              <PhotonPairing />
               <details className="management-section"><summary>Money & supplies</summary>
                 <FinanceLedger snapshot={snapshot} /><InventoryCard snapshot={snapshot} />
               </details>

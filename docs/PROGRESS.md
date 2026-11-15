@@ -2,6 +2,10 @@
 
 Tracking https://github.com/farhanmir/PlayItFirst/issues/2. Work directly on `main` under AGENTS.md.
 
+## Remove duplicate phone-panel affordance
+
+Fresh public Edge on `16b4276` verified the actual inbox activation input enables **Start phone session** and clicking makes a server request (dummy code correctly returns activation-code rejection). This is submission evidence, not a paired-phone/delivery claim. The page still displayed an empty **Phone messaging** section reserved for webhook mode, misleading users toward the earlier disabled control. That section now belongs to PhotonPairing itself and disappears with it in inbox mode, leaving the inbox session form under Jamie. Typecheck/build passed; server protections unchanged.
+
 ## Phone activation submission correction
 
 The owner could type the team activation code but the page showed a disabled webhook button and endless availability check in bounded-inbox mode. Sponsor-phone protection was refusing even the owner-only read-only transport-status request, so the client never learned to hide the webhook panel. Status now returns transport configuration without authorizing external sponsor processing; actual pairing still enforces the original permission and owner guards. Both activation forms submit with Enter; inbox start shows connecting feedback. Full223-test/typecheck/build checks passed before the added real-WebSocket regression; the focused four-test smoke suite and typecheck then passed, including owner status, denied sponsor pairing and denied guest status. Actual phone delivery is still unverified. First phone test should use a fictional practice property unless external sponsor processing is explicitly authorized.
