@@ -22,7 +22,8 @@ if (finance.nessieSync?.status !== "ready") {
 // This verifies the provider contract, not a physical game order/manager approval.
 finance = applyTransaction(finance, "Synthetic acceptance coffee", 9, "sales");
 finance = applyTransaction(finance, "Synthetic acceptance supplies", -35, "inventory");
-const deadline = Date.now() + 60000;
+// Card purchases normally remain pending for 60 seconds; leave settlement headroom.
+const deadline = Date.now() + 120000;
 let success = false;
 while (Date.now() < deadline) {
   await reconcileNessie(finance);
@@ -31,7 +32,7 @@ while (Date.now() < deadline) {
   const bill = sync.bills?.find(b => b.amountCents === 30000 && b.status === "recurring");
   if (sync.records.length === 2 && sync.records.every(r => r.status === "confirmed" && r.remoteId) &&
       sync.remoteBalanceCents === 97400 && sync.differenceCents === 0 && sync.billSetupStatus === "confirmed" && bill) { success = true; break; }
-  await sleep(3000);
+  await sleep(5000);
 }
 const sync = finance.nessieSync!;
 console.log(JSON.stringify({ syntheticOnly:true, liveSandbox:true, passed:success, localBalanceUSD:finance.balance,
