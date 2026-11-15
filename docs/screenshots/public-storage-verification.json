@@ -1,0 +1,71 @@
+{
+  "time": "2026-11-15T00:03:39.743Z",
+  "health": {
+    "ok": true,
+    "service": "softopen",
+    "product": "Play It First",
+    "legacy": "playfirst",
+    "commit": "a0375497f0046c44b6887f3e137f58678e9b864a"
+  },
+  "errors": [],
+  "metadata": {
+    "coordinateConvention": "matterport-api-x-neg-y-v1",
+    "metadataSource": "matterport-live",
+    "roomCount": 12,
+    "labeled": 12,
+    "labelSources": {
+      "detected-classification": 9,
+      "user-label": 3
+    },
+    "roomHeights": 8,
+    "openings": 15,
+    "openingHeights": 15,
+    "normalizedSills": 15,
+    "sourceSills": 15
+  },
+  "placement": {
+    "count": 9,
+    "cost": 4110,
+    "machineInKitchen": true,
+    "fridgeInStorage": true,
+    "tablesAndChairsInDining": true
+  },
+  "before": {
+    "cash": 4786.5,
+    "inventory": {
+      "milk": 24,
+      "cups": 40,
+      "beans": 30
+    },
+    "transactionCount": 9
+  },
+  "reachVerified": true,
+  "after": {
+    "cash": 4751.5,
+    "inventory": {
+      "milk": 36,
+      "cups": 60,
+      "beans": 45
+    },
+    "transactionCount": 10
+  },
+  "newReceipts": [
+    {
+      "category": "inventory",
+      "amount": -35,
+      "label": "Milk & cups restock"
+    }
+  ],
+  "restockPassed": true,
+  "moveInputs": 124,
+  "finalHealth": {
+    "ok": true,
+    "service": "softopen",
+    "product": "Play It First",
+    "legacy": "playfirst",
+    "commit": "a0375497f0046c44b6887f3e137f58678e9b864a"
+  },
+  "physicalPhone": false,
+  "noStateInjection": true,
+  "initialHarnessAttempt": "Conservative0.22m clearance stopped; exact0.2m player clearance and smaller probes passed"
+}
