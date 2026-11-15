@@ -38,7 +38,12 @@ export function configuredModel(): BaseChatModel {
   });
   if (apiKey) return new ChatOpenAI({ apiKey, model: model || "gpt-4o-mini", maxTokens: 600, maxRetries: 0, timeout: 15_000 });
   if (process.env.ANTHROPIC_API_KEY?.trim()) return new ChatAnthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY.trim(), model: model || "claude-haiku-4-5-20251001", maxTokens: 600, maxRetries: 0,
+    apiKey: process.env.ANTHROPIC_API_KEY.trim(), model: model || "claude-opus-5-5", maxRetries: 0,
+    // Thinking is always on for current Claude models and counts toward maxTokens; 600 would truncate.
+    // Low effort keeps multi-step tool runs inside the manager's 20s timeout.
+    maxTokens: 8000, outputConfig: { effort: "low" },
+    // Server-side refusal fallback: only changes behavior if the primary model declines.
+    betas: ["server-side-fallback-2026-07-01"], invocationKwargs: { fallbacks: "default" },
   });
   throw new Error("No supported model key configured");
 }
