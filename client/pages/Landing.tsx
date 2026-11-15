@@ -8,9 +8,10 @@ interface Props {
   onJoin: (code: string, name: string) => void;
   onJudgeDemo: () => void | Promise<void>;
   demoBusy?: boolean;
+  connectionError?: string | null;
 }
 
-export function Landing({ onStart, onJoin, onJudgeDemo, demoBusy }: Props) {
+export function Landing({ onStart, onJoin, onJudgeDemo, demoBusy, connectionError }: Props) {
   const [name, setName] = useState(getStoredName());
   const [joinCode, setJoinCode] = useState("");
   const [busy, setBusy] = useState(false);
@@ -25,6 +26,7 @@ export function Landing({ onStart, onJoin, onJudgeDemo, demoBusy }: Props) {
         <p className="landing-tagline">Your grand opening starts here.</p>
         <p className="landing-description">Pick a space. Pour the first cup. Run a café with friends, and discover what makes a business work.</p>
         <div className="landing-actions">
+          {connectionError && <p className="landing-error" role="alert">{connectionError}</p>}
           <button className="landing-play" type="button" disabled={locked} onClick={() => void onJudgeDemo()}>
             <span>{demoBusy ? "Opening the café…" : "Play demo"}</span><span aria-hidden="true">▶</span>
           </button>
@@ -47,7 +49,7 @@ export function Landing({ onStart, onJoin, onJudgeDemo, demoBusy }: Props) {
             finally { setBusy(false); }
           }}>
             <label htmlFor="player-name">Your name<input id="player-name" name="nickname" autoComplete="nickname" maxLength={24} value={name} onChange={(e) => setName(e.target.value)} disabled={locked} required /></label>
-            {mode === "join" && <label htmlFor="room-code">Room code<input id="room-code" name="room" value={joinCode} onChange={(e) => setJoinCode(e.target.value.trim())} autoCapitalize="none" autoCorrect="off" spellCheck={false} disabled={locked} required /></label>}
+            {mode === "join" && <label htmlFor="room-code">Room code<input id="room-code" name="room" maxLength={12} value={joinCode} onChange={(e) => setJoinCode(e.target.value.trim())} autoCapitalize="none" autoCorrect="off" spellCheck={false} disabled={locked} required /></label>}
             {error && <p className="landing-error" role="alert">{error}</p>}
             <button className="landing-form-submit" type="submit" disabled={locked}>{busy ? "Opening…" : mode === "host" ? "Choose a property" : "Enter café"}</button>
           </form>}

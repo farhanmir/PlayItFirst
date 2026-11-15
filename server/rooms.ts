@@ -41,6 +41,7 @@ interface Member {
   name: string;
   role: PlayerRole;
   socket: WebSocket | null;
+  lastPongAt: number;
 }
 
 interface Room {
@@ -51,10 +52,28 @@ interface Room {
   stepTimer?: ReturnType<typeof setInterval>;
   snapshotTimer?: ReturnType<typeof setInterval>;
   directorTimer?: ReturnType<typeof setInterval>;
+  expiryTimer?: ReturnType<typeof setTimeout>;
+  lastHeartbeatAt: number;
 }
 
 const TICK_HZ = 20;
 const SNAPSHOT_HZ = 20;
+
+export interface RoomLimits { maxRooms:number; maxMembers:number; abandonGraceMs:number }
+const positiveLimit = (value:string|undefined,fallback:number) => { const n=Number(value); return Number.isSafeInteger(n)&&n>0?n:fallback; };
+export const ROOM_LIMITS: Readonly<RoomLimits> = Object.freeze({
+  maxRooms:positiveLimit(process.env.MAX_ROOMS,32),
+  maxMembers:positiveLimit(process.env.MAX_ROOM_MEMBERS,12),
+  abandonGraceMs:positiveLimit(process.env.ROOM_ABANDON_GRACE_MS,5*60_000),
+});
+export class RoomCapacityError extends Error {
+  readonly code="ROOM_CAPACITY"; readonly status=503;
+  constructor(){super("All café rooms are busy. Please try again shortly.");this.name="RoomCapacityError";}
+}
+const LAYOUT_ROLES:PlayerRole[]=["owner","builder"];
+const BUSINESS_ROLES:PlayerRole[]=["owner","manager"];
+const SERVICE_ROLES:PlayerRole[]=["owner","manager","barista","cashier"];
+
 
 function listings(): PropertyListing[] {
   return withMatterportDefaults(getCachedProperties().listings);
@@ -62,6 +81,11 @@ function listings(): PropertyListing[] {
 
 function send(ws: WebSocket | null, message: ServerMsg) {
   if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(message));
+}
+
+function rejectJoin(socket:WebSocket,message:string,code:"ROOM_NOT_FOUND"|"JOIN_REJECTED") {
+  send(socket,{t:"error",message,code,terminal:true});
+  socket.close(1008,code);
 }
 
 function roomCode() {
@@ -88,8 +112,12 @@ export class CafeRoomServer {
   private rooms = new Map<string, Room>();
   private sessions = new WeakMap<WebSocket, { room: Room; member: Member }>();
 
-  constructor(private wss: WebSocketServer) {
+  private limits:RoomLimits;
+
+  constructor(private wss: WebSocketServer, limits:Partial<RoomLimits>={}) {
+    this.limits={...ROOM_LIMITS,...limits};
     wss.on("connection", (socket, request) => this.onConnection(socket, request));
+    wss.on("close",()=>{for(const room of this.rooms.values())this.expire(room);});
   }
 
   listProperties() {
@@ -102,14 +130,17 @@ export class CafeRoomServer {
   }
 
   createRoom(): { code: string; snapshot: RoomSnapshot } {
-    const code = roomCode();
+    if(this.rooms.size>=this.limits.maxRooms)throw new RoomCapacityError();
+    let code = roomCode();
+    while(this.rooms.has(code))code=roomCode();
     const room: Room = {
       code,
       snapshot: createRoomSnapshot(code),
       members: new Map(),
+      lastHeartbeatAt:Date.now(),
     };
     this.rooms.set(code, room);
-    this.startLoops(room);
+    this.scheduleExpiry(room);
     return { code, snapshot: room.snapshot };
   }
 
@@ -127,11 +158,16 @@ export class CafeRoomServer {
         send(socket, { t: "error", message: error instanceof Error ? error.message : "Request failed" });
       });
     });
+    socket.on("pong",()=>{
+      const session=this.sessions.get(socket);
+      if(session?.member.socket===socket)session.member.lastPongAt=Date.now();
+    });
     socket.on("close", () => this.disconnect(socket));
     socket.on("error", () => this.disconnect(socket));
   }
 
   private async handle(socket: WebSocket, bytes: RawData) {
+    if(socket.readyState!==WebSocket.OPEN)return;
     let msg: ClientMsg;
     try {
       msg = JSON.parse(typeof bytes === "string" ? bytes : bytes.toString("utf8"));
@@ -150,6 +186,21 @@ export class CafeRoomServer {
       return;
     }
     const { room, member } = session;
+    if(member.socket!==socket || this.rooms.get(room.code)!==room || room.members.get(member.id)!==member){
+      this.sessions.delete(socket);
+      send(socket,{t:"error",message:"This session was replaced. Rejoin the café.",code:"SESSION_REPLACED",terminal:true});
+      socket.close(4001,"Session replaced");return;
+    }
+    const allowed = (roles:PlayerRole[]) => {
+      if(roles.includes(member.role))return true;
+      send(socket,{t:"error",message:`Your ${member.role} role cannot perform this action`});return false;
+    };
+    if(["place_furniture","move_furniture","remove_furniture","tabletop_sync"].includes(msg.t)&&!allowed(LAYOUT_ROLES))return;
+    if(["open_cafe","director_choice"].includes(msg.t)&&!allowed(BUSINESS_ROLES))return;
+    if(msg.t==="set_phase"&&!allowed([...LAYOUT_ROLES,"manager"]))return;
+    if(msg.t==="demo_boost"&&!allowed(["owner"]))return;
+    if(msg.t==="interact"&&!allowed(SERVICE_ROLES))return;
+
 
     switch (msg.t) {
       case "manager_request":
@@ -340,38 +391,48 @@ export class CafeRoomServer {
     socket: WebSocket,
     msg: Extract<ClientMsg, { t: "hello" }>,
   ) {
-    let room = this.rooms.get(msg.room);
-    if (!room) {
-      room = {
-        code: msg.room,
-        snapshot: createRoomSnapshot(msg.room),
-        members: new Map(),
-      };
-      this.rooms.set(msg.room, room);
-      this.startLoops(room);
+    if(this.sessions.has(socket)){
+      send(socket,{t:"error",message:"This connection has already joined a café"});return;
     }
+    const room = this.rooms.get(msg.room);
+    if(!room){rejectJoin(socket,"This café does not exist or has expired. Host a new café or check the invite.","ROOM_NOT_FOUND");return;}
 
     let member: Member | undefined;
     if (msg.resume) {
       member = [...room.members.values()].find((m) => m.token === msg.resume);
     }
 
+    if(msg.resume&&!member){rejectJoin(socket,"This saved session is no longer valid. Join with a new invite.","JOIN_REJECTED");return;}
     if (!member) {
+      if(room.members.size>=this.limits.maxMembers){rejectJoin(socket,"This café has reached its player limit.","JOIN_REJECTED");return;}
+      if(msg.role && !["owner","barista","cashier","manager","customer","builder"].includes(msg.role)){
+        rejectJoin(socket,"Choose a valid café role","JOIN_REJECTED");return;
+      }
       // Claiming "owner" in a hello packet cannot grant purchase authorization.
       const role: PlayerRole = room.members.size === 0 ? "owner" : msg.role === "owner" ? "barista" : msg.role ?? "barista";
       member = {
         id: randomUUID(),
         token: createHash("sha256").update(randomBytes(16)).digest("hex").slice(0, 24),
-        name: msg.name || `Player ${room.members.size + 1}`,
+        name: msg.name?.trim().slice(0,40) || `Player ${room.members.size + 1}`,
         role,
         socket,
+        lastPongAt:Date.now(),
       };
       room.members.set(member.id, member);
       room.snapshot = addPlayer(room.snapshot, member.id, member.name, role);
     } else {
+      const old=member.socket;
+      if(old&&old!==socket){
+        this.sessions.delete(old);
+        send(old,{t:"error",message:"Your café session moved to another connection.",code:"SESSION_REPLACED",terminal:true});
+        old.close(4001,"Session resumed elsewhere");
+      }
       member.socket = socket;
-      member.name = msg.name || member.name;
+      member.lastPongAt=Date.now();
+      member.name = msg.name?.trim().slice(0,40) || member.name;
     }
+    clearTimeout(room.expiryTimer);room.expiryTimer=undefined;
+    this.startLoops(room);
 
     this.sessions.set(socket, { room, member });
     room.snapshot = { ...room.snapshot, players: room.snapshot.players.map((p) => p.id === member.id ? { ...p, moveAck: p.moveAck ?? 0 } : p) };
@@ -385,6 +446,26 @@ export class CafeRoomServer {
     // A resumed connection can already own this member when the old socket closes.
     if (session.member.socket === socket) session.member.socket = null;
     this.sessions.delete(socket);
+    if(![...session.room.members.values()].some(m=>m.socket?.readyState===WebSocket.OPEN))this.scheduleExpiry(session.room);
+  }
+
+  private stopLoops(room:Room){
+    clearInterval(room.stepTimer);clearInterval(room.snapshotTimer);clearInterval(room.directorTimer);
+    room.stepTimer=undefined;room.snapshotTimer=undefined;room.directorTimer=undefined;
+  }
+
+  private scheduleExpiry(room:Room){
+    this.stopLoops(room);
+    clearTimeout(room.expiryTimer);
+    room.expiryTimer=setTimeout(()=>this.expire(room),this.limits.abandonGraceMs);
+    room.expiryTimer.unref?.();
+  }
+
+  private expire(room:Room){
+    this.stopLoops(room);clearTimeout(room.expiryTimer);room.expiryTimer=undefined;
+    this.rooms.delete(room.code);
+    for(const member of room.members.values())if(member.socket){this.sessions.delete(member.socket);member.socket.close(4000,"Café closed");member.socket=null;}
+    room.members.clear();
   }
 
   private broadcast(room: Room) {
@@ -395,8 +476,9 @@ export class CafeRoomServer {
   private managerFor(room: Room): CafeManager {
     return room.manager ??= new CafeManager({
       read: () => room.snapshot,
-      update: (reducer) => { room.snapshot = reducer(room.snapshot); },
+      update: (reducer) => { if(this.rooms.get(room.code)!==room)throw new Error("Café session expired");room.snapshot = reducer(room.snapshot); },
       publish: (manager) => {
+        if(this.rooms.get(room.code)!==room)return;
         room.snapshot = { ...room.snapshot, manager };
         this.broadcast(room);
       },
@@ -411,6 +493,14 @@ export class CafeRoomServer {
     }, 1000 / TICK_HZ);
 
     room.snapshotTimer = setInterval(() => {
+      const now=Date.now();
+      if(now-room.lastHeartbeatAt>=30_000){
+        room.lastHeartbeatAt=now;
+        for(const member of room.members.values())if(member.socket){
+          if(now-member.lastPongAt>=60_000){const stale=member.socket;this.disconnect(stale);stale.terminate();}
+          else if(member.socket.readyState===WebSocket.OPEN)member.socket.ping();
+        }
+      }
       if (room.snapshot.phase === "play" || room.snapshot.players.length > 1) {
         this.broadcast(room);
       }

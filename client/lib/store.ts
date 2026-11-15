@@ -22,6 +22,7 @@ interface AppState {
   buildRotation: number;
   buildMovingId: string | null;
   managerError: string | null;
+  connectionError: string | null;
   set: (partial: Partial<AppState>) => void;
 }
 
@@ -46,6 +47,7 @@ export const useApp = create<AppState>((set) => ({
   buildRotation: 0,
   buildMovingId: null,
   managerError: null,
+  connectionError: null,
   set: (partial) => set(partial),
 }));
 

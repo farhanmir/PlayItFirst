@@ -20,6 +20,7 @@ import { getStoredName, setStoredName } from "./lib/storage";
 
 export function App() {
   const screen = useApp((s) => s.screen);
+  const connectionError = useApp((s) => s.connectionError);
   const set = useApp((s) => s.set);
   const [demoPhase, setDemoPhase] = useState<DemoPhase>("idle");
   const demoStarted = useRef(false);
@@ -53,6 +54,7 @@ export function App() {
       <DemoOverlay status={demoStatusFor(demoPhase)} />
       {screen === "landing" && (
         <Landing
+          connectionError={connectionError}
           onStart={async (name) => {
             await startHost(name);
           }}
@@ -68,6 +70,7 @@ export function App() {
           }}
         />
       )}
+      {screen !== "landing" && connectionError && <p role="alert" className="connection-error" style={{ position: "fixed", top: "5rem", left: "50%", transform: "translateX(-50%)", zIndex: 100, background: "#fff5df", color: "#40261b", padding: "0.75rem 1rem", borderRadius: 8, maxWidth: "min(90vw, 40rem)" }}>{connectionError}</p>}
       {screen === "property" && <PropertySelect />}
       {screen === "game" && <Game />}
     </div>
@@ -104,7 +107,7 @@ async function startHost(name: string) {
 }
 
 function joinRoom(code: string, name: string, fromLink = false) {
-  void unlockAudio();
+  void unlockAudio().catch(() => undefined);
   const set = useApp.getState().set;
   setStoredName(name);
   set({
@@ -185,12 +188,14 @@ function wireConnection(room: string, name: string, role: PlayerRole) {
   prev?.close();
   const conn = connect(room, name, role);
   const set = useApp.getState().set;
-  set({ conn, status: "connecting" });
+  set({ conn, status: "connecting", connectionError: null, snapshot: null, you: null, blueprint: null });
 
-  conn.onStatus((status) => set({ status }));
+  conn.onStatus((status) => { if (useApp.getState().conn === conn) set({ status }); });
   conn.onMessage((m) => {
+    if (useApp.getState().conn !== conn) return;
     if (m.t === "welcome") {
       set({
+        connectionError: null,
         you: m.you,
         snapshot: m.snapshot,
         screen: m.snapshot.property ? "game" : useApp.getState().screen === "landing" ? "property" : useApp.getState().screen,
@@ -199,17 +204,30 @@ function wireConnection(room: string, name: string, role: PlayerRole) {
         headers: { "X-SoftOpen-Public-Origin": publicOrigin() },
       })
         .then((r) => r.json())
-        .then((data: { qrSvg: string; url: string }) =>
+        .then((data: { qrSvg: string; url: string }) => {
+          if (useApp.getState().conn !== conn) return;
           set({
             qrSvg: data.qrSvg,
             joinUrl: data.url?.startsWith("http") ? data.url : `${publicOrigin()}/?room=${room}`,
-          }),
-        )
+          });
+        })
         .catch(() => undefined);
     }
     if (m.t === "snapshot") set({ snapshot: m.snapshot });
     if (m.t === "manager_error") set({ managerError: m.message });
     if (m.t === "blueprint") set({ blueprint: m.markdown, screen: "game" });
-    if (m.t === "error") console.warn(m.message);
+    if (m.t === "error") {
+      if (m.terminal) {
+        conn.close();
+        set({ conn: null, status: "closed", screen: "landing", snapshot: null, you: null,
+          roomCode: "", qrSvg: null, joinUrl: null, blueprint: null, buildKind: null, buildMovingId: null,
+          connectionError: m.code === "ROOM_NOT_FOUND"
+            ? "This café does not exist or has expired. Host a new café, or ask your friend for a fresh invite."
+            : m.code === "SESSION_REPLACED"
+              ? "This café session is active in another tab. Continue there, or join again here."
+              : `${m.message} Try a fresh invite or host a new café.` });
+        history.replaceState({}, "", "/");
+      } else set({ connectionError: m.message });
+    }
   });
 }

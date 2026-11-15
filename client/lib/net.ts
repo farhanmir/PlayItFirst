@@ -23,7 +23,7 @@ export function connect(room: string, name: string, role?: PlayerRole): Conn {
   let closed = false;
   let retry = 0;
   let retryTimer: ReturnType<typeof setTimeout> | null = null;
-  const queue: ClientMsg[] = [];
+  let joined = false;
   const prediction = createMovementPrediction();
   let you: string | null = null;
 
@@ -37,7 +37,7 @@ export function connect(room: string, name: string, role?: PlayerRole): Conn {
     const sock = new WebSocket(wsUrl());
     ws = sock;
     sock.onopen = () => {
-      retry = 0;
+      if (closed || ws !== sock) { sock.close(); return; }
       const resume = getResumeToken(room) ?? undefined;
       sock.send(
         JSON.stringify({
@@ -48,17 +48,28 @@ export function connect(room: string, name: string, role?: PlayerRole): Conn {
           resume,
         } satisfies ClientMsg),
       );
-      setStatus("open");
-      while (queue.length) sock.send(JSON.stringify(queue.shift()));
+
     };
     sock.onmessage = (ev) => {
+      if (closed || ws !== sock) return;
       let m: ServerMsg;
       try {
         m = JSON.parse(typeof ev.data === "string" ? ev.data : "");
       } catch {
         return;
       }
+      if (m.t === "error" && m.terminal) {
+        closed = true;
+        joined = false;
+        if (m.code === "ROOM_NOT_FOUND" || m.code === "JOIN_REJECTED") setResumeToken(room, "");
+        if (retryTimer) clearTimeout(retryTimer);
+        document.removeEventListener("visibilitychange", onVis);
+        sock.close();
+      }
       if (m.t === "welcome") {
+        joined = true;
+        retry = 0;
+        setStatus("open");
         if (m.token) setResumeToken(room, m.token);
         you = m.you;
         prediction.reset(m.snapshot.players.find((p) => p.id === you)?.moveAck ?? 0);
@@ -69,6 +80,7 @@ export function connect(room: string, name: string, role?: PlayerRole): Conn {
     sock.onclose = () => {
       if (ws !== sock) return;
       ws = null;
+      joined = false;
       prediction.reset();
       setStatus("closed");
       if (closed) return;
@@ -87,11 +99,15 @@ export function connect(room: string, name: string, role?: PlayerRole): Conn {
 
   return {
     send(m) {
-      if (ws && ws.readyState === WebSocket.OPEN) {
+      if (!closed && joined && ws && ws.readyState === WebSocket.OPEN) {
         if (m.t === "player_move") m = { ...m, ...prediction.record(m.x, m.z) };
         ws.send(JSON.stringify(m));
       }
-      else if (m.t !== "player_move") queue.push(m);
+      // Never replay stale purchases, orders or approvals after reconnecting.
+      // The user retries against the fresh authoritative welcome snapshot.
+      else if (!closed && m.t !== "player_move") {
+        for (const fn of msgFns) fn({ t: "error", message: "Connection interrupted. Wait for reconnection, then try that action again." });
+      }
     },
     onMessage(fn) {
       msgFns.push(fn);
@@ -101,6 +117,7 @@ export function connect(room: string, name: string, role?: PlayerRole): Conn {
     },
     close() {
       closed = true;
+      joined = false;
       document.removeEventListener("visibilitychange", onVis);
       if (retryTimer) clearTimeout(retryTimer);
       ws?.close();

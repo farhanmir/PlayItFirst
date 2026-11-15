@@ -243,7 +243,7 @@ export type ServerMsg =
   | { t: "snapshot"; snapshot: RoomSnapshot }
   | { t: "qr"; svg: string; url: string }
   | { t: "blueprint"; markdown: string }
-  | { t: "error"; message: string }
+  | { t: "error"; message: string; terminal?: boolean; code?: "ROOM_NOT_FOUND" | "SESSION_REPLACED" | "JOIN_REJECTED" }
   | { t: "photon_ping"; message: PhotonMessage }
   | {
       t: "voice_signal";

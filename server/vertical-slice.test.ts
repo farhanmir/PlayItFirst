@@ -171,9 +171,15 @@ describe("shared room join", () => {
     expect(resumed.welcome.snapshot.players).toHaveLength(1);
     expect(resumed.welcome.snapshot.players[0].id).toBe(playerId);
 
-    const intruder = await connect(port, code, "Someone", "barista", "not-a-real-token");
-    expect(intruder.welcome.you).not.toBe(playerId);
-    expect(intruder.welcome.snapshot.players).toHaveLength(2);
+    const intruder = new WebSocket(`ws://127.0.0.1:${port}`);
+    openSockets.push(intruder);
+    await new Promise<void>((resolve) => intruder.once("open", resolve));
+    const rejected = waitFor(intruder, (message) => message.t === "error");
+    intruder.send(JSON.stringify({ t: "hello", room: code, name: "Someone", role: "barista", resume: "not-a-real-token" }));
+    expect(await rejected).toMatchObject({ code: "JOIN_REJECTED", terminal: true });
+    const exported = waitFor(resumed.ws, (message) => message.t === "snapshot");
+    resumed.ws.send(JSON.stringify({ t: "request_blueprint" }));
+    expect((await exported).snapshot.players).toHaveLength(1);
   });
 
   it("builds a join URL from the given origin and renders an SVG for it", () => {

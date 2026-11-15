@@ -9,11 +9,12 @@ import { stat } from "node:fs/promises";
 import { dirname, extname, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { WebSocketServer } from "ws";
-import { CafeRoomServer, requestOrigin } from "./rooms.ts";
+import { CafeRoomServer, RoomCapacityError, requestOrigin } from "./rooms.ts";
 import { qrSvg } from "./qr.ts";
 import { loadProperties, getCachedProperties } from "./costar.ts";
 import { resolveMatterport } from "./matterport.ts";
 import { deepagentsConfigured } from "./deepagents.ts";
+import { readJsonBody, respondHttpInputError, createRoomRateLimiter, createPropertyRefreshLimiter, clientAddress } from "./httpLimits.ts";
 
 // Node 22's loader preserves values already supplied by Render's environment.
 if (existsSync(".env")) loadEnvFile(".env");
@@ -28,8 +29,11 @@ const allowedOrigins = (process.env.CORS_ORIGINS || process.env.FRONTEND_ORIGIN 
   .map((value) => value.trim())
   .filter(Boolean);
 
-const server = http.createServer();
-const wss = new WebSocketServer({ noServer: true, maxPayload: 1 * 1024 * 1024 });
+const server = http.createServer({ headersTimeout: 15_000, requestTimeout: 20_000 });
+server.maxConnections = 256;
+const roomLimiter = createRoomRateLimiter();
+const refreshLimiter = createPropertyRefreshLimiter();
+const wss = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 });
 const rooms = new CafeRoomServer(wss);
 
 server.on("upgrade", (request, socket, head) => {
@@ -94,21 +98,6 @@ function applyCors(req: IncomingMessage, res: ServerResponse) {
   }
 }
 
-function readJson(req: IncomingMessage): Promise<Record<string, unknown>> {
-  return new Promise((resolveBody) => {
-    const chunks: Buffer[] = [];
-    req.on("data", (chunk) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
-    req.on("end", () => {
-      try {
-        resolveBody(JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}") as Record<string, unknown>);
-      } catch {
-        resolveBody({});
-      }
-    });
-    req.on("error", () => resolveBody({}));
-  });
-}
-
 function json(res: ServerResponse, status: number, data: unknown) {
   res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
   res.end(JSON.stringify(data));
@@ -153,7 +142,11 @@ server.on("request", (req, res) => {
     const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
 
     if (url.pathname === "/api/properties") {
-      if (url.searchParams.get("refresh") === "1") await rooms.refreshProperties();
+      if (url.searchParams.get("refresh") === "1") {
+        const limit = refreshLimiter.take("refresh");
+        if (!limit.allowed) { res.setHeader("Retry-After", limit.retryAfterSeconds); json(res, 429, { error: "Property refresh is cooling down. Try again shortly." }); return; }
+        await rooms.refreshProperties();
+      }
       const bundle = getCachedProperties();
       res.writeHead(200, {
         "Content-Type": "application/json; charset=utf-8",
@@ -191,7 +184,15 @@ server.on("request", (req, res) => {
     }
 
     if (url.pathname === "/api/rooms" && req.method === "POST") {
-      const body = await readJson(req);
+      const limit = roomLimiter.take(clientAddress(req, { trustRenderProxy: process.env.RENDER === "true" }));
+      if (!limit.allowed) {
+        res.setHeader("Retry-After", limit.retryAfterSeconds);
+        res.shouldKeepAlive = false;
+        res.setHeader("Connection", "close");
+        res.once("finish", () => req.socket.destroy());
+        json(res, 429, { error: "Too many new cafés. Wait a minute, or rejoin your existing room." }); return;
+      }
+      const body = await readJsonBody(req);
       const created = rooms.createRoom();
       const join = rooms.joinUrl(joinOrigin(req, typeof body.publicOrigin === "string" ? body.publicOrigin : undefined), created.code);
       json(res, 200, {
@@ -228,6 +229,8 @@ server.on("request", (req, res) => {
 
     await serveDist(url.pathname, req, res);
   })().catch((error) => {
+    if (respondHttpInputError(req, res, error)) return;
+    if (error instanceof RoomCapacityError) { json(res, 503, { error: error.message }); return; }
     console.error(error);
     if (!res.headersSent) json(res, 500, { error: "Internal error" });
   });
