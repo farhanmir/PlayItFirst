@@ -2205,6 +2205,24 @@
   .build-catalog button, .build-catalog summary { min-height: 44px; }
   .game-immersive .build-banner { width: calc(100% - 16px); padding: 10px; bottom: 8px; }
 }
+/* Portrait phones: the build catalog becomes a short bottom sheet so most of the floor stays tappable. */
+@media (max-width: 760px) and (orientation: portrait) {
+  .game-immersive.build-open .build-catalog { top: auto; left: 8px; right: 8px; width: auto; bottom: max(8px, env(safe-area-inset-bottom)); max-height: 34dvh; padding: 8px 10px 10px; touch-action: pan-x pan-y; }
+  .build-catalog .build-panel { padding: 0; }
+  .build-catalog .build-panel > h3, .build-catalog .build-panel > p:first-of-type, .build-catalog .build-feedback, .build-catalog .build-actions .build-place-hint { display: none; }
+  .build-catalog .build-place-hint { padding: 4px 6px 4px 10px; font-size: 12px; margin-bottom: 6px; flex-wrap: nowrap; gap: 6px; }
+  .build-catalog .build-place-hint .hint-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .build-catalog .build-place-hint .hint-snap { display: none; }
+  .build-catalog .build-place-hint button { min-height: 40px; padding: 0 10px; white-space: nowrap; flex: none; }
+  .build-catalog .catalog { display: flex; overflow-x: auto; gap: 6px; padding-bottom: 2px; scroll-snap-type: x proximity; overscroll-behavior-x: contain; scrollbar-width: none; }
+  .build-catalog .catalog::-webkit-scrollbar { display: none; }
+  .build-catalog .catalog-row { flex: 0 0 auto; scroll-snap-align: start; }
+  .build-catalog .catalog-item { flex-direction: column; align-items: flex-start; gap: 2px; padding: 8px 12px; min-width: 100px; min-height: 56px; }
+  .build-catalog .catalog-item strong { font-size: 12px; margin: 0; white-space: nowrap; }
+  .build-catalog .build-actions { margin-top: 6px; }
+  .build-catalog .placed-furniture { margin-top: 6px; }
+  .game-immersive.build-open .build-banner { display: none; }
+}
 @media (prefers-reduced-motion: reduce) {
   .game-immersive .vital, .game-immersive .vital-pulse, .game-immersive .ticket { animation: none; transition: none; }
 }

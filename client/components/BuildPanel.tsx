@@ -38,7 +38,7 @@ export function BuildPanel({
       </p>
       {buildKind ? (
         <p className="build-place-hint" aria-live="polite">
-          {buildMovingId ? "Moving" : "Placing"} <strong>{FURNITURE_CATALOG.find((c) => c.kind === buildKind)?.label ?? buildKind}</strong> · ½ m snap
+          <span className="hint-text">{buildMovingId ? "Moving" : "Placing"} <strong>{FURNITURE_CATALOG.find((c) => c.kind === buildKind)?.label ?? buildKind}</strong><span className="hint-snap"> · ½ m snap</span></span>
           <button type="button" className="btn-ghost btn-small" onClick={() => set({ buildRotation: (buildRotation + Math.PI / 2) % (Math.PI * 2) })}>
             Rotate 90°
           </button>
