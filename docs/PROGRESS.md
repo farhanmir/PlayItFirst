@@ -2,6 +2,10 @@
 
 Tracking https://github.com/farhanmir/PlayItFirst/issues/2. Work directly on `main` under AGENTS.md.
 
+## Public deployment re-check — November 14
+
+Public Render reports commit `9ccc007`. `scripts/check-deployment.mjs` passed health, built page/asset, listings (`costar-extract`), room/invite origin, two-client wss join, furniture move/rotate sync during service and reconnect. `/api/integrations` still reports `nessie:false` and Photon messaging unconfigured (missing `PHOTON_TEST_SENDER`, `PHOTON_ACTIVATION_CODE`, `PHOTON_SENDER_ID`, `PHOTON_WEBHOOK_SECRET`); voice is `webrtc-crew-not-photon-2`. These need owner-held credentials in Render. Gemini quota was not re-tested (no local key). Physical iPhone QR/WebGL/audio playtest remains manual.
+
 ## Additional measured venues — input pending
 
 The private catalog currently contains one normalized CoStar/Matterport suite. No event kit archive, extracted listing/model table or local Matterport credentials were present in the current checkout or usual local folders during this check. The importer now lists active exact-area USD suites with their own matching Matterport attachment and accepts several selected listing/space pairs into one private JSON array. Each selected pair still requires a successful authenticated model query and measured-floor conversion. The user has been asked for the kit archive or its path; no additional venue has been labeled real or deployed yet. The new candidate filter passed a synthetic archive test; six existing geometry tests and typecheck passed.
