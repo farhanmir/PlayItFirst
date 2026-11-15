@@ -178,7 +178,6 @@ export function CafeScene({ snapshot, viewMode = "monitor", buildMode = false }:
             player={p}
             isYou={p.id === you}
             hideBody={mode === "first" && p.id === you}
-            followLook={p.id === you}
           />
         ))}
       </Canvas>
@@ -1261,15 +1260,15 @@ function PlayerMesh({
   player,
   isYou,
   hideBody = false,
-  followLook = false,
 }: {
   player: PlayerState;
   isYou: boolean;
   hideBody?: boolean;
-  followLook?: boolean;
 }) {
   const root = useRef<Group>(null);
   const initialPosition = useRef<[number, number, number]>([player.x, 0, player.z]);
+  const facing = useRef(isYou ? Math.PI + getLook().yaw : 0);
+  const initialRotation = useRef<[number, number, number]>([0, facing.current, 0]);
   const leftLeg = useRef<Group>(null);
   const rightLeg = useRef<Group>(null);
   const leftArm = useRef<Group>(null);
@@ -1286,6 +1285,7 @@ function PlayerMesh({
     if (!hideBody && root.current) {
       root.current.position.set(target.current.x, 0, target.current.z);
       last.current = { ...target.current };
+      root.current.rotation.set(0, facing.current, 0);
     }
   }, [hideBody]);
 
@@ -1308,12 +1308,14 @@ function PlayerMesh({
     root.current.position.z = nz;
     root.current.rotation.x = 0;
     root.current.rotation.z = 0;
-    if (followLook) root.current.rotation.y = Math.PI + getLook().yaw;
-    else if (speed > .1) {
+    // The walking clip faces +Z. Turn the body toward actual travel, independently
+    // of camera yaw, and retain the last heading when movement stops.
+    if (speed > .1) {
       const desired = Math.atan2(dx, dz);
-      const shortest = Math.atan2(Math.sin(desired - root.current.rotation.y), Math.cos(desired - root.current.rotation.y));
-      root.current.rotation.y += shortest * (1 - Math.exp(-12 * dt));
+      const shortest = Math.atan2(Math.sin(desired - facing.current), Math.cos(desired - facing.current));
+      facing.current += shortest * (1 - Math.exp(-12 * dt));
     }
+    root.current.rotation.y = facing.current;
     const swing = speed > 0.4 ? Math.sin(clock.elapsedTime * 9) * 0.5 : 0;
     if (leftLeg.current) leftLeg.current.rotation.x = swing;
     if (rightLeg.current) rightLeg.current.rotation.x = -swing;
@@ -1330,7 +1332,7 @@ function PlayerMesh({
   }
 
   return (
-    <group ref={root} position={initialPosition.current}>
+    <group ref={root} name={`player:${player.id}`} position={initialPosition.current} rotation={initialRotation.current}>
       <CafeCharacter seed={player.id} fallback={<group>
       <mesh position={[0, 1.02, 0]} castShadow>
         <latheGeometry args={[BARISTA_PROFILE, 12]} />
