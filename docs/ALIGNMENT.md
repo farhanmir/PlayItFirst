@@ -1,6 +1,6 @@
 # Play It First — current alignment
 
-[MASTER_PLAN.md](MASTER_PLAN.md) is canonical; its current release status section supersedes historical requirements descriptions. Audit source 07e55e5, November 14, 2026. Latest recorded combined local run: 106 JS tests (22 files), typecheck/build and 3 Python tests; not an independent rerun on the latest diagnostic commit. **Nessie last, not dropped.**
+[MASTER_PLAN.md](MASTER_PLAN.md) is canonical; its current release status section supersedes historical requirements descriptions. Audit source 07e55e5, November 14, 2026. Latest recorded combined local run: 106 JS tests (22 files), typecheck/build and 3 Python tests; not an independent rerun on the latest diagnostic commit. **Owner now reactivates Nessie live verification alongside Photon.**
 
 | Area | Current evidence | Remaining |
 | --- | --- | --- |
@@ -10,8 +10,8 @@
 | Geometry / build | Measured 12 rooms/66 walls/11 doorways/4 windows; local seeded reroute +4.01 world units after counter edit | Public real-floor causal counter move; measured business improvement, no invented metrics |
 | Visuals | Second character/materials/HUD pass and updated controls | Final art judgment and real-device performance |
 | Business manager | Actual public synthetic plan/approve/execute/read outcome passed at 03497a4; two clients and duplicate protection | Later run at b2ff7ee failed after state read; diagnose with 07e55e5; confirm provider identity, reliability and real-property permission |
-| Photon | Tested signature/outbound transport, owner reports key obtained | Provision line/identity, event schema, signed receiver, owner pairing, dedupe, actual message and call |
-| Nessie (last) | V2 adapter with bounded queue and reconciliation, six mocked-network tests | Actual sandbox credentials, sale and approved purchase receipts, balances; defer until core ready |
+| Photon | Beta transport + bounded demo inbox/session and voice tool code; live provider proof pending | Provision line/identity and actual voice number/SIP; configure secrets, run real paired text/call and receipt |
+| Nessie | V2 adapter with bounded queue and reconciliation, six mocked-network tests | Actual sandbox credentials, sale and approved purchase receipts, balances; live verification now requested |
 | Blueprint | Improved actual session export and browser download | Real-property export and pitch |
 | Timeline/rival/XR | Optional heuristics/session path | No false causal or headset claims; defer extras |
 | Hosting | Render only; public smoke and measured service observed | Verify latest deployed SHA, free plan, physical phone and restart |

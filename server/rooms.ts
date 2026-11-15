@@ -19,6 +19,7 @@ import { attachNessieAccount, refreshNessie } from "./finance.ts";
 import { getCachedProperties, loadProperties } from "./costar.ts";
 import { withMatterportDefaults } from "./matterport.ts";
 import { CafeManager } from "./manager.ts";
+import type { PhoneOwner } from "./phone-bridge.ts";
 import {
   addPlayer,
   buildBlueprint,
@@ -117,6 +118,15 @@ export class CafeRoomServer {
     return this.rooms.get(code);
   }
 
+  /** Owner resume token is a bearer credential; never send it to a phone provider. */
+  phoneOwner(code: string, token: string): PhoneOwner {
+    const room = this.rooms.get(code);
+    const member = room && [...room.members.values()].find(m => m.role === "owner" && m.token === token);
+    if (!room || !member || !token || member.socket?.readyState !== WebSocket.OPEN) throw new Error("Authenticated connected owner required.");
+    return { actor: { roomCode: code, memberId: member.id }, manager: this.managerFor(room),
+      read: () => room.snapshot, active: () => this.rooms.get(code) === room && room.members.get(member.id) === member && member.socket?.readyState === WebSocket.OPEN };
+  }
+
   joinUrl(base: string, code: string) {
     return `${base}/?room=${code}`;
   }
@@ -145,8 +155,8 @@ export class CafeRoomServer {
     }
 
     const session = this.sessions.get(socket);
-    if (!session) {
-      send(socket, { t: "error", message: "Send hello first" });
+    if (!session || session.member.socket !== socket) {
+      send(socket, { t: "error", message: "Send hello first or reconnect" });
       return;
     }
     const { room, member } = session;
@@ -369,6 +379,8 @@ export class CafeRoomServer {
       room.members.set(member.id, member);
       room.snapshot = addPlayer(room.snapshot, member.id, member.name, role);
     } else {
+      const previous = member.socket;
+      if (previous && previous !== socket) { this.sessions.delete(previous); previous.close(4001, "Session resumed"); }
       member.socket = socket;
       member.name = msg.name || member.name;
     }

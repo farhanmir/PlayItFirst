@@ -117,3 +117,9 @@ Existing server-side Matterport credentials optionally enrich that same model wi
 Fresh measured rooms distribute existing equipment to a verified Kitchen/Storage and dining destinations only if safe placement and routes exist. Otherwise the starter layout remains unchanged. Costs and item counts are preserved. Redeploy clears ephemeral rooms, so test in a fresh room.
 
 This is still a reconstruction. The file does not include original furnishing locations, textured mesh, ceiling beams or duct runs. Finish colors/patterns approximate the inspected walkthrough; missing vertical measurements use explicit estimates. Near-exact visual reproduction requires authorized additional source data; do not describe the game as an exact scan replica.
+
+## Active Photon and live Nessie acceptance
+
+See [PHOTON_SETUP.md](PHOTON_SETUP.md) for exact messaging and voice dashboard setup, owner pairing and voice approval. Configure all phone secrets on the existing Render service; no webhook URL is necessary for the bounded demo inbox. Voice tool URL is https://playitfirst.onrender.com/api/phone/voice. Sponsor phone-context permission is separate from model permission.
+
+Nessie is now reactivated by owner request. With real sandbox key in ignored local .env, run `node --import tsx scripts/check-nessie.ts --live` once. This creates a synthetic $1,000 account, a $9 sale deposit, $35 merchant purchase and future $300 rent bill through the production ledger adapter, verifies remote IDs, settlement and $974 balance via read-only reconciliation. No real money and no automatic retry of writes. If uncertain, inspect the existing account before another attempt. This proves adapter/provider contract only; follow with actual manual coffee and owner-approved restock in a fresh game room. Do not expose keys or restricted records. Keep local-only behavior if key absent.

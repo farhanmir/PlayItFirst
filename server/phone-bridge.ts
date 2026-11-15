@@ -1,0 +1,232 @@
+/** Opt-in hackathon phone session. Bounded polling of the documented Photon
+ * Beta REST inbox, not a durable event consumer. No webhook is acknowledged or
+ * replayed. A restart invalidates the session and requires a fresh pairing.
+ * Voice transport is Photon SIP -> an externally provisioned voice agent.
+ */
+import { randomBytes, timingSafeEqual } from "node:crypto";
+import type { RoomSnapshot } from "../shared/types.ts";
+import type { ManagerView } from "../shared/manager.ts";
+import type { CafeManager, ManagerActor } from "./manager.ts";
+import { sendPhotonText } from "./photon-transport.ts";
+
+export interface PhoneOwner {
+  actor: ManagerActor;
+  manager: Pick<CafeManager, "request" | "approve" | "decline" | "getView">;
+  read(): RoomSnapshot;
+  active(): boolean;
+}
+type Config = {
+  apiKey: string; projectId: string; senderHandle: string; agentHandle: string;
+  voiceSecret: string; voiceNumber: string; allowSponsor: boolean;
+};
+type Incoming = { id: string; senderId: string; agentId: string; spaceId: string; text: string };
+const id = (prefix: string, value: unknown): value is string => typeof value === "string" && new RegExp("^pho_" + prefix + "_[0-7][0-9a-hjkmnp-tv-z]{25}$").test(value);
+const obj = (value: unknown): Record<string, unknown> => value && typeof value === "object" ? value as Record<string, unknown> : {};
+const secretEqual = (a: string, b: string) => {
+  const x = Buffer.from(a), y = Buffer.from(b);
+  return x.length === y.length && timingSafeEqual(x, y);
+};
+export function phoneConfig(): Config {
+  return {
+    apiKey: process.env.PHOTON_API_KEY?.trim() || "",
+    projectId: process.env.PHOTON_PROJECT_ID?.trim() || "",
+    senderHandle: process.env.PHOTON_TEST_SENDER?.trim() || "",
+    agentHandle: process.env.PHOTON_AGENT_HANDLE?.trim() || "",
+    voiceSecret: process.env.PHOTON_VOICE_TOOL_SECRET?.trim() || "",
+    voiceNumber: process.env.PHOTON_VOICE_NUMBER?.trim() || "",
+    allowSponsor: process.env.ALLOW_SPONSOR_PHONE_CONTEXT === "true",
+  };
+}
+const messagingConfigured = (c: Config) => c.apiKey.startsWith("pho_sk_") && id("prj", c.projectId) && !!c.senderHandle && !!c.agentHandle;
+const voiceConfigured = (c: Config) => c.voiceSecret.length >= 32 && /^\+[1-9]\d{7,14}$/.test(c.voiceNumber);
+export function parseIncoming(raw: unknown, c: Config, since: number): Incoming | null {
+  const m = obj(raw), sender = obj(m.sentBy), agent = obj(m.receivedBy), space = obj(m.space), content = obj(m.content);
+  if (m.projectId !== c.projectId || m.platform !== "imessage" || m.status !== "received" ||
+      typeof m.createdAt !== "string" || !Number.isFinite(Date.parse(m.createdAt)) || Date.parse(m.createdAt) < since ||
+      !id("msg", m.id) || sender.kind !== "human" || sender.handle !== c.senderHandle ||
+      agent.kind !== "agent" || agent.handle !== c.agentHandle || !id("usr", sender.id) || !id("usr", agent.id) ||
+      sender.id === agent.id || !id("spc", space.id) || space.kind !== "direct" ||
+      content.type !== "text" || content.format !== "plain" || typeof content.text !== "string" ||
+      !content.text.trim() || content.text.length > 1200) return null;
+  return { id: m.id, senderId: sender.id, agentId: agent.id, spaceId: space.id, text: content.text.trim() };
+}
+type Session = {
+  owner: PhoneOwner; code: string; started: number; expires: number; propertyId: string | null;
+  paired: Incoming | null; seen: Set<string>; messageState: string; voiceSeen: boolean;
+  busy: boolean; nextVoiceAt: number; approvals: Map<string, { code: string; expires: number }>;
+};
+export class PhoneBridge {
+  private session: Session | null = null;
+  private timer: ReturnType<typeof setTimeout> | undefined;
+  constructor(private c = phoneConfig(), private fetcher: typeof fetch = fetch, private now = Date.now) {}
+  status() {
+    return { messagingConfigured: messagingConfigured(this.c), voiceConfigured: voiceConfigured(this.c),
+      messaging: this.session?.messageState || "not-started",
+      voice: this.session?.voiceSeen ? "tool-called-not-call-verified" : "not-verified" };
+  }
+  private live(s: Session) {
+    const current = s.owner.read();
+    const restricted = current.property?.source === "costar-extract" || current.property?.source === "costar-live";
+    return this.session === s && this.now() < s.expires && s.owner.active() &&
+      (current.property?.id ?? null) === s.propertyId && (!restricted || this.c.allowSponsor);
+  }
+  private belongs(s: Session, owner: PhoneOwner) {
+    return s.owner.actor.roomCode === owner.actor.roomCode && s.owner.actor.memberId === owner.actor.memberId;
+  }
+  private get(owner: PhoneOwner) {
+    const s = this.session;
+    if (!s || !this.live(s) || !this.belongs(s, owner)) throw new Error("Start a fresh phone session in your café.");
+    return s;
+  }
+  private info(s: Session) {
+    return { ...this.status(), code: s.code, expiresAt: s.expires,
+      paired: !!s.paired, agentHandle: messagingConfigured(this.c) ? this.c.agentHandle : null,
+      voiceNumber: voiceConfigured(this.c) ? this.c.voiceNumber : null };
+  }
+  start(owner: PhoneOwner) {
+    if (!owner.active()) throw new Error("Connect as the café owner first.");
+    if (!messagingConfigured(this.c) && !voiceConfigured(this.c)) throw new Error("Phone provider configuration is incomplete.");
+    const property = owner.read().property;
+    if ((property?.source === "costar-extract" || property?.source === "costar-live") && !this.c.allowSponsor)
+      throw new Error("External phone processing is not authorized for this property. Use a synthetic room.");
+    if (this.session && this.live(this.session)) {
+      if (!this.belongs(this.session, owner)) throw new Error("Another phone demo is active. End that session first.");
+      return this.info(this.session);
+    }
+    this.stop();
+    const now = this.now();
+    const s: Session = { owner, code: randomBytes(8).toString("hex"), started: now, expires: now + 10 * 60_000,
+      propertyId: property?.id ?? null, paired: null, seen: new Set(), messageState: messagingConfigured(this.c) ? "waiting-for-pair" : "not-configured",
+      voiceSeen: false, busy: false, nextVoiceAt: 0, approvals: new Map() };
+    this.session = s;
+    if (messagingConfigured(this.c)) this.schedule(s, 0);
+    return this.info(s);
+  }
+  getStatus(owner: PhoneOwner) { return this.info(this.get(owner)); }
+  end(owner: PhoneOwner) { this.get(owner); this.stop(); return { ended: true }; }
+  private stop() {
+    if (this.timer) clearTimeout(this.timer);
+    this.timer = undefined; this.session = null;
+  }
+  private schedule(s: Session, delay: number) {
+    if (!this.live(s)) { if (this.session === s) this.stop(); return; }
+    this.timer = setTimeout(() => void this.poll(s), delay);
+    this.timer.unref?.();
+  }
+  /** Process only messages created after the explicit pairing session begins.
+   * Never poll across restarts, or replay an ambiguous send/mutation. */
+  private async poll(s: Session) {
+    if (!this.live(s)) { if (this.session === s) this.stop(); return; }
+    try {
+      let pageToken: string | undefined;
+      for (let page = 0; page < 3; page++) {
+        if (!this.live(s)) return;
+        const query = new URLSearchParams({ createdSince: new Date(s.started - 5000).toISOString(), direction: "received",
+          order: "asc", pageSize: "100", platform: "imessage" });
+        if (pageToken) query.set("pageToken", pageToken);
+        const r = await this.fetcher("https://api.photon.codes/v1/projects/" + this.c.projectId + "/messages?" + query.toString(), {
+          headers: { Authorization: "Bearer " + this.c.apiKey }, redirect: "error", signal: AbortSignal.timeout(8000),
+        });
+        if (!r.ok) throw new Error("Inbox HTTP " + r.status);
+        const data = obj(await r.json());
+        if (!Array.isArray(data.items)) throw new Error("Unexpected inbox response");
+        for (const raw of data.items) {
+          if (!this.live(s)) return;
+          const m = parseIncoming(raw, this.c, s.started);
+          if (!m || s.seen.has(m.id)) continue;
+          // Mark before work. Unknown delivery/execution is never automatically replayed.
+          if (s.seen.size >= 100) throw new Error("Session message limit");
+          s.seen.add(m.id);
+          await this.handleMessage(s, m);
+        }
+        pageToken = typeof data.nextPageToken === "string" && data.nextPageToken ? data.nextPageToken : undefined;
+        if (!pageToken) break;
+        if (page === 2) throw new Error("Session inbox capacity");
+      }
+      this.schedule(s, 3000);
+    } catch {
+      if (this.session === s) {
+        // Stop on provider failure or rate limit. A new session requires owner action.
+        s.messageState = "paused-error-restart-session";
+      }
+    }
+  }
+  private async reply(s: Session, m: Incoming, text: string) {
+    if (!this.live(s)) return;
+    await sendPhotonText({ projectId: this.c.projectId, senderId: m.agentId, spaceId: m.spaceId,
+      text: text.slice(0, 3900), idempotencyKey: "playitfirst:" + m.id }, this.c.apiKey, this.fetcher);
+    s.messageState = "reply-accepted-delivery-unverified";
+  }
+  private async handleMessage(s: Session, m: Incoming) {
+    if (!s.paired) {
+      if (!secretEqual(m.text.toLowerCase(), "pair " + s.code)) return;
+      s.paired = m;
+      await this.reply(s, m, "Jamie connected to your café for this demo session. Ask about stock, cash or queues. Approve only with the exact APPROVE proposal ID shown in a reply. Send STOP to disconnect.");
+      return;
+    }
+    if (m.senderId !== s.paired.senderId || m.agentId !== s.paired.agentId || m.spaceId !== s.paired.spaceId) return;
+    if (/^stop$/i.test(m.text)) {
+      await this.reply(s, m, "Phone session disconnected. Start another in the game to reconnect.");
+      this.stop(); return;
+    }
+    if (/^pair /i.test(m.text)) return;
+    if (s.busy) { await this.reply(s, m, "Jamie is busy. Send a new message when the current operation finishes."); return; }
+    s.busy = true;
+    let result: string;
+    try {
+      const command = /^(approve|decline) ([0-9a-f-]{36})$/i.exec(m.text);
+      if (command) {
+        const proposal = s.owner.manager.getView().proposals.find(p => p.id === command[2].toLowerCase() && p.requestedBy === s.owner.actor.memberId);
+        if (!proposal) throw new Error("Proposal not found");
+        const view = command[1].toLowerCase() === "approve" ? await s.owner.manager.approve(s.owner.actor, proposal.id) : s.owner.manager.decline(s.owner.actor, proposal.id);
+        result = this.describe(s, view);
+      } else {
+        const view = await s.owner.manager.request(s.owner.actor, m.text);
+        result = this.describe(s, view);
+      }
+    } catch { result = "The request was refused or is busy. Check the game for receipts and ask again if needed. No success is assumed."; }
+    finally { s.busy = false; }
+    await this.reply(s, m, result);
+  }
+  private describe(s: Session, view: ManagerView) {
+    const current = s.owner.read();
+    const proposals = view.proposals.slice(-3).map(p => p.status === "pending"
+      ? p.action + " — $" + p.cost.toFixed(2) + ". APPROVE " + p.id
+      : p.action + " — " + p.status + (p.result ? ": " + p.result : "") + (p.transactionId ? " (game receipt " + p.transactionId + ")" : ""));
+    return [view.summary.slice(0, 1600), "Actual game cash $" + current.finance.balance.toFixed(2) +
+      "; milk " + current.inventory.milk + ", cups " + current.inventory.cups + ", beans " + current.inventory.beans + ".", ...proposals].join("\n");
+  }
+  issueVoiceApproval(owner: PhoneOwner, proposalId: string) {
+    const s = this.get(owner);
+    if (!voiceConfigured(this.c)) throw new Error("Voice is not configured.");
+    const p = s.owner.manager.getView().proposals.find(p => p.id === proposalId && p.requestedBy === owner.actor.memberId && p.status === "pending");
+    if (!p || p.expiresAt <= this.now()) throw new Error("Select a current pending proposal.");
+    const code = randomBytes(4).toString("hex");
+    s.approvals.set(p.id, { code, expires: Math.min(p.expiresAt, this.now() + 90_000) });
+    return { approvalCode: code, proposalId: p.id, cost: p.cost };
+  }
+  async voice(auth: string, body: Record<string, unknown>) {
+    if (!voiceConfigured(this.c) || !secretEqual(auth, "Bearer " + this.c.voiceSecret)) throw new Error("Unauthorized voice tool.");
+    const s = this.session;
+    if (!s || !this.live(s) || typeof body.code !== "string" || !secretEqual(body.code.toLowerCase(), s.code)) throw new Error("Valid owner phone session code required.");
+    if (s.busy || this.now() < s.nextVoiceAt) throw new Error("Jamie is busy; try again after this operation.");
+    s.nextVoiceAt = this.now() + 2500;
+    s.busy = true;
+    try {
+      let view = s.owner.manager.getView();
+      if (body.action === "ask") {
+        if (typeof body.question !== "string" || !body.question.trim() || body.question.length > 1200) throw new Error("A question is required.");
+        view = await s.owner.manager.request(s.owner.actor, body.question);
+      } else if (body.action === "approve") {
+        if (typeof body.proposalId !== "string" || typeof body.approvalCode !== "string") throw new Error("Exact proposal ID and owner-issued approval code required.");
+        const approval = s.approvals.get(body.proposalId);
+        if (!approval || approval.expires <= this.now() || !secretEqual(body.approvalCode.toLowerCase(), approval.code)) throw new Error("Invalid or expired owner approval code.");
+        s.approvals.delete(body.proposalId);
+        view = await s.owner.manager.approve(s.owner.actor, body.proposalId);
+      } else if (body.action !== "status") throw new Error("Unsupported voice action.");
+      if (!this.live(s)) throw new Error("Phone session ended.");
+      s.voiceSeen = true;
+      return { answer: this.describe(s, view), proposals: view.proposals.slice(-3).map(p => ({ id:p.id, action:p.action, costUSD:p.cost, status:p.status, result:p.result, transactionId:p.transactionId })), callVerified: false };
+    } finally { s.busy = false; }
+  }
+}

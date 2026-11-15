@@ -14,6 +14,7 @@ import { qrSvg } from "./qr.ts";
 import { loadProperties, getCachedProperties } from "./costar.ts";
 import { resolveMatterport } from "./matterport.ts";
 import { deepagentsConfigured } from "./deepagents.ts";
+import { PhoneBridge } from "./phone-bridge.ts";
 
 // Node 22's loader preserves values already supplied by Render's environment.
 if (existsSync(".env")) loadEnvFile(".env");
@@ -31,6 +32,7 @@ const allowedOrigins = (process.env.CORS_ORIGINS || process.env.FRONTEND_ORIGIN 
 const server = http.createServer();
 const wss = new WebSocketServer({ noServer: true, maxPayload: 1 * 1024 * 1024 });
 const rooms = new CafeRoomServer(wss);
+const phones = new PhoneBridge();
 
 server.on("upgrade", (request, socket, head) => {
   if (new URL(request.url || "/", "http://localhost").pathname === "/ws") {
@@ -109,6 +111,19 @@ function readJson(req: IncomingMessage): Promise<Record<string, unknown>> {
   });
 }
 
+async function readPhoneBody(req: IncomingMessage): Promise<Record<string, unknown>> {
+  let size = 0; const chunks: Buffer[] = [];
+  for await (const chunk of req) {
+    const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    size += bytes.length;
+    if (size > 8192) throw new Error("Request too large");
+    chunks.push(bytes);
+  }
+  const body: unknown = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  if (!body || typeof body !== "object" || Array.isArray(body)) throw new Error("Invalid JSON object");
+  return body as Record<string, unknown>;
+}
+
 function json(res: ServerResponse, status: number, data: unknown) {
   res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
   res.end(JSON.stringify(data));
@@ -152,6 +167,32 @@ server.on("request", (req, res) => {
     }
     const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
 
+    if (url.pathname === "/api/phone/session" || url.pathname === "/api/phone/voice") {
+      res.setHeader("Cache-Control", "no-store");
+      if (req.method !== "POST") { json(res, 405, { error: "POST required" }); return; }
+      try {
+        const body = await readPhoneBody(req);
+        if (url.pathname === "/api/phone/voice") {
+          const result = await phones.voice(req.headers.authorization || "", body);
+          json(res, 200, result); return;
+        }
+        const auth = req.headers.authorization || "";
+        if (typeof body.room !== "string" || !/^Bearer [0-9a-f]{24}$/.test(auth)) throw new Error("Owner authorization required");
+        const owner = rooms.phoneOwner(body.room, auth.slice(7));
+        const result = body.action === "start" ? phones.start(owner)
+          : body.action === "status" ? phones.getStatus(owner)
+          : body.action === "end" ? phones.end(owner)
+          : body.action === "voice_approval" && typeof body.proposalId === "string" ? phones.issueVoiceApproval(owner, body.proposalId)
+          : null;
+        if (!result) { json(res, 400, { error: "Unsupported phone session action" }); return; }
+        json(res, 200, result);
+      } catch (error) {
+        // Never return provider errors or secret-bearing bodies to clients.
+        json(res, 400, { error: error instanceof Error ? error.message.slice(0, 240) : "Phone request refused" });
+      }
+      return;
+    }
+
     if (url.pathname === "/api/properties") {
       if (url.searchParams.get("refresh") === "1") await rooms.refreshProperties();
       const bundle = getCachedProperties();
@@ -171,8 +212,8 @@ server.on("request", (req, res) => {
         matterport: !!(process.env.MATTERPORT_TOKEN || process.env.MATTERPORT_SDK_TOKEN),
         nessie: !!process.env.NESSIE_KEY,
         deepagents: deepagentsConfigured(),
-        photonVoice: "webrtc-crew-not-photon-2",
-        photonMessaging: "in-app-regex-not-photon-2",
+        photonVoice: phones.status().voiceConfigured ? "voice-tool-configured-call-unverified" : "webrtc-crew-not-photon-2",
+        photonMessaging: phones.status().messagingConfigured ? "beta-demo-inbox-configured-delivery-unverified" : "in-app-regex-not-photon-2",
         webxr: "client",
       });
       return;

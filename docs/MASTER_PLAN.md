@@ -7,9 +7,13 @@
 
 This document consolidates the original concept, issue #2, the event handbook, sponsor issues #6–#11, original alignment and pitch docs, and later owner feedback. It is the authoritative product scope and acceptance plan, not a claim that everything is finished. Read [PROGRESS.md](PROGRESS.md) for dated evidence, [DEPLOY.md](DEPLOY.md) for deployment steps, [ALIGNMENT.md](ALIGNMENT.md) for the compact audit, [HACKATHON.md](HACKATHON.md) for the pitch, and [../AGENTS.md](../AGENTS.md) for agent rules. Current owner decisions and new verified evidence supersede old historical descriptions. Update this plan as requirements change.
 
+## Sponsor activation — latest owner decision
+
+Owner now requests completing Photon Messaging, Photon Voice and live Capital One Nessie in parallel. Nessie is no longer deferred. Preserve the implemented V2 banking adapter and shared CafeManager. Use a bounded owner-initiated Photon Beta inbox demo with exact configured sender/agent filtering, fresh pairing, stable message idempotency keys and no automatic replay. Voice uses an eligible Photon number and externally provisioned ElevenLabs SIP agent with a secret-authenticated tool and session code; a voice purchase also requires an owner-issued one-use exact-proposal approval code. See PHOTON_SETUP.md for setup and limitations. Actual provider credentials, physical-phone messages/calls, and live bank settlement are still required. Keep source-data authorization guards. Do not call an API acceptance a delivery or local ledger an external settlement. No additional hosting or paid services without approval. Finish these in parallel with final submission and core validation.
+
 ## Current release status and owner priorities — November 14, 6:11 PM ET audit
 
-Source snapshot: `07e55e5`; latest detailed observations are at the end of [PROGRESS.md](PROGRESS.md). This section supersedes the earlier implementation-status descriptions below; the original product requirements and acceptance gates remain. **Owner decision: finish Nessie LAST.** Keep its existing V2 code and Capital One target; do not remove or rewrite it, and do not block the core demo on it. Finish the main game, real-property proof, live manager and Photon first.
+Source snapshot: `07e55e5`; latest detailed observations are at the end of [PROGRESS.md](PROGRESS.md). This section supersedes the earlier implementation-status descriptions below; the original product requirements and acceptance gates remain. **Historical decision: Nessie was deferred. Superseded by the current sponsor activation section above.** Keep its existing V2 code and Capital One target; do not remove or rewrite it, and do not block the core demo on it. Finish the main game, real-property proof, live manager and Photon first.
 
 | Area | Evidence | Still needed |
 | --- | --- | --- |
@@ -25,7 +29,7 @@ Source snapshot: `07e55e5`; latest detailed observations are at the end of [PROG
 
 Combined recorded local verification: 106 JavaScript tests in 22 files, typecheck/build passed, 3 Python converter tests. This was before the newest diagnostic commit; rerun on current main. Latest public service observed at 23:07:49 UTC; health immediately after reported 0b6dcd7, not proof of starting SHA. Public earlier synthetic success at 22:58 UTC is distinct from later failure at 23:05 UTC. Evidence in PROGRESS and screenshots JSON. This audit reviewed committed evidence, not an independent new public test.
 
-**Execution order now:** (1) finish core game/real property/physical-phone/demo and actual model reliability in parallel; (2) real Photon Messaging first, then Voice as provisioning permits; (3) final blueprint, SpaceXSI eligibility and submission prep in parallel (do not miss deadline); (4) Nessie live verification and optional improvements LAST, only if core and submission safe. Do not lose a working demo chasing a bank integration. If Nessie is unverified, label local ledger honestly and omit unsupported prize claim.
+**Historical execution order (superseded):** (1) finish core game/real property/physical-phone/demo and actual model reliability in parallel; (2) real Photon Messaging first, then Voice as provisioning permits; (3) final blueprint, SpaceXSI eligibility and submission prep in parallel (do not miss deadline); (4) Nessie live verification and optional improvements LAST, only if core and submission safe. Do not lose a working demo chasing a bank integration. If Nessie is unverified, label local ledger honestly and omit unsupported prize claim.
 
 ## 1. Product vision and why it matters
 
@@ -242,9 +246,9 @@ Run independent workstreams in parallel. Hrudai is the only formally assigned de
 - [ ] Property/agent: confirm permissions, public exact property, real viewer, live Gemini synthetic test, authorized real-property reasoning if allowed; tool receipt and two-client update.
 - [ ] Fix blockers in tested paths, no major architecture replacement. Each agent reads AGENTS.md and this file before touching code.
 
-**P1 parallel sponsor gates (Nessie deferred until last)**
+**P1 parallel sponsor gates (Nessie reactivated)**
 - [ ] Photon Messaging then Voice real provider onboarding/verified callback/pairing/approved action; escalate provisioning early.
-- [ ] Nessie LAST: V2 integration/reconciliation already implemented; defer real sandbox configuration, receipt verification and optional enhancements until core game, manager, Photon and submission readiness.
+- [ ] Nessie: V2 implementation exists; configure key and verify real account, sale, approved merchant purchase, upcoming bill and reconciliation now. No optional scope until core and submission are safe.
 - [ ] SpaceXSI workflow/eligibility, submission, evidence, public repo audit, final pitch.
 
 **P2 only after vertical slice:** direct dragging/full ghosts, seeded replay, additional property/Vexcel, advanced XR, more business types, durable saves. Do not let P2 or extra integrations displace game feel or required testing.
