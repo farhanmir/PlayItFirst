@@ -21,8 +21,8 @@ export function maybeSpawnDirectorEvent(snapshot: RoomSnapshot, now: number): Di
       "Unexpected rush",
       "A nearby office just finished a meeting. Twelve customers are arriving within minutes. Your current staffing and equipment may not keep up.",
       [
-        { id: "temp_help", label: "Hire temporary help (−$120)" },
-        { id: "open_station", label: "Open another service station" },
+        { id: "temp_help", label: "Ease this simulated rush (free)" },
+        { id: "open_station", label: "Try adding an espresso machine" },
         { id: "reduce_menu", label: "Reduce the menu temporarily" },
         { id: "tough_it", label: "Handle it with existing staff" },
       ],
@@ -100,8 +100,8 @@ export function forceDemoRushEvent(now = Date.now()): DirectorEvent {
     "Unexpected rush",
     "A nearby office just finished a meeting. Twelve customers are arriving within minutes. Your current staffing and equipment may not keep up.",
     [
-      { id: "temp_help", label: "Hire temporary help (−$120)" },
-      { id: "open_station", label: "Open another service station" },
+      { id: "temp_help", label: "Ease this simulated rush (free)" },
+      { id: "open_station", label: "Try adding an espresso machine" },
       { id: "reduce_menu", label: "Reduce the menu temporarily" },
       { id: "tough_it", label: "Handle it with existing staff" },
     ],
@@ -139,16 +139,14 @@ export function applyDirectorChoice(
 
   switch (choiceId) {
     case "temp_help":
-      if (!charge("Temporary barista help", 120, "wages")) break;
-      // Jamie assists sooner; ease the rush pressure — sim recomputes queue
+      // Legacy choice ID retained for existing rooms. This is difficulty relief,
+      // not a paid staffing service: it does not create or reassign a worker.
       next = {
         ...next,
-        rushBoost: Math.max(0, (snapshot.rushBoost ?? 1) - 0.5),
-        lastHumanInteractAt: snapshot.simTime - 10,
-        aiBarista: snapshot.aiBarista ?? { holding: null },
+        rushBoost: Math.max(0, (snapshot.rushBoost ?? 0) - 0.5),
       };
-      photon = "temp barista checked in. i'll cover the overflow.";
-      log.unshift("Hired temporary help (−$120) — Jamie covering harder");
+      photon = "simulated arrival pressure eased. no worker was hired and no money was charged.";
+      log.unshift("Eased simulated rush pressure — free difficulty adjustment, no staffing change");
       break;
     case "open_station": {
       if (!property || !snapshot.layout) {
@@ -159,8 +157,16 @@ export function applyDirectorChoice(
       const z = Math.min(property.depth - 1.2, 6.2);
       next = placeFurniture(snapshot, "coffee_machine", x, z);
       finance = next.finance;
-      photon = "second machine is live. i moved jordan to drinks.";
-      log.unshift("Opened a second espresso station (placed machine)");
+      const placed = next.layout!.furniture.some((item) => item.kind === "coffee_machine" &&
+        !snapshot.layout!.furniture.some((existing) => existing.id === item.id));
+      if (placed) {
+        photon = "an espresso machine was added. staffing is unchanged.";
+        log.unshift("Added an espresso machine — no staff reassignment");
+      } else {
+        const reason = next.eventLog !== snapshot.eventLog ? next.eventLog[0] : "Insufficient funds or no valid placement";
+        photon = `machine not added: ${reason}. no money was charged.`;
+        log.unshift(`Espresso machine not added: ${reason}`);
+      }
       break;
     }
     case "reduce_menu":

@@ -39,3 +39,36 @@ describe("director choices", () => {
     expect(snapshot.metrics.avgWaitSec).toBe(42);
   });
 });
+
+
+describe("truthful director outcomes", () => {
+  it("does not charge for or invent temporary staff", () => {
+    const state = { ...openCafe(selectProperty(createRoomSnapshot("free"), listing)), rushBoost: 1, director: forceDemoRushEvent() };
+    const result = applyDirectorChoice(state, "temp_help");
+    expect(result.snapshot.finance).toBe(state.finance);
+    expect(result.snapshot.players).toBe(state.players);
+    expect(result.snapshot.aiBarista).toBe(state.aiBarista);
+    expect(result.snapshot.lastHumanInteractAt).toBe(state.lastHumanInteractAt);
+    expect(result.snapshot.rushBoost).toBe(0.5);
+    expect(result.photon).toContain("no worker was hired");
+    expect(forceDemoRushEvent().choices.find((choice) => choice.id === "temp_help")?.label).toContain("free");
+  });
+  it("reports failed station placement without charging or claiming a reassignment", () => {
+    const state = { ...openCafe(selectProperty(createRoomSnapshot("blocked"), listing)), director: forceDemoRushEvent() };
+    state.layout!.furniture.push({ id: "obstacle", kind: "table", label: "Table", x: 2.8, z: 6.2, rotation: 0, cost: 0 });
+    const result = applyDirectorChoice(state, "open_station");
+    expect(result.snapshot.layout).toBe(state.layout);
+    expect(result.snapshot.finance).toBe(state.finance);
+    expect(result.photon).toContain("machine not added");
+    expect(result.snapshot.eventLog[0]).toContain("not added");
+    expect(result.photon).not.toContain("jordan");
+  });
+  it("reports insufficient funds without claiming a station exists", () => {
+    const state = { ...openCafe(selectProperty(createRoomSnapshot("poor"), listing)), director: forceDemoRushEvent() };
+    state.finance = { ...state.finance, balance: 0 };
+    const result = applyDirectorChoice(state, "open_station");
+    expect(result.snapshot.finance.balance).toBe(0);
+    expect(result.photon).toContain("Insufficient funds");
+    expect(result.snapshot.layout).toBe(state.layout);
+  });
+});
