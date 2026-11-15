@@ -2,6 +2,7 @@ import { Component, Suspense, useEffect, useMemo, useRef, type ReactNode } from 
 import { useFrame } from "@react-three/fiber";
 import { useAnimations, useGLTF } from "@react-three/drei";
 import { Box3, Color, Group, Mesh, MeshStandardMaterial, Vector3, SphereGeometry, TorusGeometry, BoxGeometry, MathUtils } from "three";
+import { createCarriedProp, type CarriedState } from "./CarriedProp";
 import { clone } from "three/examples/jsm/utils/SkeletonUtils.js";
 
 class CharacterBoundary extends Component<{ children: ReactNode; fallback: ReactNode }, { failed: boolean }> {
@@ -11,11 +12,11 @@ class CharacterBoundary extends Component<{ children: ReactNode; fallback: React
 }
 
 /** CC0 Kenney rig. Cached source assets; each avatar has its own skeleton and mixer. */
-export function CafeCharacter({ seed, appearance, fallback }: { seed: string; appearance?: number; fallback: ReactNode }) {
-  return <CharacterBoundary fallback={fallback}><Suspense fallback={fallback}><AnimatedCharacter seed={seed} appearance={appearance} /></Suspense></CharacterBoundary>;
+export function CafeCharacter({ seed, appearance, carried = null, fallback }: { seed: string; appearance?: number; carried?: CarriedState; fallback: ReactNode }) {
+  return <CharacterBoundary fallback={fallback}><Suspense fallback={fallback}><AnimatedCharacter seed={seed} appearance={appearance} carried={carried} /></Suspense></CharacterBoundary>;
 }
 
-function AnimatedCharacter({ seed, appearance }: { seed: string; appearance?: number }) {
+function AnimatedCharacter({ seed, appearance, carried }: { seed: string; appearance?: number; carried: CarriedState }) {
   const identity = Array.from(seed).reduce((n, c) => n + c.charCodeAt(0), 0);
   const variant = identity % 2;
   const style = (appearance ?? identity) % 5;
@@ -96,6 +97,7 @@ function AnimatedCharacter({ seed, appearance }: { seed: string; appearance?: nu
     const scale = [1.66, 1.84, 1.74, 1.91, 1.78][style] / (bounds.max.y - bounds.min.y);
     return { scale, y: -bounds.min.y * scale };
   }, [rig]);
+  const held = useMemo(() => createCarriedProp(rig), [rig]);
   const root = useRef<Group>(null);
   const { actions } = useAnimations(gltf.animations, rig);
   const previous = useRef(new Vector3());
@@ -121,6 +123,7 @@ function AnimatedCharacter({ seed, appearance }: { seed: string; appearance?: nu
     walkWeight.current = MathUtils.damp(walkWeight.current, targetWeight, 7, dt);
     actions.run?.setEffectiveWeight(walkWeight.current);
     actions.idle?.setEffectiveWeight(1 - walkWeight.current);
+    held.update(carried, dt);
   });
   return <group ref={root}><group scale={[[.93,1,1],[1.04,1,1],[.9,1,1],[1.1,1,1],[1,1,1]][style] as [number,number,number]}><primitive object={rig} scale={dimensions.scale} position={[0, dimensions.y, 0]} dispose={null} /></group></group>;
 }

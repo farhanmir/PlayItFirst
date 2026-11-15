@@ -1280,6 +1280,7 @@ function PlayerMesh({
   target.current = { x: player.x, z: player.z };
   const drink = player.holding?.startsWith("drink:");
   const brewing = player.holding?.startsWith("brewing:");
+  const carried = drink ? "drink" : brewing ? "brewing" : player.holding ? "ticket" : null;
   useEffect(() => {
     // A first-person view model uses camera coordinates; reset when restoring the world avatar.
     if (!hideBody && root.current) {
@@ -1324,16 +1325,16 @@ function PlayerMesh({
   });
 
   if (hideBody) {
-    return drink || brewing ? (
+    return drink ? (
       <group ref={root} position={initialPosition.current}>
-        <HeldCup drink={!!drink} brewing={!!brewing} firstPerson />
+        <HeldCup drink firstPerson skin={skin} />
       </group>
     ) : null;
   }
 
   return (
     <group ref={root} name={`player:${player.id}`} position={initialPosition.current} rotation={initialRotation.current}>
-      <CafeCharacter seed={player.id} fallback={<group>
+      <CafeCharacter seed={player.id} carried={carried} fallback={<group>
       <mesh position={[0, 1.02, 0]} castShadow>
         <latheGeometry args={[BARISTA_PROFILE, 12]} />
         <meshStandardMaterial
@@ -1358,6 +1359,7 @@ function PlayerMesh({
         <group rotation={[0, 0, side * 0.12]}>
           <mesh position={[0, -0.16, 0]} castShadow><cylinderGeometry args={[0.095, 0.065, 0.34, 8]} /><meshStandardMaterial color={player.color} roughness={0.9} /></mesh>
           <mesh position={[0, -0.34, 0.02]} castShadow><sphereGeometry args={[0.075, 8, 8]} /><meshStandardMaterial color={skin} roughness={0.8} /></mesh>
+          {side > 0 && drink && <group position={[.09, -.34, .02]} rotation={[.65, 0, -.12]}><HeldCup drink /></group>}
         </group>
       </group>)}
       <group ref={leftLeg} position={[-0.12, 0.55, 0]}>
@@ -1387,12 +1389,11 @@ function PlayerMesh({
         {player.name}
       </Text>
       </Billboard>}
-      {(player.holding || drink || brewing) && <HeldCup drink={!!drink} brewing={!!brewing} />}
     </group>
   );
 }
 
-function HeldCup({ drink, brewing, firstPerson = false }: { drink: boolean; brewing: boolean; firstPerson?: boolean }) {
+function HeldCup({ drink, brewing = false, firstPerson = false, skin = "#c58d68" }: { drink: boolean; brewing?: boolean; firstPerson?: boolean; skin?: string }) {
   const steam = useRef<Group>(null);
   const { size } = useThree();
   useFrame(({ clock }) => {
@@ -1400,7 +1401,11 @@ function HeldCup({ drink, brewing, firstPerson = false }: { drink: boolean; brew
     steam.current.position.y = 0.2 + Math.sin(clock.elapsedTime * 3) * 0.03;
   });
   return (
-    <group position={firstPerson ? [Math.min(0.25, 0.14 * size.width / size.height), size.width < size.height ? -0.1 : -0.16, -0.48] : [0.38, 1.15, 0.22]}>
+    <group position={firstPerson ? [Math.min(0.25, 0.14 * size.width / size.height), size.width < size.height ? -0.1 : -0.16, -0.48] : [0, 0, 0]}>
+      {firstPerson && <group>
+        <mesh position={[.09, -.025, .025]} rotation={[.25, 0, -.25]} renderOrder={100}><capsuleGeometry args={[.026, .055, 4, 8]} /><meshStandardMaterial color={skin} roughness={.85} depthTest={false} depthWrite={false} /></mesh>
+        <mesh position={[.125, -.12, .075]} rotation={[-.4, 0, .3]} renderOrder={100}><capsuleGeometry args={[.032, .16, 4, 8]} /><meshStandardMaterial color={skin} roughness={.85} depthTest={false} depthWrite={false} /></mesh>
+      </group>}
       <mesh castShadow={!firstPerson} renderOrder={firstPerson ? 100 : 0}>
         <cylinderGeometry args={[0.07, 0.06, 0.14, 10]} />
         <meshStandardMaterial color={PALETTE.foam} roughness={0.5} depthTest={!firstPerson} depthWrite={!firstPerson} />
