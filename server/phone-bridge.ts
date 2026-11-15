@@ -43,6 +43,14 @@ export function phoneConfig(): Config {
 }
 // PHOTON_TEST_SENDER may list several teammates' iMessage handles, comma-separated. Pairing still binds one sender per session.
 export const allowedSenders = (c: Config) => c.senderHandle.split(",").map((h) => h.trim()).filter(Boolean);
+// Compare phone handles by digits so "+1 (703) 863-8400", "7038638400" and "+17038638400" all match; emails compare case-insensitively.
+export const handleKey = (h: unknown) => {
+  const v = String(h ?? "").trim();
+  if (v.includes("@")) return v.toLowerCase();
+  const d = v.replace(/\D/g, "");
+  return d.length === 10 ? "1" + d : d;
+};
+const senderAllowed = (c: Config, handle: unknown) => !!handleKey(handle) && allowedSenders(c).some((h) => handleKey(h) === handleKey(handle));
 const messagingConfigured = (c: Config) => c.transport === "bounded-inbox" && c.apiKey.startsWith("pho_sk_") && id("prj", c.projectId) && !!c.senderHandle && !!c.agentHandle;
 const voiceConfigured = (c: Config) => c.voiceSecret.length >= 32 && /^\+[1-9]\d{7,14}$/.test(c.voiceNumber);
 /** Why a polled message was ignored (no message content or phone numbers), for the live status line. */
@@ -56,10 +64,10 @@ export function rejectReason(raw: unknown, c: Config, since: number): string | n
   if (!id("msg", m.id)) return "message-id";
   // Photon marks its own lines kind "agent"; the human side's kind name is not documented, so only exclude agents.
   if (sender.kind === "agent") return "sender-is-agent";
-  if (!allowedSenders(c).includes(String(sender.handle))) return "sender-not-allowed";
+  if (!senderAllowed(c, sender.handle)) return "sender-not-allowed";
   if (!id("usr", sender.id)) return "sender-id";
   if (Object.keys(agent).length) {
-    if (agent.handle !== c.agentHandle) return "agent-handle";
+    if (handleKey(agent.handle) !== handleKey(c.agentHandle)) return "agent-handle";
     if (!id("usr", agent.id) || sender.id === agent.id) return "agent-id";
   } else if (!Array.isArray(space.participantIds) || !space.participantIds.some(p => p !== sender.id && id("usr", p))) return "no-agent";
   if (!id("spc", space.id)) return "space-id";

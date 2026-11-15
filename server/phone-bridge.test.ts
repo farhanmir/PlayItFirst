@@ -32,6 +32,9 @@ describe("bounded phone demo",()=>{
     expect(parseIncoming(real,config,now-1000)?.agentId).toBe(agentId);
     expect(rejectReason({...m,sentBy:{...m.sentBy,kind:"agent"}},config,now-1000)).toBe("sender-is-agent");
     expect(rejectReason({...m,sentBy:{...m.sentBy,handle:"+19999999999"}},config,now-1000)).toBe("sender-not-allowed");
+    expect(parseIncoming(m,{...config,senderHandle:"(415) 555-0123"},now-1000)?.senderId).toBe(senderId);
+    expect(parseIncoming(m,{...config,senderHandle:"4155550123"},now-1000)?.senderId).toBe(senderId);
+    expect(parseIncoming(m,{...config,senderHandle:"+1 415 555 0124"},now-1000)).toBeNull();
   });
   it("accepts any handle in a comma-separated sender list and nothing else",()=>{
     const now=Date.now(),m=message("hello"),team={...config,senderHandle:" +14155550999 , "+config.senderHandle};
