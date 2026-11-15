@@ -1,7 +1,7 @@
 import type { CafeLayout, FurnitureItem, PropertyListing, Vec2 } from "../shared/types.ts";
 import { floorMoveClear, floorPositionClear, pointInPolygon } from "../shared/floorplan.ts";
 import { furnitureMoveClear } from "../shared/movement.ts";
-import { measuredRoute } from "./navigation.ts";
+import { measuredGrid } from "./navigation.ts";
 
 /** Reuse the purchased starter items in verified source rooms; never infer a room's use. */
 export function distributeStarterLayout(property: PropertyListing, original: FurnitureItem[]): FurnitureItem[] {
@@ -16,14 +16,40 @@ export function distributeStarterLayout(property: PropertyListing, original: Fur
     const nearest = [...tables].sort((a,b) => Math.hypot(a.x-chair.x,a.z-chair.z)-Math.hypot(b.x-chair.x,b.z-chair.z))[0];
     if (nearest && Math.hypot(nearest.x-chair.x,nearest.z-chair.z) <= 1.2) chairTable.set(chair.id,nearest.id);
   }
+  // NPC routes use circular footprints. Their shortest path can clip a long
+  // counter even when a valid player detour exists. Search with player collision
+  // on every edge, once per candidate layout, rather than rejecting that detour.
+  const reachable = new WeakMap<CafeLayout, Vec2[]>();
+  const reachablePoints = (layout: CafeLayout) => {
+    const cached = reachable.get(layout);
+    if (cached) return cached;
+    const grid = measuredGrid(property, layout);
+    const point = (i: number): Vec2 => ({ x: i % grid.width * 0.3, z: Math.floor(i / grid.width) * 0.3 });
+    const clear = (a: Vec2, b: Vec2) => floorMoveClear(plan, a, b) && furnitureMoveClear(layout.furniture, a, b);
+    let start = -1, distance = Infinity;
+    for (let i = 0; i < grid.valid.length; i++) if (grid.valid[i]) {
+      const p = point(i), d = Math.hypot(p.x-plan.entry.x,p.z-plan.entry.z);
+      if (d < distance && d <= 0.5 && clear(plan.entry,p)) { start=i; distance=d; }
+    }
+    const queue = start < 0 ? [] : [start];
+    const seen = new Set(queue);
+    for (let head=0;head<queue.length;head++) {
+      const current=queue[head],x=current%grid.width;
+      for (const next of [x>0?current-1:-1,x+1<grid.width?current+1:-1,current-grid.width,current+grid.width]) {
+        if(next<0 || next>=grid.valid.length || !grid.valid[next] || seen.has(next) || !clear(point(current),point(next))) continue;
+        seen.add(next); queue.push(next);
+      }
+    }
+    const points=queue.map(point);
+    reachable.set(layout,points);
+    return points;
+  };
   const approach = (layout: CafeLayout, item: FurnitureItem) => {
-    for (const [dx,dz] of [[1.4,0],[-1.4,0],[0,1.4],[0,-1.4]]) {
+    for (const distance of [1.4, 1.1, 0.9]) for (const [dx,dz] of [[distance,0],[-distance,0],[0,distance],[0,-distance]]) {
       const goal = { x: item.x+dx, z: item.z+dz };
       if (!floorPositionClear(plan,goal.x,goal.z,0.2)) continue;
       if (!plan.rooms.some(r=>pointInPolygon(item.x,item.z,r.polygon)&&pointInPolygon(goal.x,goal.z,r.polygon))) continue;
-      const route = measuredRoute(property,layout,plan.entry,goal);
-      if (!route.length || Math.hypot(route.at(-1)!.x-goal.x,route.at(-1)!.z-goal.z)>0.4) continue;
-      if (route.every((p,i) => i===0 || (floorMoveClear(plan,route[i-1],p) && furnitureMoveClear(layout.furniture,route[i-1],p)))) return true;
+      if (reachablePoints(layout).some(p=>Math.hypot(p.x-goal.x,p.z-goal.z)<=0.4 && floorMoveClear(plan,p,goal) && furnitureMoveClear(layout.furniture,p,goal))) return true;
     }
     return false;
   };

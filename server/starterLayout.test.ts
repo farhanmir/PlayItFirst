@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import properties from "../data/properties.json";
 import type { PropertyListing } from "../shared/types.ts";
 import { createRoomSnapshot, selectProperty } from "./simulation.ts";
+import { distributeStarterLayout } from "./starterLayout.ts";
 import { pointInPolygon } from "../shared/floorplan.ts";
 const rect=(x1:number,x2:number)=>[{x:x1,z:0},{x:x2,z:0},{x:x2,z:12},{x:x1,z:12}];
 const property={...properties[0],width:24,depth:12,source:"costar-extract",floorPlan:{
@@ -44,4 +45,21 @@ describe("source-aware starter layout",()=>{
       expect([next.x,next.z]).toEqual([old.x,old.z]);
     }
   });
+  it("finds a player-safe detour around counter ends to a narrow storage room",()=>{
+    const measured={...property,width:10,depth:12,floorPlan:{...property.floorPlan!,entry:{x:4,z:1},
+      rooms:[{id:"main",label:"Main Dining Room",areaM2:80,polygon:[{x:0,z:0},{x:10,z:0},{x:10,z:8},{x:0,z:8}]},
+        {id:"storage",label:"Storage",areaM2:6.4,polygon:[{x:3.2,z:8},{x:4.8,z:8},{x:4.8,z:12},{x:3.2,z:12}]}],
+      walls:[{id:"left",a:{x:3.2,z:8},b:{x:3.2,z:12},thickness:0.1,openings:[]},
+        {id:"right",a:{x:4.8,z:8},b:{x:4.8,z:12},thickness:0.1,openings:[]}],
+    }} as PropertyListing;
+    const items=[
+      {id:"counter",kind:"counter" as const,label:"Counter",x:3,z:5,rotation:0,cost:450},
+      {id:"fridge",kind:"fridge" as const,label:"Fridge",x:1,z:3,rotation:0,cost:900},
+    ];
+    const result=distributeStarterLayout(measured,items);
+    const fridge=result.find(f=>f.kind==="fridge")!;
+    expect(pointInPolygon(fridge.x,fridge.z,measured.floorPlan!.rooms[1].polygon)).toBe(true);
+    expect(result.find(f=>f.kind==="counter")).toEqual(items[0]);
+  });
+
 });
