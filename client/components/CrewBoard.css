@@ -1,0 +1,21 @@
+.crew-role-form {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem;
+  padding-block-start: .5rem;
+  border-block-start: 1px solid var(--glass-border);
+}
+.crew-role-form label, .crew-role-form [role="status"] { flex-basis: 100%; font-size: .8rem; }
+.crew-role-form select, .crew-role-form button {
+  font: inherit;
+  font-size: max(1rem, 1em);
+  min-height: 48px;
+  max-width: 100%;
+  padding: .5rem;
+  border: 1px solid var(--muted);
+  border-radius: .4rem;
+}
+.crew-role-form select { flex: 1 1 12rem; min-width: 0; color: #173c35; background: #fff9e9; }
+.crew-role-form :is(select, button):focus-visible { outline: 3px solid #eac76f; outline-offset: 2px; }

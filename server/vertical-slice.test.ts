@@ -552,9 +552,15 @@ describe("counter and pickup move during active service", () => {
       const counterAt = { x: counter.x + 4, z: counter.z + 1 };
       const pickupAt = { x: pickup.x + 2, z: Math.max(0.6, pickup.z - 1.5) };
 
-      // Vacate pickup first: the counter destination overlaps its old clearance.
+      // A newly joined barista cannot grant itself layout-purchase authority.
+      const assigned = waitForSnapshot(guest.ws, (snapshot) => snapshot.players.some((p: {id:string;role:string}) => p.id === guest.welcome.you && p.role === "builder"));
+      host.ws.send(JSON.stringify({ t: "set_member_role", memberId: guest.welcome.you, role: "builder" }));
+      await assigned;
+      // Owner vacates pickup, then the assigned builder moves the counter live.
       host.ws.send(JSON.stringify({ t: "move_furniture", id: pickup.id, x: pickupAt.x, z: pickupAt.z }));
-      host.ws.send(JSON.stringify({ t: "move_furniture", id: counter.id, x: counterAt.x, z: counterAt.z }));
+      await waitForSnapshot(guest.ws, (snapshot) => snapshot.layout.furniture.some((f: {id:string;x:number}) => f.id === pickup.id && f.x === pickupAt.x));
+      const ownerUpdate = waitForSnapshot(host.ws, (snapshot) => snapshot.layout.furniture.some((f: {id:string;x:number}) => f.id === counter.id && f.x === counterAt.x));
+      guest.ws.send(JSON.stringify({ t: "move_furniture", id: counter.id, x: counterAt.x, z: counterAt.z }));
       const moved = await waitForSnapshot(guest.ws, (snapshot) => {
         const nextCounter = snapshot.layout.furniture.find((item: { kind: string }) => item.kind === "counter");
         const nextPickup = snapshot.layout.furniture.find((item: { kind: string }) => item.kind === "pickup");
@@ -565,6 +571,7 @@ describe("counter and pickup move during active service", () => {
           Math.abs(nextPickup.z - pickupAt.z) < 0.01
         );
       });
+      expect((await ownerUpdate).layout).toEqual(moved.layout);
       expect(moved.open).toBe(true);
       expect(moved.phase).toBe("play");
       expect(moved.customers.length).toBeGreaterThanOrEqual(3);

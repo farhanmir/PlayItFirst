@@ -38,7 +38,7 @@ export function suggestPickupMove(snapshot: RoomSnapshot): PickupMove | null {
     const candidate = moveFurniture(snapshot, pickup.id, x, z);
     if (candidate.layout === layout) continue;
     // Do not propose placing furniture through an active player, staff member or guest.
-    const occupants = [...snapshot.players, ...snapshot.customers, ...(snapshot.aiBarista?.x != null && snapshot.aiBarista.z != null ? [snapshot.aiBarista as Vec2] : [])];
+    const occupants = [...snapshot.players.filter(p => p.connected !== false), ...snapshot.customers, ...(snapshot.aiBarista?.x != null && snapshot.aiBarista.z != null ? [snapshot.aiBarista as Vec2] : [])];
     if (occupants.some((p) => Math.hypot(p.x - x, p.z - z) < 0.9)) continue;
     const after = pickupRouteDistance(candidate, start);
     if (after == null || before - after < 0.6 || (best && after >= best.afterDistance)) continue;
@@ -52,7 +52,7 @@ export function suggestPickupMove(snapshot: RoomSnapshot): PickupMove | null {
 export function executePickupMove(snapshot: RoomSnapshot, move: PickupMove) {
   const failed = (detail: string) => ({ ok: false, snapshot, detail });
   if (layoutSignature(snapshot) !== move.layoutSignature) return failed("Layout changed after this proposal. Ask for a fresh route comparison.");
-  const occupants = [...snapshot.players, ...snapshot.customers, ...(snapshot.aiBarista?.x != null && snapshot.aiBarista.z != null ? [snapshot.aiBarista as Vec2] : [])];
+  const occupants = [...snapshot.players.filter(p => p.connected !== false), ...snapshot.customers, ...(snapshot.aiBarista?.x != null && snapshot.aiBarista.z != null ? [snapshot.aiBarista as Vec2] : [])];
   if (occupants.some((p) => Math.hypot(p.x - move.to.x, p.z - move.to.z) < 0.9)) return failed("The proposed pickup position is occupied. Ask for a fresh proposal.");
   if (snapshot.layout?.furniture.some((f) => f.id !== move.furnitureId && f.kind !== "decoration" && Math.hypot(f.x - move.to.x, f.z - move.to.z) < 1.6)) return failed("The proposed pickup position is too close to existing furniture.");
   const next = moveFurniture(snapshot, move.furnitureId, move.to.x, move.to.z);

@@ -223,6 +223,21 @@ export class CafeRoomServer {
 
 
     switch (msg.t) {
+      case "set_member_role": {
+        if(!allowed(["owner"]))return;
+        const target=typeof msg.memberId==="string"?room.members.get(msg.memberId):undefined;
+        if(!target || target.role==="owner" || !["barista","cashier","manager","customer","builder"].includes(msg.role)){
+          send(socket,{t:"error",message:"Choose an existing crew member and a non-owner role"});return;
+        }
+        if(target.role===msg.role){this.broadcast(room);return;}
+        target.role=msg.role;
+        room.snapshot={...room.snapshot,
+          players:room.snapshot.players.map(p=>p.id===target.id?{...p,role:msg.role}:p),
+          eventLog:[`${member.name} assigned ${target.name} as ${msg.role}`,...room.snapshot.eventLog].slice(0,30),
+        };
+        this.broadcast(room);
+        break;
+      }
       case "photon_pair_start":
       case "photon_pair_confirm":
       case "photon_pair_revoke":
@@ -445,8 +460,9 @@ export class CafeRoomServer {
       if(msg.role && !["owner","barista","cashier","manager","customer","builder"].includes(msg.role)){
         rejectJoin(socket,"Choose a valid café role","JOIN_REJECTED");return;
       }
-      // Claiming "owner" in a hello packet cannot grant purchase authorization.
-      const role: PlayerRole = room.members.size === 0 ? "owner" : msg.role === "owner" ? "barista" : msg.role ?? "barista";
+      // A join packet cannot grant business or construction privileges.
+      // Only an authenticated owner can assign those roles after joining.
+      const role: PlayerRole = room.members.size === 0 ? "owner" : msg.role === "customer" ? "customer" : "barista";
       member = {
         id: randomUUID(),
         token: createHash("sha256").update(randomBytes(16)).digest("hex").slice(0, 24),

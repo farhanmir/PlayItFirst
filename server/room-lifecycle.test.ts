@@ -102,6 +102,11 @@ describe("bounded room lifecycle and active sessions",()=>{
   it("keeps build and service teamwork but rejects customer mutations and non-owner demo",async()=>{
     const {rooms,join,send}=setup({maxRooms:1,maxMembers:5,abandonGraceMs:1000});const {code}=rooms.createRoom();
     const owner=await join(code,"owner"),builder=await join(code,"builder"),customer=await join(code,"customer"),manager=await join(code,"manager");
+    const builderId=builder.messages.find(m=>m.t==="welcome").you,managerId=manager.messages.find(m=>m.t==="welcome").you;
+    expect(rooms.getRoom(code)!.members.get(builderId)?.role).toBe("barista");
+    expect(rooms.getRoom(code)!.members.get(managerId)?.role).toBe("barista");
+    await send(owner,{t:"set_member_role",memberId:builderId,role:"builder"});
+    await send(owner,{t:"set_member_role",memberId:managerId,role:"manager"});
     await send(owner,{t:"select_property",propertyId:rooms.listProperties()[0].id});const room=rooms.getRoom(code)!;
     for(const msg of [{t:"open_cafe"},{t:"set_phase",phase:"play"},{t:"place_furniture",kind:"decoration",x:11,z:8},{t:"demo_boost"},{t:"interact",action:"restock"},{t:"director_choice",eventId:"x",choiceId:"x"}]){
       const before=room.snapshot;await send(customer,msg);expect(customer.messages.at(-1).t).toBe("error");expect(room.snapshot).toBe(before);
@@ -112,4 +117,25 @@ describe("bounded room lifecycle and active sessions",()=>{
     const before=room.snapshot;await send(manager,{t:"demo_boost"});expect(room.snapshot).toBe(before);
     await send(owner,{t:"demo_boost"});expect(room.snapshot.customers.length).toBeGreaterThan(0);
   });
+  it("requires owner role assignment, prevents ownership changes, and preserves assignments on resume",async()=>{
+    const {rooms,join,send}=setup();const {code}=rooms.createRoom();
+    const owner=await join(code,"owner"),guest=await join(code,"manager");
+    const ownerId=owner.messages.find(m=>m.t==="welcome").you,welcome=guest.messages.find(m=>m.t==="welcome"),room=rooms.getRoom(code)!;
+    expect(room.members.get(welcome.you)?.role).toBe("barista");
+    await send(owner,{t:"select_property",propertyId:rooms.listProperties()[0].id});
+    const before=room.snapshot;
+    await send(guest,{t:"place_furniture",kind:"decoration",x:11,z:8});expect(room.snapshot).toBe(before);
+    await send(guest,{t:"set_member_role",memberId:welcome.you,role:"builder"});expect(room.members.get(welcome.you)?.role).toBe("barista");
+    for(const msg of [{memberId:welcome.you,role:"owner"},{memberId:ownerId,role:"customer"},{memberId:"other-room-member",role:"builder"},{memberId:welcome.you,role:"admin"}]){
+      await send(owner,{t:"set_member_role",...msg});expect(owner.messages.at(-1).t).toBe("error");
+    }
+    expect(room.members.get(ownerId)?.role).toBe("owner");
+    await send(owner,{t:"set_member_role",memberId:welcome.you,role:"builder"});
+    expect(guest.messages.at(-1).snapshot.players.find((p:any)=>p.id===welcome.you).role).toBe("builder");
+    const resumed=await join(code,"manager",welcome.token);expect(resumed.messages.find(m=>m.t==="welcome").snapshot.players.find((p:any)=>p.id===welcome.you).role).toBe("builder");
+    await send(resumed,{t:"place_furniture",kind:"decoration",x:11,z:8});expect(room.snapshot.layout!.furniture).toHaveLength(10);
+    await send(owner,{t:"set_member_role",memberId:welcome.you,role:"barista"});
+    const after=room.snapshot;await send(resumed,{t:"place_furniture",kind:"decoration",x:10,z:8});expect(room.snapshot).toBe(after);
+  });
+
 });

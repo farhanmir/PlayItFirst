@@ -224,6 +224,7 @@ export type ClientMsg =
   | { t: "manager_approve"; proposalId: string }
   | { t: "manager_decline"; proposalId: string }
   | { t: "hello"; room: string; name: string; role?: PlayerRole; resume?: string }
+  | { t: "set_member_role"; memberId: string; role: Exclude<PlayerRole, "owner"> }
   | { t: "select_property"; propertyId: string }
   | { t: "set_phase"; phase: GamePhase }
   | { t: "place_furniture"; kind: FurnitureKind; x: number; z: number; rotation?: number }

@@ -1,0 +1,9 @@
+{
+  "source": "costar-mock",
+  "guestInitialRole": "barista",
+  "selectWithoutSubmitPreservedRole": true,
+  "ownerAssignedRole": "builder",
+  "bothClientsConfirmed": true,
+  "guestBuildOpened": true,
+  "errors": []
+}
