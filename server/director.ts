@@ -3,7 +3,7 @@
  * Choices mutate operational state (layout, rush, menu, cash); the sim computes metrics.
  */
 import { randomUUID } from "node:crypto";
-import type { DirectorEvent, Metrics, RoomSnapshot } from "../shared/types.ts";
+import type { DirectorEvent, RoomSnapshot } from "../shared/types.ts";
 import { applyTransaction } from "./finance.ts";
 import { placeFurniture } from "./simulation.ts";
 
@@ -233,14 +233,4 @@ export function applyDirectorChoice(
     },
     photon,
   };
-}
-
-export function directorDifficultyHint(metrics: Metrics): string {
-  if (metrics.satisfaction > 80 && metrics.queueLength < 2) {
-    return "Business is humming — expect harder scenarios.";
-  }
-  if (metrics.satisfaction < 50) {
-    return "Softening challenges while you stabilize.";
-  }
-  return "Balanced challenge pacing.";
 }

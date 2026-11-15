@@ -1400,28 +1400,6 @@
   background: linear-gradient(90deg, var(--ember), var(--crema));
 }
 
-.tutorial-tip {
-  position: absolute;
-  right: 0.75rem;
-  top: 0.75rem;
-  z-index: 5;
-  width: min(280px, calc(100% - 1.5rem));
-  padding: 0.85rem;
-  display: grid;
-  gap: 0.55rem;
-}
-
-.tutorial-tip h3 {
-  font-size: 1rem;
-  margin: 0.2rem 0;
-}
-
-.tutorial-tip p {
-  color: var(--foam-soft);
-  font-size: 0.85rem;
-  line-height: 1.4;
-}
-
 .holding-chip {
   display: flex;
   align-items: center;
@@ -1677,41 +1655,6 @@
   color: var(--muted);
 }
 
-.role-strip {
-  position: absolute;
-  left: 50%;
-  bottom: 5.8rem;
-  transform: translateX(-50%);
-  z-index: 4;
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  padding: 0.4rem 0.55rem;
-  max-width: calc(100% - 1.5rem);
-}
-
-.role-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem;
-}
-
-.role-chips button {
-  padding: 0.35rem 0.65rem;
-  border-radius: 999px;
-  border: 1px solid var(--glass-border);
-  background: rgba(255, 255, 255, 0.04);
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--muted);
-}
-
-.role-chips button.active {
-  color: var(--foam);
-  background: rgba(217, 119, 63, 0.22);
-  border-color: rgba(217, 119, 63, 0.45);
-}
-
 @media (max-width: 960px) {
   .game {
     grid-template-columns: 1fr;
@@ -1769,26 +1712,6 @@
     max-height: none;
   }
 
-  /* Role strip sits along the top; keep it clear of order rail / director. */
-  .role-strip {
-    bottom: auto;
-    top: 0.5rem;
-    left: 0.5rem;
-    right: 0.5rem;
-    transform: none;
-    width: auto;
-    max-width: none;
-    z-index: 6;
-    flex-wrap: wrap;
-    gap: 0.35rem;
-    padding: 0.35rem 0.45rem;
-  }
-
-  .role-chips button {
-    min-height: 40px;
-    padding: 0.45rem 0.7rem;
-  }
-
   .order-rail {
     top: 4.1rem;
     left: 0.5rem;
@@ -1798,19 +1721,6 @@
 
   .order-rail-scroll {
     max-height: 26vh;
-  }
-
-  .tutorial-tip {
-    top: 4.1rem;
-    right: 0.5rem;
-    width: min(200px, calc(50% - 0.75rem));
-    padding: 0.65rem;
-  }
-
-  .xr-hint {
-    top: 4.1rem;
-    left: 0.5rem;
-    width: min(200px, calc(50% - 0.75rem));
   }
 
   .director-panel {
@@ -1949,14 +1859,6 @@
     font-size: 0.9rem;
   }
 
-  .tutorial-tip {
-    display: none;
-  }
-
-  .role-strip .tag {
-    display: none;
-  }
-
   .photon-call {
     grid-template-columns: 40px 1fr;
     padding: 0.7rem;
@@ -2012,23 +1914,6 @@
 
 .recap-grid .ok { color: var(--leaf-bright); }
 .recap-grid .bad { color: var(--danger); }
-
-.xr-hint {
-  position: absolute;
-  top: 3.4rem;
-  left: 0.75rem;
-  z-index: 5;
-  width: min(260px, calc(100% - 1.5rem));
-  padding: 0.75rem;
-  display: grid;
-  gap: 0.4rem;
-}
-
-.xr-hint p:last-of-type {
-  color: var(--foam-soft);
-  font-size: 0.82rem;
-  line-height: 1.4;
-}
 
 .action-grid button.suggested {
   border-color: rgba(217, 119, 63, 0.55);
@@ -2117,33 +2002,6 @@
   color: var(--foam);
 }
 
-.minimap {
-  position: absolute;
-  right: 0.75rem;
-  top: 0.75rem;
-  z-index: 4;
-  width: 148px;
-  padding: 0.45rem;
-  display: grid;
-  gap: 0.3rem;
-}
-
-.minimap svg {
-  width: 100%;
-  aspect-ratio: 1.35 / 1;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.25);
-}
-
-@media (max-width: 960px) {
-  .minimap {
-    width: 112px;
-    top: auto;
-    bottom: 7.5rem;
-    right: 0.55rem;
-  }
-}
-
 .integrations-badge {
   position: relative;
   z-index: 2;
@@ -2196,8 +2054,7 @@
 
 .matterport-actions,
 .voice-actions,
-.xr-actions,
-.xr-hint-actions {
+.xr-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.45rem;
