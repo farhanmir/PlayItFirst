@@ -20,7 +20,7 @@ import type {
 } from "../shared/types.ts";
 import { FURNITURE_CATALOG } from "../shared/types.ts";
 import { BREW_SECONDS, nearestStation, nearStation, nearServingStation } from "../shared/stations.ts";
-import { placementIssue } from "../shared/placement.ts";
+import { placementIssue, removalIssue } from "../shared/placement.ts";
 import { floorMoveClear, floorPositionClear } from "../shared/floorplan.ts";
 import { measuredGrid, measuredRoute } from "./navigation.ts";
 import { applyTransaction, createFinance } from "./finance.ts";
@@ -345,7 +345,7 @@ export function moveFurniture(snapshot: RoomSnapshot, id: string, x: number, z: 
 export function removeFurniture(snapshot: RoomSnapshot, id: string): RoomSnapshot {
   if (!snapshot.layout) return snapshot;
   const item = snapshot.layout.furniture.find((f) => f.id === id);
-  if (!item) return snapshot;
+  if (!item || removalIssue(snapshot.layout.furniture, id)) return snapshot;
   const refund = Math.round(item.cost * 0.6);
   return {
     ...snapshot,

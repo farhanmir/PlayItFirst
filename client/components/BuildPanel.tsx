@@ -1,6 +1,7 @@
 import { FURNITURE_CATALOG, type FurnitureKind, type RoomSnapshot } from "../../shared/types";
 import { useApp } from "../lib/store";
 import { play } from "../lib/audio";
+import { removalIssue } from "../../shared/placement";
 
 export function BuildPanel({
   snapshot,
@@ -17,6 +18,8 @@ export function BuildPanel({
   const set = useApp((s) => s.set);
   const property = snapshot.property;
   const selected = buildSelectedId ? snapshot.layout?.furniture.find((f) => f.id === buildSelectedId) : undefined;
+  const blockedReason = (id: string) => removalIssue(snapshot.layout?.furniture ?? [], id);
+  const selectedBlocked = selected ? blockedReason(selected.id) : null;
 
   const deleteItem = (id: string) => {
     conn?.send({ t: "remove_furniture", id });
@@ -46,12 +49,13 @@ export function BuildPanel({
       </p>
       {!buildKind && selected ? (
         <p className="build-place-hint build-selected" aria-live="polite">
-          <span className="hint-text">Selected <strong>{selected.label}</strong></span>
+          <span className="hint-text">{selectedBlocked ? <>Last <strong>{selected.label}</strong> · needed to serve</> : <>Selected <strong>{selected.label}</strong></>}</span>
           <button type="button" className="btn-ghost btn-small" onClick={() => set({ buildKind: selected.kind, buildMovingId: selected.id, buildRotation: selected.rotation, buildSelectedId: null })}>
             Move
           </button>
-          <button type="button" className="btn-ghost btn-small btn-danger" onClick={() => deleteItem(selected.id)} title={`Delete and get $${Math.round(selected.cost * 0.6)} back`}>
-            Delete +${Math.round(selected.cost * 0.6)}
+          <button type="button" className="btn-ghost btn-small btn-danger" disabled={!!selectedBlocked} onClick={() => deleteItem(selected.id)}
+            title={selectedBlocked ?? `Delete and get $${Math.round(selected.cost * 0.6)} back`}>
+            {selectedBlocked ? "Can't delete" : `Delete +$${Math.round(selected.cost * 0.6)}`}
           </button>
           <button type="button" className="btn-ghost btn-small" aria-label="Deselect" onClick={() => set({ buildSelectedId: null })}>
             ✕
@@ -131,7 +135,7 @@ export function BuildPanel({
               <button type="button" className="btn-ghost btn-small" onClick={() => set({ buildKind: f.kind, buildMovingId: f.id, buildRotation: f.rotation })}>
                 Move
               </button>
-              <button type="button" className="btn-ghost btn-small btn-danger" onClick={() => deleteItem(f.id)}>
+              <button type="button" className="btn-ghost btn-small btn-danger" disabled={!!blockedReason(f.id)} title={blockedReason(f.id) ?? undefined} onClick={() => deleteItem(f.id)}>
                 Delete
               </button>
             </li>

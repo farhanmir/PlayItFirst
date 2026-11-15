@@ -21,3 +21,15 @@ export function placementIssue(
   }
   return null;
 }
+
+/** Stations service cannot run without; the last one of each kind cannot be deleted. */
+const ESSENTIAL_KINDS: Partial<Record<FurnitureKind, string>> = { counter: "service counter", coffee_machine: "espresso machine" };
+
+/** Returns why this piece cannot be deleted, or null when deletion is allowed. */
+export function removalIssue(furniture: FurnitureItem[], id: string): string | null {
+  const item = furniture.find((f) => f.id === id);
+  if (!item) return null;
+  const name = ESSENTIAL_KINDS[item.kind];
+  if (name && furniture.filter((f) => f.kind === item.kind).length <= 1) return `Keep at least one ${name} so the café can serve.`;
+  return null;
+}

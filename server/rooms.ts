@@ -2,6 +2,7 @@
  * Authoritative multiplayer rooms — adapted from Gitzilla's RoomServer pattern
  * (WebSocket hello/resume, snapshot broadcast, tick loop) for SoftOpen cafés.
  */
+import { removalIssue } from "../shared/placement.ts";
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import type { IncomingMessage } from "node:http";
 import { WebSocket, WebSocketServer, type RawData } from "ws";
@@ -354,10 +355,13 @@ export class CafeRoomServer {
         room.snapshot = moveFurniture(room.snapshot, msg.id, msg.x, msg.z, msg.rotation);
         this.broadcast(room);
         break;
-      case "remove_furniture":
+      case "remove_furniture": {
+        const issue = removalIssue(room.snapshot.layout?.furniture ?? [], msg.id);
+        if (issue) { send(socket, { t: "error", message: issue }); break; }
         room.snapshot = removeFurniture(room.snapshot, msg.id);
         this.broadcast(room);
         break;
+      }
       case "tabletop_sync": {
         const before = room.snapshot.layout?.furniture.map((f) => `${f.kind}:${f.x.toFixed(1)},${f.z.toFixed(1)}`).join("|");
         room.snapshot = syncTabletop(room.snapshot, msg.markers);
