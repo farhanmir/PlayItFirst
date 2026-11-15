@@ -88,7 +88,7 @@ export class PhoneBridge {
       voiceNumber: voiceConfigured(this.c) ? this.c.voiceNumber : null };
   }
   start(owner: PhoneOwner, activationCode: string) {
-    if (this.c.activationCode.length < 32 || !secretEqual(activationCode, this.c.activationCode)) throw new Error("Valid team phone activation code required.");
+    if (this.c.activationCode.length < 32 || !secretEqual(activationCode.trim(), this.c.activationCode)) throw new Error("Valid team phone activation code required.");
     if (!owner.active()) throw new Error("Connect as the café owner first.");
     if (!messagingConfigured(this.c) && !voiceConfigured(this.c)) throw new Error("Phone provider configuration is incomplete.");
     const property = owner.read().property;
