@@ -100,6 +100,8 @@ function AnimatedCharacter({ seed, appearance, carried }: { seed: string; appear
   const held = useMemo(() => createCarriedProp(rig), [rig]);
   const root = useRef<Group>(null);
   const { actions } = useAnimations(gltf.animations, rig);
+  // Negative priority restores last frame's overlay before useAnimations updates the mixer at 0.
+  useFrame(() => held.restore(), -1);
   const previous = useRef(new Vector3());
   const position = useMemo(() => new Vector3(), []);
   const initialized = useRef(false);

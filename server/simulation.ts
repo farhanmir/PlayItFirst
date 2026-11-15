@@ -1,3 +1,4 @@
+import { staffMoveClear, staffRoute, staffSpawn } from "./staffNavigation.ts";
 import { distributeStarterLayout } from "./starterLayout.ts";
 import { seatingTargets } from "./seating.ts";
 import { furnitureMoveClear } from "../shared/movement.ts";
@@ -30,8 +31,6 @@ export type { StationHint } from "../shared/stations.ts";
 const AI_PLAYER_ID = "__jamie_ai__";
 /** Help when no human interact for this many sim-seconds. Leave room for the player to act. */
 const AI_IDLE_SEC = 18;
-/** Act every N ticks so players still matter (~3s at 20 Hz). */
-const AI_PERIOD_TICKS = 60;
 
 const NAMES = ["Ava", "Ben", "Chris", "Dana", "Eli", "Faye", "Gus", "Hana", "Ivan", "Jade", "Kai", "Lina"];
 const ORDERS = ["latte", "americano", "cappuccino", "cold brew", "mocha", "espresso"];
@@ -128,6 +127,7 @@ export function selectProperty(snapshot: RoomSnapshot, property: PropertyListing
     ...snapshot,
     property,
     layout,
+    aiBarista: { holding: null, ...staffSpawn(property, layout), status: "Ready to help", served: 0 },
     players: property.floorPlan ? snapshot.players.map((p, i) => ({ ...p, x: starter[0].x + 0.35 + i * 0.4, z: starter[0].z + 0.9 })) : snapshot.players,
     phase: "build",
     finance,
@@ -450,7 +450,7 @@ export function interact(
   const log = [...snapshot.eventLog];
   const needsMilk = (order?: string) => order === "latte" || order === "cappuccino" || order === "mocha";
 
-  if (!opts?.ai && !stationOk(snapshot, playerId, action)) {
+  if (!stationOk(snapshot, playerId, action)) {
     const hint =
       action === "take_order"
         ? "Walk to the counter"
@@ -465,7 +465,7 @@ export function interact(
     return {
       ...snapshot,
       eventLog: log.slice(0, 30),
-      lastHumanInteractAt: snapshot.simTime,
+      lastHumanInteractAt: opts?.ai ? snapshot.lastHumanInteractAt : snapshot.simTime,
     };
   }
 
@@ -504,7 +504,7 @@ export function interact(
     const brewing = parseBrewing(player.holding);
     if (brewing) {
       // Manual finish if brew completed (or AI finish)
-      if (opts?.ai || snapshot.simTime - brewing.started >= BREW_SEC * 0.5) {
+      if (snapshot.simTime - brewing.started >= BREW_SEC) {
         players = players.map((p) =>
           p.id === playerId ? { ...p, holding: `drink:${brewing.order}`, score: p.score + 2 } : p,
         );
@@ -553,21 +553,10 @@ export function interact(
       inventory.beans -= 1;
       inventory.cups -= 1;
       if (needsMilk(order)) inventory.milk -= 1;
-      // AI completes instantly so assist stays snappy; humans get a short brew timer
-      if (opts?.ai) {
-        players = players.map((p) =>
-          p.id === playerId ? { ...p, holding: `drink:${order}`, score: p.score + 2 } : p,
-        );
-        customers = customers.map((c) =>
-          c.state === "waiting" ? { ...c, progress: Math.min(1, c.progress + 0.45) } : c,
-        );
-        log.unshift(`${player.name} brewed a ${order}`);
-      } else {
-        players = players.map((p) =>
-          p.id === playerId ? { ...p, holding: `brewing:${order}@${snapshot.simTime}` } : p,
-        );
-        log.unshift(`${player.name} started brewing a ${order}`);
-      }
+      players = players.map((p) =>
+        p.id === playerId ? { ...p, holding: `brewing:${order}@${snapshot.simTime}` } : p,
+      );
+      log.unshift(`${player.name} started brewing a ${order}`);
     }
   }
 
@@ -657,40 +646,52 @@ export function advanceBrewing(snapshot: RoomSnapshot): RoomSnapshot {
   return { ...snapshot, players, eventLog: log.slice(0, 30) };
 }
 
-/** NPC barista — one action per call; keeps holding across ticks. */
-export function runAiBaristaAssist(snapshot: RoomSnapshot): RoomSnapshot {
-  const holding = snapshot.aiBarista?.holding ?? null;
-  const hasQueue = snapshot.customers.some((c) => c.state === "queue" || c.state === "ordering");
-  const hasWaiting = snapshot.customers.some((c) => c.state === "waiting");
-
-  let action: "take_order" | "make_coffee" | "serve" | null = null;
-  if (holding?.startsWith("drink:") && hasWaiting) action = "serve";
-  else if (holding?.startsWith("ticket:")) action = "make_coffee";
-  else if (hasQueue) action = "take_order";
-  else if (hasWaiting && !holding) action = "make_coffee";
-  else if (holding?.startsWith("drink:")) action = "serve";
-  else return snapshot;
-
-  const jamie: PlayerState = {
-    id: AI_PLAYER_ID,
-    name: "Jamie (AI)",
-    role: "barista",
-    x: 0,
-    z: 0,
-    holding,
-    score: 0,
-    color: "#6b7280",
-  };
-
-  const withJamie = { ...snapshot, players: [...snapshot.players, jamie] };
-  const after = interact(withJamie, AI_PLAYER_ID, action, { ai: true });
-  const jamieAfter = after.players.find((p) => p.id === AI_PLAYER_ID);
-
-  return {
-    ...after,
-    players: after.players.filter((p) => p.id !== AI_PLAYER_ID),
-    aiBarista: { holding: jamieAfter?.holding ?? null },
-  };
+/** Jamie persists on the floor and uses the same validated service actions as people. */
+export function runAiBaristaAssist(snapshot: RoomSnapshot, dt = 0.05): RoomSnapshot {
+  if (!snapshot.open || !snapshot.property || !snapshot.layout) return snapshot;
+  const { property, layout } = snapshot;
+  const previous = snapshot.aiBarista ?? { holding: null };
+  const spawn = previous.x == null || previous.z == null ? staffSpawn(property, layout) : previous as { x:number;z:number };
+  if (!spawn) return snapshot;
+  let staff = { ...previous, x:spawn.x, z:spawn.z };
+  const working = !!staff.holding || !!staff.task;
+  const mayStart = snapshot.metrics.customersServed > 0 && snapshot.simTime-(snapshot.lastHumanInteractAt??0)>=AI_IDLE_SEC;
+  if (!working && !mayStart) return { ...snapshot, aiBarista:{...staff,status:"Ready to help"} };
+  const jamie: PlayerState = { id:AI_PLAYER_ID,name:"Jamie (AI)",role:"barista",x:staff.x,z:staff.z,holding:staff.holding,score:0,color:"#54786b" };
+  const brewing = parseBrewing(staff.holding);
+  if (brewing) {
+    const after=advanceBrewing({...snapshot,players:[...snapshot.players,jamie]});
+    return {...after,players:after.players.filter(p=>p.id!==AI_PLAYER_ID),aiBarista:{...staff,holding:after.players.find(p=>p.id===AI_PLAYER_ID)!.holding ?? null,status:"Brewing coffee"}};
+  }
+  const hasQueue=snapshot.customers.some(c=>c.state==="queue"||c.state==="ordering");
+  const hasWaiting=snapshot.customers.some(c=>c.state==="waiting"&&c.order&&(c.ticketHolder===AI_PLAYER_ID||c.ticketHolder==null));
+  const action=staff.holding?.startsWith("drink:")?"serve":staff.holding?.startsWith("ticket:")||hasWaiting?"make_coffee":hasQueue?"take_order":null;
+  if(!action)return {...snapshot,aiBarista:{...staff,task:undefined,route:undefined,status:"Ready to help"}};
+  const version=layout.furniture.map(f=>`${f.id}:${f.x}:${f.z}:${f.rotation}`).join(";");
+  const kinds: FurnitureKind[]=action==="take_order"?["counter"]:action==="make_coffee"?["coffee_machine"]:layout.furniture.some(f=>f.kind==="pickup")?["pickup"]:["counter"];
+  if(staff.task!==action||staff.routeVersion!==version||!staff.route?.length){
+    if(staff.task===action&&staff.routeVersion===version&&(staff.retryAt??0)>snapshot.simTime)return {...snapshot,aiBarista:staff};
+    const route=staffRoute(property,layout,staff,kinds);
+    staff={...staff,task:action,route,routeVersion:version,retryAt:undefined};
+    if(!route.length)return {...snapshot,aiBarista:{...staff,status:"Path blocked",retryAt:snapshot.simTime+1}};
+  }
+  const route=[...staff.route!];let remaining=Math.min(Math.max(dt,0),0.25)*2;
+  while(route.length){const target=route[0],distance=Math.hypot(target.x-staff.x,target.z-staff.z);
+    if(distance<0.001){route.shift();continue}if(remaining<=0)break;
+    const step=Math.min(remaining,distance),next={x:staff.x+(target.x-staff.x)/distance*step,z:staff.z+(target.z-staff.z)/distance*step};
+    if(!staffMoveClear(property,layout,staff,next))return {...snapshot,aiBarista:{...staff,route:undefined,status:"Path blocked",retryAt:snapshot.simTime+1}};
+    staff={...staff,...next};remaining-=step;if(step===distance)route.shift();
+  }
+  staff={...staff,route,status:action==="take_order"?"Walking to counter":action==="make_coffee"?"Walking to espresso machine":"Carrying coffee to pickup"};
+  if(route.length)return {...snapshot,aiBarista:staff};
+  const beforeServed=snapshot.metrics.customersServed;
+  const after=interact({...snapshot,players:[...snapshot.players,{...jamie,x:staff.x,z:staff.z}]},AI_PLAYER_ID,action,{ai:true});
+  const holding=after.players.find(p=>p.id===AI_PLAYER_ID)!.holding ?? null;
+  const changed=holding!==staff.holding;
+  return {...after,players:after.players.filter(p=>p.id!==AI_PLAYER_ID),aiBarista:{...staff,holding,task:changed?undefined:action,route:undefined,
+    served:(staff.served??0)+after.metrics.customersServed-beforeServed,
+    status:changed?(action==="take_order"?"Order taken":action==="make_coffee"?"Brewing coffee":"Customer served"):"Waiting for supplies or an order",
+    retryAt:changed?undefined:snapshot.simTime+1}};
 }
 
 export function stepSimulation(snapshot: RoomSnapshot, dt: number): RoomSnapshot {
@@ -883,15 +884,9 @@ export function stepSimulation(snapshot: RoomSnapshot, dt: number): RoomSnapshot
     eventLog: log.slice(0, 30),
   };
 
-  // Jamie (AI) barista: help on long queues or when humans go idle — paced so players still matter
-  const humanIdle = next.simTime - (next.lastHumanInteractAt ?? 0) >= AI_IDLE_SEC;
-  // The first completed sale belongs to a human, even during the seeded judge rush.
-  // Afterwards Jamie only starts work when people have actually stopped interacting.
-  const needsHelp = next.metrics.customersServed > 0 && humanIdle;
-  const period = queueLength >= 7 || rush > 0.5 ? Math.floor(AI_PERIOD_TICKS / 2) : AI_PERIOD_TICKS;
-  if (needsHelp && next.tick % period === 0) {
-    next = runAiBaristaAssist(next);
-  }
+  // First sale and idle grace gate new work; started orders keep moving when
+  // a human resumes, so Jamie never freezes halfway through carrying a cup.
+  next = runAiBaristaAssist(next, dt);
 
   return next;
 }

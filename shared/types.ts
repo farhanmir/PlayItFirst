@@ -211,7 +211,8 @@ export interface RoomSnapshot {
   /** simTime of last human interact — AI barista helps when stale or queue is long */
   lastHumanInteractAt?: number;
   /** NPC barista helper holding state (Jamie AI) */
-  aiBarista?: { holding: string | null };
+  aiBarista?: { holding: string | null; x?: number; z?: number; status?: string; served?: number;
+    task?: "take_order" | "make_coffee" | "serve"; route?: Vec2[]; routeVersion?: string; retryAt?: number };
 }
 
 export type ClientMsg =

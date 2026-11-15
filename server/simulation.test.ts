@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import properties from "../data/properties.json";
 import type { Customer, PropertyListing } from "../shared/types.ts";
+import { staffMoveClear } from "./staffNavigation.ts";
 import { nearestStation } from "../shared/stations.ts";
 import {
   addPlayer,
@@ -129,27 +130,52 @@ describe("café simulation", () => {
     expect(jamieLogs.some((e) => /served|brewed|took a/.test(e))).toBe(true);
   });
 
-  it("runAiBaristaAssist advances take_order → brew → serve", () => {
-    let snap = selectProperty(createRoomSnapshot("demo"), listing);
-    snap = openCafe(snap);
-    snap = {
-      ...snap,
-      customers: [seedCustomer({ id: "c1", name: "Dana", state: "ordering", preference: "espresso" })],
-      aiBarista: { holding: null },
-    };
-
-    snap = runAiBaristaAssist(snap);
-    expect(snap.aiBarista?.holding?.startsWith("ticket:")).toBe(true);
-    expect(snap.customers[0]?.state).toBe("waiting");
-    expect(snap.eventLog[0]).toContain("Jamie (AI)");
-
-    snap = runAiBaristaAssist(snap);
-    expect(snap.aiBarista?.holding?.startsWith("drink:")).toBe(true);
-
-    snap = runAiBaristaAssist(snap);
+  it("Jamie walks, brews on the sim clock, and serves exactly once", () => {
+    let snap = openCafe(selectProperty(createRoomSnapshot("staff"), { ...listing, footTraffic: 0 }));
+    snap = {...snap,simTime:20,metrics:{...snap.metrics,customersServed:1},customers:[seedCustomer({id:"c1",name:"Dana",state:"ordering",preference:"espresso",patience:800})]};
+    const initial={x:snap.aiBarista!.x!,z:snap.aiBarista!.z!},stock={...snap.inventory};
+    let brewingAt:number|undefined,done=false,moved=false;
+    for(let i=0;i<800;i++){
+      snap={...snap,simTime:snap.simTime+0.05};
+      const beforeMove={x:snap.aiBarista!.x!,z:snap.aiBarista!.z!};
+      snap=runAiBaristaAssist(snap,0.05);
+      const afterMove={x:snap.aiBarista!.x!,z:snap.aiBarista!.z!};
+      expect(Math.hypot(afterMove.x-beforeMove.x,afterMove.z-beforeMove.z)).toBeLessThanOrEqual(0.10001);
+      expect(staffMoveClear(snap.property!,snap.layout!,beforeMove,afterMove)).toBe(true);
+      moved ||= Math.hypot(snap.aiBarista!.x!-initial.x,snap.aiBarista!.z!-initial.z)>0.5;
+      if(snap.aiBarista?.holding?.startsWith("brewing:")){
+        brewingAt ??= snap.simTime;
+        expect(snap.metrics.customersServed).toBe(1);
+        // Resuming human input must not freeze an already started order.
+        snap={...snap,lastHumanInteractAt:snap.simTime};
+      }
+      if(snap.aiBarista?.holding?.startsWith("drink:"))expect(snap.simTime-brewingAt!).toBeGreaterThanOrEqual(1.6-1e-8);
+      if(snap.aiBarista?.served===1){done=true;break}
+    }
+    expect(done).toBe(true);expect(moved).toBe(true);expect(brewingAt).toBeDefined();
     expect(snap.aiBarista?.holding).toBeNull();
-    expect(snap.metrics.customersServed).toBe(1);
-    expect(snap.eventLog.some((e) => e.includes("Jamie (AI) served"))).toBe(true);
+    expect(snap.metrics.customersServed).toBe(2);
+    expect(snap.inventory).toEqual({...stock,beans:stock.beans-1,cups:stock.cups-1});
+    const revenue=snap.finance.revenue;
+    expect(revenue).toBeGreaterThan(0);
+    for(let i=0;i<20;i++)snap=runAiBaristaAssist({...snap,simTime:snap.simTime+.05},.05);
+    expect(snap.finance.revenue).toBe(revenue);
+    expect(snap.players.some(p=>p.id==="__jamie_ai__")).toBe(false);
+  });
+
+  it("Jamie cannot brew or sell through a sealed measured wall",()=>{
+    const property={...listing,width:12,depth:10,footTraffic:0,floorPlan:{modelId:"synthetic",floorId:"floor",units:"meters" as const,entry:{x:2,z:2},serviceOrigin:{x:1,z:1},
+      rooms:[{id:"room",areaM2:120,polygon:[{x:0,z:0},{x:12,z:0},{x:12,z:10},{x:0,z:10}]}],
+      walls:[{id:"wall",a:{x:6,z:0},b:{x:6,z:10},thickness:.16,openings:[]}],
+    }};
+    let snap=openCafe(selectProperty(createRoomSnapshot("blocked"),property));
+    snap={...snap,simTime:20,aiBarista:{x:2,z:2,holding:"ticket:espresso"},metrics:{...snap.metrics,customersServed:1},
+      layout:{...snap.layout!,furniture:snap.layout!.furniture.map(f=>f.kind==="coffee_machine"?{...f,x:9,z:3}:f)}};
+    const stock={...snap.inventory};
+    for(let i=0;i<100;i++)snap=runAiBaristaAssist({...snap,simTime:snap.simTime+.05},.05);
+    expect(snap.aiBarista?.status).toBe("Path blocked");
+    expect(snap.aiBarista?.holding).toBe("ticket:espresso");
+    expect(snap.inventory).toEqual(stock);expect(snap.finance.revenue).toBe(0);
   });
 
   it("human interact updates lastHumanInteractAt", () => {

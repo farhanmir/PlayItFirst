@@ -67,7 +67,9 @@ function patienceLabel(patience: number) {
 function orderStatus(customer: Customer, snapshot: RoomSnapshot) {
   if (customer.state === "queue") return "In line";
   if (customer.state === "ordering") return "Take order";
-  const holding = snapshot.players.find((player) => player.id === customer.ticketHolder)?.holding;
+  const holding = customer.ticketHolder === "__jamie_ai__"
+    ? snapshot.aiBarista?.holding
+    : snapshot.players.find((player) => player.id === customer.ticketHolder)?.holding;
   if (customer.order && holding === `drink:${customer.order}`) return "Ready to serve";
   if (customer.order && holding?.startsWith(`brewing:${customer.order}@`)) return "Brewing";
   return "To make";

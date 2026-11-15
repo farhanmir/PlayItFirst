@@ -111,6 +111,7 @@ export class CafeManager {
         provenance: p.provenance ?? (p.source === "costar-live" ? "Live listing feed; scan pairing and geometry still require independent verification" : "Bundled mock listing and stand-in scan; not a verified matched property") } : null,
       stations: s.layout?.furniture.map(({ id, kind, x, z }) => ({ id, kind, x, z })) ?? [],
       ledger: s.finance.transactions.slice(0, 6).map(({ id, label, amount, category }) => ({ id, label, amount, category })),
+      staff: { jamie: s.aiBarista ?? null, recentActivity: s.eventLog.slice(0, 8), note: "Jamie service is performed by the visible simulated character. Report only recorded actions; team sales are not necessarily Jamie sales." },
       financialContext: financialContext(s, this.now()),
       approvedActionCosts: { reorder_supplies: 35, simplify_menu: 0 },
     };

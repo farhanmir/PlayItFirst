@@ -172,6 +172,13 @@ export function CafeScene({ snapshot, viewMode = "monitor", buildMode = false }:
           <CustomerMesh key={c.id} customer={c} appearance={appearances.current.get(c.id)!} featured={c.id === featuredCustomer?.id}
             yourTicket={c.ticketHolder === you} queuePosition={queuedCustomers.findIndex((customer) => customer.id === c.id) + 1} />
         ))}
+        {snapshot.aiBarista && snapshot.aiBarista.x != null && snapshot.aiBarista.z != null && (
+          <PlayerMesh
+            player={{ id: "__jamie_ai__", name: "Jamie", role: "barista", x: snapshot.aiBarista.x, z: snapshot.aiBarista.z, holding: snapshot.aiBarista.holding, score: 0, color: PALETTE.wood }}
+            isYou={false}
+            displayStatus={snapshot.aiBarista.status}
+          />
+        )}
         {snapshot.players.map((p) => (
           <PlayerMesh
             key={p.id}
@@ -1260,10 +1267,12 @@ function PlayerMesh({
   player,
   isYou,
   hideBody = false,
+  displayStatus,
 }: {
   player: PlayerState;
   isYou: boolean;
   hideBody?: boolean;
+  displayStatus?: string;
 }) {
   const root = useRef<Group>(null);
   const initialPosition = useRef<[number, number, number]>([player.x, 0, player.z]);
@@ -1377,9 +1386,6 @@ function PlayerMesh({
         </mesh>
       </group>
       </group>} />
-      {/* Staff apron gives players a clear service role among the visiting customers. */}
-      <RoundedBox position={[0, .98, .18]} args={[.38, .52, .035]} radius={.025} smoothness={2} castShadow><meshStandardMaterial color={PALETTE.wood} roughness={.95} /></RoundedBox>
-      <mesh position={[0, .91, .205]}><boxGeometry args={[.21, .13, .012]} /><meshStandardMaterial color={PALETTE.woodDark} roughness={.9} /></mesh>
       {!isYou && <Billboard position={[0, 2.12, 0]}>
       <mesh>
         <boxGeometry args={[Math.max(0.7, player.name.length * 0.09), 0.22, 0.02]} />
@@ -1388,6 +1394,7 @@ function PlayerMesh({
       <Text position={[0, 0, 0.02]} fontSize={0.14} color={PALETTE.foam} anchorX="center" anchorY="middle">
         {player.name}
       </Text>
+      {displayStatus && <Text position={[0, -.23, .02]} fontSize={.1} color={PALETTE.foam} outlineColor={PALETTE.espresso} outlineWidth={.012} anchorX="center" anchorY="middle">{displayStatus}</Text>}
       </Billboard>}
     </group>
   );
