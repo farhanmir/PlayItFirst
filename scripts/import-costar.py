@@ -1,4 +1,4 @@
-"""Import one matched suite into an ignored local demo file. Never executes kit code."""
+"""Import verified matched suites into an ignored local demo file. Never executes kit code."""
 import argparse
 import base64
 import csv
@@ -11,6 +11,38 @@ from pathlib import Path
 import urllib.request
 import zipfile
 from measured_floor import convert_floor
+
+
+def candidate_suites(archive, password):
+    """Find active, exact-area USD spaces whose own attachment matches the property/model table."""
+    with zipfile.ZipFile(archive) as kit:
+        kit.setpassword(password.encode())
+        rows = csv.DictReader(io.StringIO(kit.read("commercial-properties.csv").decode("utf-8-sig")))
+        matches = {(row["PropertyId"], row["MatterportModelId"]): row for row in rows
+                   if row["City"] in ("Houston", "Los Angeles") and row["MatterportModelId"]}
+        candidates = []
+        for line in kit.open("data/commercial-listing-summary.jsonl"):
+            listing = json.loads(line)
+            if listing.get("listingStatus") != 1:
+                continue
+            lease = listing.get("forLeaseSummary") or {}
+            if lease.get("askingRateMeasurementType") != 1:
+                continue
+            for space in lease.get("spaces") or []:
+                plan = space.get("floorPlan") or {}
+                model = plan.get("videoKey")
+                row = matches.get((str(listing["propertyId"]), model))
+                if (not row or plan.get("videoExternalReferenceType") not in (36, 234)
+                        or space.get("dateOffMarket") or space.get("isLeasePending")
+                        or space.get("monetaryUnit") != 1 or space.get("rateBasis") not in (1, 2)
+                        or not isinstance(space.get("rateLow"), (int, float)) or space["rateLow"] <= 0
+                        or not isinstance(space.get("squareFeetMin"), (int, float))
+                        or space["squareFeetMin"] <= 0 or space["squareFeetMin"] != space.get("squareFeetMax")):
+                    continue
+                candidates.append({"listingId": listing["id"], "spaceId": space["id"],
+                                   "address": row["Address"], "city": row["City"],
+                                   "suite": space.get("suite", ""), "modelId": model})
+    return candidates
 
 
 def import_suite(archive, password, listing_id, space_id, key, token):
@@ -69,8 +101,11 @@ def import_suite(archive, password, listing_id, space_id, key, token):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--listing", type=int, required=True)
-    parser.add_argument("--space", type=int, required=True)
+    parser.add_argument("--listing", type=int)
+    parser.add_argument("--space", type=int)
+    parser.add_argument("--suite", action="append", metavar="LISTING:SPACE",
+                        help="Repeat to import several verified suites into one file")
+    parser.add_argument("--candidates", action="store_true", help="List eligible listing/model pairs without calling Matterport")
     parser.add_argument("--out", default=".sponsor/property.json")
     args = parser.parse_args()
     env = dict(os.environ)
@@ -79,7 +114,28 @@ if __name__ == "__main__":
             if "=" in line and not line.startswith("#"):
                 k, v = line.split("=", 1)
                 env.setdefault(k, v)
-    result = import_suite(env["COSTAR_KIT_PATH"], env["COSTAR_KIT_PASSWORD"], args.listing, args.space, env["MATTERPORT_API_KEY"], env["MATTERPORT_TOKEN"])
+    archive, password = env["COSTAR_KIT_PATH"], env["COSTAR_KIT_PASSWORD"]
+    if args.candidates:
+        for candidate in candidate_suites(archive, password):
+            print(json.dumps(candidate))
+        raise SystemExit(0)
+    pairs = []
+    if args.listing is not None or args.space is not None:
+        if args.listing is None or args.space is None:
+            parser.error("--listing and --space must be used together")
+        pairs.append((args.listing, args.space))
+    for pair in args.suite or []:
+        try:
+            listing_id, space_id = map(int, pair.split(":"))
+        except ValueError:
+            parser.error("--suite requires LISTING:SPACE numeric IDs")
+        pairs.append((listing_id, space_id))
+    if not pairs or len(pairs) != len(set(pairs)):
+        parser.error("provide distinct --listing/--space or --suite pairs")
+    result = []
+    for listing_id, space_id in pairs:
+        result.extend(import_suite(archive, password, listing_id, space_id,
+                                   env["MATTERPORT_API_KEY"], env["MATTERPORT_TOKEN"]))
     target = Path(args.out)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")

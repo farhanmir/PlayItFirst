@@ -2,6 +2,10 @@
 
 Tracking https://github.com/farhanmir/PlayItFirst/issues/2. Work directly on `main` under AGENTS.md.
 
+## Additional measured venues — input pending
+
+The private catalog currently contains one normalized CoStar/Matterport suite. No event kit archive, extracted listing/model table or local Matterport credentials were present in the current checkout or usual local folders during this check. The importer now lists active exact-area USD suites with their own matching Matterport attachment and accepts several selected listing/space pairs into one private JSON array. Each selected pair still requires a successful authenticated model query and measured-floor conversion. The user has been asked for the kit archive or its path; no additional venue has been labeled real or deployed yet. The new candidate filter passed a synthetic archive test; six existing geometry tests and typecheck passed.
+
 ## Cleanup and live Nessie sandbox acceptance — November 14
 
 Removed six unreferenced legacy UI/audio files, their exclusive CSS and an unused director helper. Removed unused npm `qrcode`/`@types/qrcode` packages (30 installed packages); the active vendored SVG QR encoder stays. Removed 27 superseded PNGs (**9,148,177 bytes /8.72MiB**) while retaining 14 representative images and all compact JSON verification traces. Historical screenshot links now point to their exact pre-cleanup Git revision, preserving evidence without presenting newer screenshots as old proof. Application images, models/audio/PWA assets and attribution remain. No history rewrite, private-file deletion or feature removal.
