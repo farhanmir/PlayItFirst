@@ -41,13 +41,15 @@ export function phoneConfig(): Config {
     activationCode: process.env.PHOTON_ACTIVATION_CODE?.trim() || "",
   };
 }
+// PHOTON_TEST_SENDER may list several teammates' iMessage handles, comma-separated. Pairing still binds one sender per session.
+export const allowedSenders = (c: Config) => c.senderHandle.split(",").map((h) => h.trim()).filter(Boolean);
 const messagingConfigured = (c: Config) => c.transport === "bounded-inbox" && c.apiKey.startsWith("pho_sk_") && id("prj", c.projectId) && !!c.senderHandle && !!c.agentHandle;
 const voiceConfigured = (c: Config) => c.voiceSecret.length >= 32 && /^\+[1-9]\d{7,14}$/.test(c.voiceNumber);
 export function parseIncoming(raw: unknown, c: Config, since: number): Incoming | null {
   const m = obj(raw), sender = obj(m.sentBy), agent = obj(m.receivedBy), space = obj(m.space), content = obj(m.content);
   if (m.projectId !== c.projectId || m.platform !== "imessage" || m.status !== "received" ||
       typeof m.createdAt !== "string" || !Number.isFinite(Date.parse(m.createdAt)) || Date.parse(m.createdAt) < since ||
-      !id("msg", m.id) || sender.kind !== "human" || sender.handle !== c.senderHandle ||
+      !id("msg", m.id) || sender.kind !== "human" || !allowedSenders(c).includes(String(sender.handle)) ||
       agent.kind !== "agent" || agent.handle !== c.agentHandle || !id("usr", sender.id) || !id("usr", agent.id) ||
       sender.id === agent.id || !id("spc", space.id) || space.kind !== "direct" ||
       content.type !== "text" || content.format !== "plain" || typeof content.text !== "string" ||

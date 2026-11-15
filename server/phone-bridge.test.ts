@@ -26,6 +26,13 @@ describe("bounded phone demo",()=>{
     expect(parseIncoming({...m,status:"dispatched"},config,now-1000)).toBeNull();
     expect(parseIncoming(m,config,now+1000)).toBeNull();
   });
+  it("accepts any handle in a comma-separated sender list and nothing else",()=>{
+    const now=Date.now(),m=message("hello"),team={...config,senderHandle:" +14155550999 , "+config.senderHandle};
+    expect(parseIncoming(m,team,now-1000)?.senderId).toBe(senderId);
+    expect(parseIncoming({...m,sentBy:{...m.sentBy,handle:"+14155550999"}},team,now-1000)?.senderId).toBe(senderId);
+    expect(parseIncoming({...m,sentBy:{...m.sentBy,handle:"+14155550998"}},team,now-1000)).toBeNull();
+    expect(parseIncoming({...m,sentBy:{...m.sentBy,handle:""}},{...config,senderHandle:" , "},now-1000)).toBeNull();
+  });
   it("requires session and separate exact one-use owner approval for voice",async()=>{
     vi.useFakeTimers();
     const {owner}=fixture();
