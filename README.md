@@ -31,16 +31,16 @@ Host or join a business, select a property, view its walkthrough, open the café
 | Area | Status |
 | --- | --- |
 | 3D café, manual service, customers, inventory, cash | Implemented; browser-tested |
-| Multiplayer, QR/resume, shared build | Prior public browser test passed; physical phone/latest deploy pending |
-| CoStar and Matterport | Authorized matched measured suite implemented locally; public extract/permissions/viewer not yet verified |
-| Deepagents and Gemini | Actual framework + Google adapter, tests; live provider acceptance pending |
-| Nessie | Local ledger, incomplete external sandbox integration |
-| Photon | In-app manager/crew WebRTC, not real Photon messaging or telephone |
+| Multiplayer, QR/resume, shared build | Public service and shared counter rerouting verified; physical-phone acceptance pending |
+| CoStar and Matterport | Public matched measured suite and live Model API verified; publication/external-processing permissions remain separate |
+| Deepagents and Gemini | Actual provider-approved execution recorded; latest recorded run hit quota, so reliable live access remains a demo gate |
+| Nessie | Live synthetic account, settled sale/purchase, future rent bill and reconciled balance verified; Render configuration and played-session banking pending |
+| Photon | Messaging inbox/webhook and voice backend implemented; actual message delivery and telephone calls unverified |
 | Timeline/rival | Illustrative heuristics, not measured counterfactuals |
-| Blueprint | Markdown export; real-session verification remaining |
+| Blueprint | Actual session Markdown export verified |
 | WebXR | Optional entry/dollhouse fallback; headset unverified |
 
-See MASTER_PLAN and PROGRESS for current evidence, not just configuration. Last recorded public property was costar-mock. The active production commit may differ from main.
+See REQUEST_AUDIT and PROGRESS for current evidence. Public APIs reported `costar-extract` on Render `1f078ae` during the latest check; the active production commit may differ from main. Older screenshots remain accessible through pinned Git-history links; the checkout retains a curated recent set and compact verification traces.
 
 ## Architecture and deployment
 
@@ -57,4 +57,4 @@ Optional geometry checks: python -m unittest discover -s scripts -p 'test_*.py'.
 
 ## Environment
 
-Use .env.example and docs/DEPLOY.md. Render server secrets: COSTAR_DATA_FILE (authorized secret file property.json), MATTERPORT_API_KEY + MATTERPORT_TOKEN, GOOGLE_API_KEY (or GEMINI_API_KEY; OpenAI/Anthropic supported), optional DEEPAGENTS_MODEL and NESSIE_KEY. Keep ALLOW_SPONSOR_MODEL_CONTEXT=false until sponsor authorizes external processing. Photon credentials pending provider integration. No secrets in VITE_* or client code. Check /api/health, /api/integrations and /api/properties; keys alone do not verify actual integration.
+Use .env.example and docs/DEPLOY.md. Render server secrets: COSTAR_DATA_FILE (authorized secret file property.json), MATTERPORT_API_KEY + MATTERPORT_TOKEN, GOOGLE_API_KEY (or GEMINI_API_KEY; OpenAI/Anthropic supported), optional DEEPAGENTS_MODEL and NESSIE_KEY. Keep ALLOW_SPONSOR_MODEL_CONTEXT=false until sponsor authorizes external processing. See docs/PHOTON_SETUP.md for the remaining provider provisioning and pairing steps. No secrets in VITE_* or client code. Check /api/health, /api/integrations and /api/properties; keys alone do not verify actual integration.
