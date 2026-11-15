@@ -200,7 +200,7 @@ export class CafeRoomServer {
     this.phoneOwner(code, token); // same active-owner authentication, not a phone requirement
     const room = this.rooms.get(code)!;
     const secret = process.env.NESSIE_ACTIVATION_CODE?.trim() || "";
-    const a = Buffer.from(activationCode), b = Buffer.from(secret);
+    const a = Buffer.from(activationCode.trim()), b = Buffer.from(secret);
     if (secret.length < 32 || a.length !== b.length || !timingSafeEqual(a,b)) throw new Error("Valid sandbox activation code required.");
     if (!process.env.NESSIE_KEY?.trim()) throw new Error("Sandbox key is not configured.");
     this.attachRoomBank(room);
