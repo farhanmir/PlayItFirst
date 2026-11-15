@@ -1,0 +1,16 @@
+{
+  "oversizedRoomBody": 413,
+  "malformedRoomBody": 400,
+  "webhookUnconfigured": 503,
+  "refreshFirst": 200,
+  "refreshRepeat": 429,
+  "roomQuotaStatuses": [
+    200,
+    200,
+    200,
+    200,
+    429,
+    429,
+    429
+  ]
+}

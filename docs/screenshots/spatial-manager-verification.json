@@ -1,0 +1,54 @@
+{
+  "before": {
+    "id": "05f4183b-cc00-4fb3-8928-a3ffc1ab9a7b",
+    "kind": "pickup",
+    "label": "Pickup Station",
+    "x": 6.5,
+    "z": 5.2,
+    "rotation": 0,
+    "cost": 300
+  },
+  "after": {
+    "id": "05f4183b-cc00-4fb3-8928-a3ffc1ab9a7b",
+    "kind": "pickup",
+    "label": "Pickup Station",
+    "x": 3,
+    "z": 7.5,
+    "rotation": 0,
+    "cost": 300
+  },
+  "receipt": {
+    "id": "053fc554-a427-4a85-ac94-9862fff86de8",
+    "action": "move_pickup",
+    "reason": "A clearance-aware route comparison found a shorter modeled espresso-to-pickup walk. Review exact coordinates and distances before approving.",
+    "cost": 0,
+    "requestedBy": "f10ccb60-75a5-47fa-8d21-a0dc1a7f1261",
+    "expiresAt": 1794703804905,
+    "status": "executed",
+    "pickupMove": {
+      "furnitureId": "05f4183b-cc00-4fb3-8928-a3ffc1ab9a7b",
+      "from": {
+        "x": 6.5,
+        "z": 5.2
+      },
+      "to": {
+        "x": 3,
+        "z": 7.5
+      },
+      "start": {
+        "x": 2.4,
+        "z": 5.1
+      },
+      "layoutSignature": "da8ea7508ef2faa15e5506dc85c1e7bea320e0b71806e011d7194a56c1ac12bc",
+      "beforeDistance": 2.6999999999999997,
+      "afterDistance": 1.2000000000000002,
+      "unit": "simulation units",
+      "method": "Clearance-aware BFS from the same espresso approach to pickup interaction range. Modeled walking distance only; no measured service-time gain."
+    },
+    "result": "Pickup moved to (3, 7.5). Modeled espresso-to-pickup route: 2.7 → 1.2 simulation units. Service-time improvement is not yet measured.",
+    "actionReceiptId": "layout:053fc554-a427-4a85-ac94-9862fff86de8"
+  },
+  "errors": [],
+  "provider": "local rules; no live model call",
+  "passed": true
+}
