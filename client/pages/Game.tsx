@@ -1,3 +1,4 @@
+import { PhotonPairing } from "../components/PhotonPairing";
 import { InstallGame } from "../components/InstallGame";
 import { useEffect, useRef, useState } from "react";
 import { useApp } from "../lib/store";
@@ -264,6 +265,7 @@ export function Game() {
             <>
               <DirectorPanel snapshot={snapshot} />
               <PhotonChat snapshot={snapshot} />
+              <details className="management-section"><summary>Phone messaging</summary><PhotonPairing /></details>
               <details className="management-section"><summary>Money & supplies</summary>
                 <FinanceLedger snapshot={snapshot} /><InventoryCard snapshot={snapshot} />
               </details>

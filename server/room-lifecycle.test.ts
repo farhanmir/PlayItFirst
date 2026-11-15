@@ -56,6 +56,36 @@ describe("bounded room lifecycle and active sessions",()=>{
     expect(room.snapshot.players).toHaveLength(1);
     expect(room.members.get(welcome.you)?.socket).toBe(replacement);
   });
+  it("hides disconnected avatars and resumes the exact held state without a duplicate", async () => {
+    const { rooms, join } = setup();const { code } = rooms.createRoom();
+    const owner = await join(code, "owner");const guest = await join(code, "barista");
+    const welcome = owner.messages.find(m => m.t === "welcome");const room = rooms.getRoom(code)!;
+    room.snapshot = { ...room.snapshot, players: room.snapshot.players.map(p => p.id === welcome.you ? { ...p, x: 4.25, z: 6.75, holding: "drink:latte" } : p) };
+    owner.close();
+    expect(room.snapshot.players.find(p => p.id === welcome.you)).toMatchObject({ connected: false, x: 4.25, z: 6.75, holding: "drink:latte" });
+    expect(guest.messages.at(-1).snapshot.players.find((p: any) => p.id === welcome.you).connected).toBe(false);
+    const resumed = await join(code, "owner", welcome.token);
+    const state = resumed.messages.find(m => m.t === "welcome");
+    expect(state.you).toBe(welcome.you);
+    expect(state.snapshot.players.filter((p: any) => p.id === welcome.you)).toHaveLength(1);
+    expect(state.snapshot.players.find((p: any) => p.id === welcome.you)).toMatchObject({ connected: true, x: 4.25, z: 6.75, holding: "drink:latte" });
+  });
+  it("unicasts phone pairing codes to the authenticated owner only", async () => {
+    vi.stubEnv("PHOTON_PROJECT_ID", "pho_prj_00000000000000000000000001");
+    vi.stubEnv("PHOTON_SENDER_ID", "pho_usr_00000000000000000000000001");
+    vi.stubEnv("PHOTON_API_KEY", "pho_sk_test");
+    vi.stubEnv("PHOTON_WEBHOOK_SECRET", `whsec_${Buffer.alloc(32, 7).toString("base64")}`);
+    try {
+      const { rooms, join, send } = setup();const { code } = rooms.createRoom();
+      const owner = await join(code, "owner"), guest = await join(code, "barista");
+      await send(guest, { t: "photon_pair_start" });
+      expect(guest.messages.at(-1).t).toBe("photon_pair_error");
+      await send(owner, { t: "photon_pair_start" });
+      expect(owner.messages.at(-1)).toMatchObject({ t: "photon_pairing", pairing: { paired: false, code: expect.any(String) } });
+      expect(guest.messages.some(m => m.t === "photon_pairing")).toBe(false);
+      expect(JSON.stringify(rooms.getRoom(code)!.snapshot)).not.toContain(owner.messages.at(-1).pairing.code);
+    } finally { vi.unstubAllEnvs(); }
+  });
   it("enforces member cap and rejects invalid resume instead of allocating another member",async()=>{
     const {rooms,join}=setup({maxRooms:1,maxMembers:1,abandonGraceMs:1000});const {code}=rooms.createRoom();
     const owner=await join(code),token=owner.messages.find(m=>m.t==="welcome").token;

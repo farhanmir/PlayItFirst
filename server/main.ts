@@ -14,7 +14,8 @@ import { qrSvg } from "./qr.ts";
 import { loadProperties, getCachedProperties } from "./costar.ts";
 import { resolveMatterport } from "./matterport.ts";
 import { deepagentsConfigured } from "./deepagents.ts";
-import { readJsonBody, respondHttpInputError, createRoomRateLimiter, createPropertyRefreshLimiter, clientAddress } from "./httpLimits.ts";
+import { PhotonRequestError } from "./photon-bridge.ts";
+import { readJsonBody, readRawBody, respondHttpInputError, createRoomRateLimiter, createPropertyRefreshLimiter, clientAddress } from "./httpLimits.ts";
 
 // Node 22's loader preserves values already supplied by Render's environment.
 if (existsSync(".env")) loadEnvFile(".env");
@@ -141,6 +142,18 @@ server.on("request", (req, res) => {
     }
     const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
 
+    if (url.pathname === "/api/photon/webhook") {
+      if (req.method !== "POST") { json(res, 405, { error: "Method not allowed" }); return; }
+      if (!req.headers["content-type"]?.toLowerCase().startsWith("application/json")) { json(res, 415, { error: "JSON content required" }); return; }
+      const raw = await readRawBody(req, { maxBytes: 64 * 1024 });
+      const headers: Record<string, string> = {};
+      for (const name of ["webhook-id", "webhook-timestamp", "webhook-signature"]) {
+        const value = req.headers[name]; if (typeof value === "string") headers[name] = value;
+      }
+      await rooms.receivePhoton(raw.toString("utf8"), headers);
+      res.writeHead(204); res.end(); return;
+    }
+
     if (url.pathname === "/api/properties") {
       if (url.searchParams.get("refresh") === "1") {
         const limit = refreshLimiter.take("refresh");
@@ -165,7 +178,7 @@ server.on("request", (req, res) => {
         nessie: !!process.env.NESSIE_KEY,
         deepagents: deepagentsConfigured(),
         photonVoice: "webrtc-crew-not-photon-2",
-        photonMessaging: "in-app-regex-not-photon-2",
+        photonMessaging: rooms.photonStatus(),
         webxr: "client",
       });
       return;
@@ -230,6 +243,7 @@ server.on("request", (req, res) => {
     await serveDist(url.pathname, req, res);
   })().catch((error) => {
     if (respondHttpInputError(req, res, error)) return;
+    if (error instanceof PhotonRequestError) { if (error.status === 429) res.setHeader("Retry-After", "3"); json(res, error.status, { error: error.message }); return; }
     if (error instanceof RoomCapacityError) { json(res, 503, { error: error.message }); return; }
     console.error(error);
     if (!res.headersSent) json(res, 500, { error: "Internal error" });

@@ -1,3 +1,4 @@
+import type { PhotonPairingView, PhotonStatus } from "../../shared/photon";
 import { create } from "zustand";
 import type { FurnitureKind, PropertyListing, RoomSnapshot } from "../../shared/types";
 import type { Conn, ConnStatus } from "./net";
@@ -22,6 +23,8 @@ interface AppState {
   buildRotation: number;
   buildMovingId: string | null;
   managerError: string | null;
+  photonPairing: { pairing: PhotonPairingView; status: PhotonStatus } | null;
+  photonPairError: string | null;
   connectionError: string | null;
   set: (partial: Partial<AppState>) => void;
 }
@@ -47,6 +50,8 @@ export const useApp = create<AppState>((set) => ({
   buildRotation: 0,
   buildMovingId: null,
   managerError: null,
+  photonPairing: null,
+  photonPairError: null,
   connectionError: null,
   set: (partial) => set(partial),
 }));

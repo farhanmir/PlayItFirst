@@ -18,7 +18,8 @@ import { applyDirectorChoice, forceDemoRushEvent, maybeSpawnDirectorEvent } from
 import { attachNessieAccount, refreshNessie } from "./finance.ts";
 import { getCachedProperties, loadProperties } from "./costar.ts";
 import { withMatterportDefaults } from "./matterport.ts";
-import { CafeManager } from "./manager.ts";
+import { CafeManager, type ManagerActor } from "./manager.ts";
+import { PhotonBridge, PhotonRequestError, photonConfigFromEnv, photonConfigurationStatus } from "./photon-bridge.ts";
 import {
   addPlayer,
   buildBlueprint,
@@ -113,11 +114,30 @@ export class CafeRoomServer {
   private sessions = new WeakMap<WebSocket, { room: Room; member: Member }>();
 
   private limits:RoomLimits;
+  private photon: PhotonBridge | null = null;
 
   constructor(private wss: WebSocketServer, limits:Partial<RoomLimits>={}) {
     this.limits={...ROOM_LIMITS,...limits};
+    const photonConfig = photonConfigFromEnv();
+    if (photonConfig) this.photon = new PhotonBridge(photonConfig, {
+      authorize: actor => { this.photonOwner(actor); },
+      manager: actor => this.managerFor(this.photonOwner(actor)),
+      changed: (actor, pairing) => send(this.rooms.get(actor.roomCode)?.members.get(actor.memberId)?.socket ?? null,
+        { t: "photon_pairing", pairing, status: this.photonStatus() }),
+    });
     wss.on("connection", (socket, request) => this.onConnection(socket, request));
     wss.on("close",()=>{for(const room of this.rooms.values())this.expire(room);});
+  }
+
+  photonStatus() { return photonConfigurationStatus(); }
+  async receivePhoton(raw: string, headers: Record<string, string>) {
+    if (!this.photon) throw new PhotonRequestError(503, "Photon messaging is not configured");
+    await this.photon.receive(raw, headers);
+  }
+  private photonOwner(actor: ManagerActor) {
+    const room = this.rooms.get(actor.roomCode);
+    if (!room || room.members.get(actor.memberId)?.role !== "owner") throw new Error("Only the café owner can pair a phone");
+    return room;
   }
 
   listProperties() {
@@ -203,6 +223,23 @@ export class CafeRoomServer {
 
 
     switch (msg.t) {
+      case "photon_pair_start":
+      case "photon_pair_confirm":
+      case "photon_pair_revoke":
+      case "photon_pair_status": {
+        const actor = { roomCode: room.code, memberId: member.id };
+        try {
+          this.photonOwner(actor);
+          if (msg.t === "photon_pair_status") send(socket, { t: "photon_pairing", pairing: this.photon?.status(actor) ?? { paired: false }, status: this.photonStatus() });
+          else {
+            if (!this.photon) throw new Error("Photon messaging is not configured on this server");
+            if (msg.t === "photon_pair_start") this.photon.start(actor);
+            else if (msg.t === "photon_pair_confirm") this.photon.confirm(actor);
+            else this.photon.revoke(actor);
+          }
+        } catch { send(socket, { t: "photon_pair_error", message: "Pairing unavailable. Only the owner can pair a phone, and the server must be configured." }); }
+        break;
+      }
       case "manager_request":
       case "manager_approve":
       case "manager_decline":
@@ -435,7 +472,7 @@ export class CafeRoomServer {
     this.startLoops(room);
 
     this.sessions.set(socket, { room, member });
-    room.snapshot = { ...room.snapshot, players: room.snapshot.players.map((p) => p.id === member.id ? { ...p, moveAck: p.moveAck ?? 0 } : p) };
+    room.snapshot = { ...room.snapshot, players: room.snapshot.players.map((p) => p.id === member.id ? { ...p, connected: true, moveAck: p.moveAck ?? 0 } : p) };
     send(socket, { t: "welcome", token: member.token, you: member.id, snapshot: room.snapshot });
     this.broadcast(room);
   }
@@ -444,7 +481,11 @@ export class CafeRoomServer {
     const session = this.sessions.get(socket);
     if (!session) return;
     // A resumed connection can already own this member when the old socket closes.
-    if (session.member.socket === socket) session.member.socket = null;
+    if (session.member.socket === socket) {
+      session.member.socket = null;
+      session.room.snapshot = { ...session.room.snapshot, players: session.room.snapshot.players.map(p => p.id === session.member.id ? { ...p, connected: false } : p) };
+      this.broadcast(session.room);
+    }
     this.sessions.delete(socket);
     if(![...session.room.members.values()].some(m=>m.socket?.readyState===WebSocket.OPEN))this.scheduleExpiry(session.room);
   }
@@ -463,6 +504,7 @@ export class CafeRoomServer {
 
   private expire(room:Room){
     this.stopLoops(room);clearTimeout(room.expiryTimer);room.expiryTimer=undefined;
+    this.photon?.forgetRoom(room.code);
     this.rooms.delete(room.code);
     for(const member of room.members.values())if(member.socket){this.sessions.delete(member.socket);member.socket.close(4000,"Café closed");member.socket=null;}
     room.members.clear();

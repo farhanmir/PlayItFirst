@@ -188,7 +188,7 @@ function wireConnection(room: string, name: string, role: PlayerRole) {
   prev?.close();
   const conn = connect(room, name, role);
   const set = useApp.getState().set;
-  set({ conn, status: "connecting", connectionError: null, snapshot: null, you: null, blueprint: null });
+  set({ photonPairing: null, photonPairError: null, conn, status: "connecting", connectionError: null, snapshot: null, you: null, blueprint: null });
 
   conn.onStatus((status) => { if (useApp.getState().conn === conn) set({ status }); });
   conn.onMessage((m) => {
@@ -214,6 +214,8 @@ function wireConnection(room: string, name: string, role: PlayerRole) {
         .catch(() => undefined);
     }
     if (m.t === "snapshot") set({ snapshot: m.snapshot });
+    if (m.t === "photon_pairing") set({ photonPairing: { pairing: m.pairing, status: m.status }, photonPairError: null });
+    if (m.t === "photon_pair_error") set({ photonPairError: m.message });
     if (m.t === "manager_error") set({ managerError: m.message });
     if (m.t === "blueprint") set({ blueprint: m.markdown, screen: "game" });
     if (m.t === "error") {

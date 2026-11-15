@@ -1,4 +1,5 @@
 /** Shared contracts for Play It First client + authoritative server. */
+import type { PhotonPairingView, PhotonStatus } from "./photon";
 import type { ManagerView } from "./manager";
 import type { MeasuredFloorPlan } from "./floorplan";
 
@@ -98,6 +99,8 @@ export interface Customer {
 }
 
 export interface PlayerState {
+  /** False hides disconnected avatars while preserving resumable state. */
+  connected?: boolean;
   /** Last processed client movement sequence, including rejected moves. */
   moveAck?: number;
   id: string;
@@ -216,6 +219,7 @@ export interface RoomSnapshot {
 }
 
 export type ClientMsg =
+  | { t: "photon_pair_start" | "photon_pair_confirm" | "photon_pair_revoke" | "photon_pair_status" }
   | { t: "manager_request"; prompt: string }
   | { t: "manager_approve"; proposalId: string }
   | { t: "manager_decline"; proposalId: string }
@@ -238,6 +242,8 @@ export type ClientMsg =
   | { t: "voice_signal"; to?: string; kind: "offer" | "answer" | "ice" | "hangup"; sdp?: string; candidate?: string };
 
 export type ServerMsg =
+  | { t: "photon_pairing"; pairing: PhotonPairingView; status: PhotonStatus }
+  | { t: "photon_pair_error"; message: string }
   | { t: "manager_error"; message: string }
   | { t: "welcome"; token: string; you: string; snapshot: RoomSnapshot }
   | { t: "snapshot"; snapshot: RoomSnapshot }
