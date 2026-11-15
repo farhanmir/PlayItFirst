@@ -43,12 +43,14 @@ export function PhotonChat({ snapshot }: { snapshot: RoomSnapshot }) {
       {owner ? <details>
         <summary>{phoneTransport === "webhook" ? "Connect a telephone call (Photon Voice)" : "Connect your phone (Photon demo)"}</summary>
         <p>{phoneTransport === "webhook" ? "iMessage uses the separate signed-webhook pairing below. This session is for a provisioned telephone number and voice agent." : "Start a private 10-minute session. Only the configured iMessage sender can pair. Voice requires a provisioned number and connected voice agent."}</p>
+        <form onSubmit={e => { e.preventDefault(); if (!phoneBusy && phoneActivation.trim()) void phoneAction("start"); }}>
         <label>Team phone activation code <input type="password" autoComplete="off" maxLength={256} value={phoneActivation} onChange={e=>setPhoneActivation(e.target.value)} /></label>
         <div className="manager-actions">
-          <button type="button" className="btn btn-small" disabled={phoneBusy || !phoneActivation.trim()} onClick={() => void phoneAction("start")}>Start phone session</button>
+          <button type="submit" className="btn btn-small" disabled={phoneBusy || !phoneActivation.trim()}>{phoneBusy ? "Connecting…" : "Start phone session"}</button>
           {phone ? <><button type="button" className="btn-ghost btn-small" disabled={phoneBusy} onClick={() => void phoneAction("status")}>Refresh status</button>
           <button type="button" className="btn-ghost btn-small" disabled={phoneBusy} onClick={() => void phoneAction("end")}>Disconnect</button></> : null}
         </div>
+        </form>
         {phoneError ? <p role="alert">{phoneError}</p> : null}
         {phone ? <div>
           <p>Expires {new Date(phone.expiresAt).toLocaleTimeString()}. Keep the owner connected.</p>

@@ -136,11 +136,11 @@ export class CafeRoomServer {
     if (!this.photon) throw new PhotonRequestError(503, "Photon messaging is not configured");
     await this.photon.receive(raw, headers);
   }
-  private photonOwner(actor: ManagerActor) {
+  private photonOwner(actor: ManagerActor, requireContext = true) {
     const room = this.rooms.get(actor.roomCode);
     if (!room || room.members.get(actor.memberId)?.role !== "owner" || room.members.get(actor.memberId)?.socket?.readyState !== WebSocket.OPEN) throw new Error("Only the café owner can pair a phone");
     const source = room.snapshot.property?.source;
-    if ((source === "costar-extract" || source === "costar-live") && process.env.ALLOW_SPONSOR_PHONE_CONTEXT !== "true")
+    if (requireContext && (source === "costar-extract" || source === "costar-live") && process.env.ALLOW_SPONSOR_PHONE_CONTEXT !== "true")
       throw new Error("External phone processing is not authorized for this property");
     return room;
   }
@@ -283,8 +283,9 @@ export class CafeRoomServer {
       case "photon_pair_status": {
         const actor = { roomCode: room.code, memberId: member.id };
         try {
-          this.photonOwner(actor);
-          if (msg.t === "photon_pair_status") send(socket, { t: "photon_pairing", pairing: this.photon?.status(actor) ?? { paired: false }, status: this.photonStatus() });
+          const ownerRoom = this.photonOwner(actor, msg.t !== "photon_pair_status");
+          const restricted = ["costar-extract", "costar-live"].includes(ownerRoom.snapshot.property?.source ?? "") && process.env.ALLOW_SPONSOR_PHONE_CONTEXT !== "true";
+          if (msg.t === "photon_pair_status") send(socket, { t: "photon_pairing", pairing: restricted ? { paired: false } : this.photon?.status(actor) ?? { paired: false }, status: this.photonStatus() });
           else {
             if (!this.photon) throw new Error("Photon messaging is not configured on this server");
             if (msg.t === "photon_pair_start") {

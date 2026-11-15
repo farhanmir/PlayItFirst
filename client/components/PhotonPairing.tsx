@@ -19,14 +19,16 @@ export function PhotonPairing() {
   return <aside className="side-panel panel" aria-label="Phone messaging">
     <h3>Message Jamie from your phone</h3>
     <p>Connect your phone to this café through the provisioned Photon iMessage line.</p>
-    {!state ? <p role="status">Checking messaging availability…</p> : !configured ? <p role="status">Messaging setup is incomplete on the server. Your café still works without it.</p> : null}
+    {!state && !error ? <p role="status">Checking messaging availability…</p> : state && !configured ? <p role="status">Messaging setup is incomplete on the server. Your café still works without it.</p> : null}
     {error && <p role="alert">{error}</p>}
     {pairing?.paired ? <>
       <p role="status">Phone {pairing.candidate} connected to this café. Send Jamie a request. Purchases require an explicit proposal approval.</p>
       <button type="button" className="btn btn-small" disabled={!online} onClick={() => conn?.send({ t: "photon_pair_revoke" })}>Disconnect phone</button>
     </> : <>
+      <form onSubmit={e => { e.preventDefault(); if (!configured || !online || !activation.trim()) return; conn?.send({ t: "photon_pair_start", activationCode: activation }); setActivation(""); }}>
       <label>Team phone activation code <input type="password" autoComplete="off" maxLength={256} value={activation} onChange={e => setActivation(e.target.value)} /></label>
-      <button type="button" className="btn btn-small" disabled={!configured || !online || !activation.trim()} onClick={() => { conn?.send({ t: "photon_pair_start", activationCode: activation }); setActivation(""); }}>{pairing?.code ? "Replace pairing code" : "Create pairing code"}</button>
+      <button type="submit" className="btn btn-small" disabled={!configured || !online || !activation.trim()}>{pairing?.code ? "Replace pairing code" : "Create pairing code"}</button>
+      </form>
       {pairing?.code && <p>Send <code>PAIR {pairing.code}</code> to your provisioned Photon line. This code expires in five minutes.</p>}
       {pairing?.candidate && <>
         <p>Phone ending {pairing.candidate} requested access. Confirm only if this is your phone.</p>

@@ -2,6 +2,10 @@
 
 Tracking https://github.com/farhanmir/PlayItFirst/issues/2. Work directly on `main` under AGENTS.md.
 
+## Phone activation submission correction
+
+The owner could type the team activation code but the page showed a disabled webhook button and endless availability check in bounded-inbox mode. Sponsor-phone protection was refusing even the owner-only read-only transport-status request, so the client never learned to hide the webhook panel. Status now returns transport configuration without authorizing external sponsor processing; actual pairing still enforces the original permission and owner guards. Both activation forms submit with Enter; inbox start shows connecting feedback. Full223-test/typecheck/build checks passed before the added real-WebSocket regression; the focused four-test smoke suite and typecheck then passed, including owner status, denied sponsor pairing and denied guest status. Actual phone delivery is still unverified. First phone test should use a fictional practice property unless external sponsor processing is explicitly authorized.
+
 ## More real measured property choices
 
 Inspected all16 eligible active suite/model matches from the supplied kit using the existing batch importer. Seven passed actual Model API verification and measured-floor conversion; nine were rejected for disconnected room boundaries, unavailable area metadata, unsupported multi-floor scans or no safe starter-service area. Two of the seven have asking rents above the unchanged $20,000 startup budget, so the deployable private `.sponsor/property.json` contains **five affordable real measured layouts**. The original known-good suite remains first and intact. All five pass authoritative property selection with starter equipment and nonnegative opening funds. The seven-result expanded file and rejection report remain ignored, as does the original backup. No sponsor records or geometry are committed.

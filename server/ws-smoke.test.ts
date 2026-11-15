@@ -5,6 +5,38 @@ import { CafeRoomServer } from "./rooms.ts";
 import { seedDemoCrowd } from "./simulation.ts";
 
 describe("multiplayer room smoke", () => {
+  it("lets the owner read phone transport status without authorizing sponsor processing", async () => {
+    vi.stubEnv("ALLOW_SPONSOR_PHONE_CONTEXT", "false");
+    vi.stubEnv("PHOTON_MESSAGING_TRANSPORT", "bounded-inbox");
+    const httpServer = createServer();
+    const wss = new WebSocketServer({ server: httpServer });
+    const rooms = new CafeRoomServer(wss);
+    const created = rooms.createRoom();
+    const clients: WebSocket[] = [];
+    try {
+      await new Promise<void>(resolve => httpServer.listen(0, resolve));
+      const port = (httpServer.address() as { port: number }).port;
+      const owner = await connectClient(port, created.code, "Owner", "owner");
+      const guest = await connectClient(port, created.code, "Guest", "barista");
+      clients.push(owner.ws, guest.ws);
+      const room = rooms.getRoom(created.code)!;
+      room.snapshot = { ...room.snapshot, property: { ...rooms.listProperties()[0], source: "costar-extract" } };
+      const status = waitFor(owner.ws, m => m.t === "photon_pairing");
+      owner.ws.send(JSON.stringify({ t: "photon_pair_status" }));
+      expect((await status).status.transport).toBe("bounded-inbox");
+      const denied = waitFor(owner.ws, m => m.t === "photon_pair_error");
+      owner.ws.send(JSON.stringify({ t: "photon_pair_start", activationCode: "not-authorized" }));
+      await denied;
+      const guestDenied = waitFor(guest.ws, m => m.t === "photon_pair_error");
+      guest.ws.send(JSON.stringify({ t: "photon_pair_status" }));
+      await guestDenied;
+    } finally {
+      for (const ws of clients) ws.terminate();
+      wss.close();
+      await new Promise<void>(resolve => httpServer.close(() => resolve()));
+      vi.unstubAllEnvs();
+    }
+  });
   it("preserves the banking session on duplicate selection and owner resume", async () => {
     vi.stubEnv("NESSIE_KEY", "");
     const httpServer = createServer();
