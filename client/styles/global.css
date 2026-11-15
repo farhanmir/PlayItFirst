@@ -266,3 +266,15 @@ p {
 .help-inputs { border-top: 1px solid var(--glass-border); margin: 24px 0; padding-top: 18px; display: grid; gap: 12px; font-size: 13px; line-height: 1.6; color: var(--foam-soft); }
 .help-inputs kbd { display: inline-grid; place-items: center; min-width: 24px; padding: 2px 5px; margin-right: 3px; background: #ffffff14; border: 1px solid #ffffff30; border-radius: 4px; }
 .help-dialog form .btn { width: 100%; }
+
+/* Only the live game owns the viewport; landing and property pages keep document scrolling. */
+html:has(.game-immersive), body:has(.game-immersive) {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+body:has(.game-immersive) #root,
+.app-shell:has(.game-immersive) {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}

@@ -2306,7 +2306,7 @@
 .game-drawer .director-panel, .game-immersive .game-drawer .director-panel { position: static; width: auto; max-width: none; max-height: none; overflow: visible; background: #f6efd808; backdrop-filter: none; }
 .game-drawer .director-panel > p { display: block; overflow: visible; -webkit-line-clamp: unset; }
 .game-immersive button:focus-visible, .game-immersive summary:focus-visible { outline: 3px solid #e9b765; outline-offset: 3px; }
-@media (max-width: 760px) {
+@media (max-width: 760px), (pointer: coarse) and (max-height: 500px) {
   .game-immersive .hud-top { top: max(8px, env(safe-area-inset-top)); left: 8px; right: 8px; width: auto; padding: 8px 10px; grid-template-columns: 1fr auto; gap: 0 10px; }
   .game-immersive .hud-brand { grid-column: 2; grid-row: 1; }
   .game-immersive .hud-brand > strong, .game-immersive .hud-brand .live-dot, .game-immersive .hud-brand > .tag { display: none; }
@@ -2353,4 +2353,65 @@
 }
 @media (pointer: coarse) {
   .game-immersive .hud-mute, .game-chrome .view-toggle button, .game-immersive .order-expand { min-height: 44px; min-width: 44px; }
+}
+
+/* The world fills the device viewport, independent of its aspect ratio. */
+.game.game-immersive {
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  max-width: none;
+  margin: 0;
+  --safe-left: max(8px, env(safe-area-inset-left));
+  --safe-right: max(8px, env(safe-area-inset-right));
+  --safe-top: max(8px, env(safe-area-inset-top));
+  --safe-bottom: max(16px, env(safe-area-inset-bottom));
+}
+.game-immersive .game-stage,
+.game-immersive .cafe-canvas { min-height: 0; }
+.game-immersive .game-drawer {
+  grid-template-rows: auto auto minmax(0, 1fr);
+  padding-top: env(safe-area-inset-top);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+  max-height: 100%;
+}
+.game-immersive .drawer-body { min-height: 0; overflow-y: auto; scroll-padding-block: 24px; }
+.game-immersive .drawer-body input,
+.game-immersive .drawer-body textarea { scroll-margin-block: 24px; }
+@media (max-width: 760px), (pointer: coarse) and (max-height: 500px) {
+  .game-immersive .hud-top { left: var(--safe-left); right: var(--safe-right); }
+  .game-immersive .game-chrome, .game-immersive.build-open .game-chrome,
+  .game-immersive .help-fab, .game-immersive.build-open .build-catalog { right: var(--safe-right); }
+  .game-immersive .order-rail.compact { left: var(--safe-left); }
+  .game-immersive .play-controls.immersive.mobile {
+    right: var(--safe-right);
+    bottom: calc(var(--safe-bottom) + 8px);
+    width: calc(100% - var(--safe-left) - var(--safe-right) - 124px);
+  }
+  .game-immersive .play-controls.mobile .mobile-pad { right: calc(100% + 18px); }
+  .game-immersive .game-drawer input, .game-immersive .game-drawer textarea { font-size: 16px; }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  .game-immersive .hud-top { top: var(--safe-top); left: var(--safe-left); right: auto; width: 300px; padding: 6px 10px; }
+  .game-immersive .hud-brand > strong { display: none; }
+  .game-immersive .hud-brand { grid-column: 2; grid-row: 1; }
+  .game-immersive .hud-vitals { grid-column: 1; grid-row: 1; gap: 12px; }
+  .game-immersive .hud-invite { grid-column: 3; grid-row: 1; }
+  .game-immersive .hud-invite summary > span { display: none; }
+  .game-immersive .game-chrome, .game-immersive.build-open .game-chrome { top: var(--safe-top); right: var(--safe-right); }
+  .game-immersive .order-rail.compact { top: calc(var(--safe-top) + 66px); width: 150px; max-height: 36dvh; }
+  .game-immersive .order-rail-scroll { max-height: 24dvh; }
+  .game-immersive .order-rail.compact .ticket { padding: 6px 10px; }
+  .game-immersive .order-rail .ticket header { display: none; }
+  .game-immersive .order-rail .ticket .order-line { margin: 5px 0; }
+  .game-immersive .help-fab { top: calc(var(--safe-top) + 58px); bottom: auto; right: var(--safe-right); }
+  .game-immersive .play-controls.immersive.mobile { width: 250px; left: auto; right: var(--safe-right); transform: none; padding: 8px; }
+  .game-immersive .play-controls.mobile .mobile-pad { position: fixed; left: var(--safe-left); right: auto; bottom: calc(var(--safe-bottom) + 8px); width: 104px; height: 104px; min-height: 104px; }
+  .game-immersive .play-controls.mobile .station-hint { display: none; }
+  .game-immersive.build-open .build-catalog { top: calc(var(--safe-top) + 58px); bottom: 62px; width: 270px; }
+  .game-immersive .build-banner { width: auto; max-width: calc(100% - 32px); bottom: var(--safe-bottom); padding: 6px 12px; }
+  .game-immersive .drawer-heading { padding-top: 10px; padding-bottom: 6px; }
+  .game-immersive .drawer-tabs { padding-block: 4px; }
 }
