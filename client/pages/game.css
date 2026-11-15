@@ -158,9 +158,11 @@
   transform: translateX(105%);
   transition: transform 0.28s ease;
   pointer-events: none;
+  visibility: hidden;
 }
 
 .game.drawer-open .game-drawer {
+  visibility: visible;
   transform: translateX(0);
   pointer-events: auto;
 }
@@ -173,8 +175,9 @@
 }
 
 .drawer-tabs button {
-  flex: 1;
-  min-width: 4.2rem;
+  min-height: 44px;
+  flex: 1 1 auto;
+  min-width: 0;
   padding: 0.45rem 0.4rem;
   border-radius: 10px;
   border: 1px solid transparent;

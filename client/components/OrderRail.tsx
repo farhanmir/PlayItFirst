@@ -33,7 +33,7 @@ export function OrderRail({
           <article key={c.id} className={`ticket persona-${c.persona} state-${c.state}`}>
             <header>
               <strong>{c.name}</strong>
-              {!compact ? <span>{PERSONA[c.persona].label}</span> : <span>{c.state === "queue" ? "In line" : c.state === "ordering" ? "Take order" : "To make"}</span>}
+              {!compact ? <span>{PERSONA[c.persona].label}</span> : <span>{orderStatus(c, snapshot)}</span>}
             </header>
             <p className="order-line">{c.order ? titleCase(c.order) : titleCase(c.preference)}</p>
             {!compact ? (
@@ -61,4 +61,14 @@ function patienceLabel(patience: number) {
   if (patience > 90) return "Waiting";
   if (patience > 35) return "Impatient";
   return "Leaving soon";
+}
+
+/** Use the assigned barista's actual held item, not the customer's waiting state alone. */
+function orderStatus(customer: Customer, snapshot: RoomSnapshot) {
+  if (customer.state === "queue") return "In line";
+  if (customer.state === "ordering") return "Take order";
+  const holding = snapshot.players.find((player) => player.id === customer.ticketHolder)?.holding;
+  if (customer.order && holding === `drink:${customer.order}`) return "Ready to serve";
+  if (customer.order && holding?.startsWith(`brewing:${customer.order}@`)) return "Brewing";
+  return "To make";
 }

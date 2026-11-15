@@ -18,6 +18,27 @@ export function Hud({
   const roomCode = useApp((s) => s.roomCode);
   const status = useApp((s) => s.status);
   const [mute, setMute] = useState(false);
+  const invite = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    const dismiss = (event: PointerEvent) => {
+      if (invite.current?.open && event.target instanceof Node && !invite.current.contains(event.target)) {
+        invite.current.open = false;
+      }
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || !invite.current?.open) return;
+      event.preventDefault();
+      event.stopPropagation();
+      invite.current.open = false;
+      invite.current.querySelector("summary")?.focus();
+    };
+    document.addEventListener("pointerdown", dismiss);
+    document.addEventListener("keydown", escape, true);
+    return () => {
+      document.removeEventListener("pointerdown", dismiss);
+      document.removeEventListener("keydown", escape, true);
+    };
+  }, []);
 
 
   return (
@@ -63,7 +84,7 @@ export function Hud({
 
       </div>
 
-      <details className="hud-invite">
+      <details ref={invite} className="hud-invite">
         <summary aria-label="Invite a friend to your café"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 21v-3a6 6 0 0 1 12 0v3M19 6v8m-4-4h8"/></svg><span>Invite</span></summary>
         <div className="invite-popover">
           <strong>Better with a friend</strong>

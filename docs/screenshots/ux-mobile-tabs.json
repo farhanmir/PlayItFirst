@@ -1,0 +1,31 @@
+{
+  "width": 358,
+  "scrollWidth": 358,
+  "buttons": [
+    {
+      "label": "Café",
+      "w": 50.765625,
+      "h": 44
+    },
+    {
+      "label": "Build",
+      "w": 52.4375,
+      "h": 44
+    },
+    {
+      "label": "Layout",
+      "w": 62.765625,
+      "h": 44
+    },
+    {
+      "label": "Compare",
+      "w": 76.484375,
+      "h": 44
+    },
+    {
+      "label": "Blueprint",
+      "w": 76.96875,
+      "h": 44
+    }
+  ]
+}

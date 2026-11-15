@@ -83,8 +83,13 @@ async function startHost(name: string) {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-SoftOpen-Public-Origin": publicOrigin() },
     body: JSON.stringify({ publicOrigin: publicOrigin() }),
+    signal: AbortSignal.timeout(12000),
   });
+  if (!res.ok) throw new Error("Could not open a café. Please try again.");
   const data = (await res.json()) as { code: string; url: string; qrSvg: string };
+  if (typeof data.code !== "string" || !data.code.trim()) {
+    throw new Error("The café did not open. Please try again.");
+  }
   const joinUrl = data.url?.startsWith("http") ? data.url : `${publicOrigin()}/?room=${data.code}`;
   set({
     name,

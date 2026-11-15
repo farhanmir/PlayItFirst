@@ -1,5 +1,5 @@
 import { InstallGame } from "../components/InstallGame";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useApp } from "../lib/store";
 import { CafeScene } from "../components/CafeScene";
 import { CafeCanvasFallback } from "../components/CafeCanvasFallback";
@@ -45,7 +45,20 @@ export function Game() {
   const [userPickedView, setUserPickedView] = useState(false);
   const [buildMode, setBuildMode] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
+  const drawerClose = useRef<HTMLButtonElement>(null);
+  const hadDrawer = useRef(false);
   const [drawerTab, setDrawerTab] = useState<DrawerTab>("manage");
+
+  useEffect(() => {
+    if (drawerOpen) {
+      if (document.pointerLockElement) document.exitPointerLock();
+      drawerClose.current?.focus();
+    } else if (hadDrawer.current) {
+      menuButton.current?.focus();
+    }
+    hadDrawer.current = drawerOpen;
+  }, [drawerOpen]);
 
   useEffect(() => {
     if (userPickedView || buildMode) return;
@@ -71,8 +84,16 @@ export function Game() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (document.querySelector("dialog[open]")) return;
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.defaultPrevented || document.querySelector("dialog[open]")) return;
+      if (e.key === "Escape" && drawerOpen) {
+        e.preventDefault();
+        setDrawerOpen(false);
+        return;
+      }
+      const target = e.target instanceof HTMLElement ? e.target : null;
+      if (target?.closest("input, textarea, select, [contenteditable=true]")) return;
+      // Tab retains normal navigation in every menu and HUD control.
+      if (e.key === "Tab" && (drawerOpen || target?.closest("button, summary, a, [role=button]"))) return;
       if (e.key === "Tab") {
         e.preventDefault();
         setBuildMode((open) => {
@@ -106,7 +127,7 @@ export function Game() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [drawerOpen]);
 
   if (!snapshot?.property) {
     return (
@@ -176,6 +197,9 @@ export function Game() {
           </button>
           <button
             type="button"
+            ref={menuButton}
+            aria-expanded={drawerOpen}
+            aria-controls="cafe-management"
             className={`chrome-btn ${drawerOpen ? "active" : ""}`}
             onClick={() => {
               play("ui", 0.2);
@@ -202,9 +226,9 @@ export function Game() {
         ) : null}
       </div>
 
-      <aside className="game-drawer" aria-label="Café management" aria-hidden={!drawerOpen} inert={!drawerOpen}>
+      <aside id="cafe-management" className="game-drawer" aria-label="Café management" aria-hidden={!drawerOpen} inert={!drawerOpen}>
         <header className="drawer-heading"><div><p>Your café</p><h2>{snapshot.property.name}</h2></div>
-          <button type="button" className="drawer-close" aria-label="Close café management" onClick={() => setDrawerOpen(false)}>×</button>
+          <button ref={drawerClose} type="button" className="drawer-close" aria-label="Close café management" onClick={() => setDrawerOpen(false)}>×</button>
         </header>
         <div className="drawer-tabs">
           {(

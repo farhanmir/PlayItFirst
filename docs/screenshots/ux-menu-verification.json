@@ -1,0 +1,45 @@
+[
+  [
+    "open autofocus",
+    "drawer-close"
+  ],
+  [
+    "Tab from close",
+    "game game-immersive  drawer-open",
+    "Café"
+  ],
+  [
+    "Escape input closes",
+    "true",
+    "returns focus",
+    "cafe-management"
+  ],
+  [
+    "closed inert prevents focus",
+    true
+  ],
+  [
+    "Escape invite closes",
+    true,
+    "menu stays closed",
+    "true"
+  ],
+  [
+    "outside dismiss",
+    true
+  ],
+  [
+    "closed drawer visible controls",
+    0
+  ],
+  [
+    "mobile tab heights",
+    [
+      44,
+      44,
+      44,
+      44,
+      44
+    ]
+  ]
+]

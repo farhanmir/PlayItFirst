@@ -14,6 +14,7 @@ export function Landing({ onStart, onJoin, onJudgeDemo, demoBusy }: Props) {
   const [name, setName] = useState(getStoredName());
   const [joinCode, setJoinCode] = useState("");
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
   const [mode, setMode] = useState<"host" | "join" | null>(null);
   const locked = busy || !!demoBusy;
   return (
@@ -34,14 +35,21 @@ export function Landing({ onStart, onJoin, onJudgeDemo, demoBusy }: Props) {
           </div>
           {mode && <form id="landing-room-form" className="landing-room-form" onSubmit={async (event) => {
             event.preventDefault();
-            if (!name.trim() || locked || (mode === "join" && !joinCode.trim())) return;
+            if (locked) return;
+            if (!name.trim() || (mode === "join" && !joinCode.trim())) {
+              setError("Enter your name" + (mode === "join" ? " and room code." : "."));
+              return;
+            }
+            setError("");
             setBusy(true);
             try { if (mode === "host") await onStart(name.trim()); else onJoin(joinCode.trim().toLowerCase(), name.trim()); }
+            catch { setError("Could not open the café. Check your connection and try again."); }
             finally { setBusy(false); }
           }}>
-            <label>Your name<input autoComplete="nickname" maxLength={24} value={name} onChange={(e) => setName(e.target.value)} disabled={locked} required /></label>
-            {mode === "join" && <label>Room code<input value={joinCode} onChange={(e) => setJoinCode(e.target.value.trim())} autoCapitalize="none" autoCorrect="off" spellCheck={false} disabled={locked} required /></label>}
-            <button className="landing-form-submit" type="submit" disabled={locked || !name.trim() || (mode === "join" && !joinCode.trim())}>{busy ? "Opening…" : mode === "host" ? "Choose a property" : "Enter café"}</button>
+            <label htmlFor="player-name">Your name<input id="player-name" name="nickname" autoComplete="nickname" maxLength={24} value={name} onChange={(e) => setName(e.target.value)} disabled={locked} required /></label>
+            {mode === "join" && <label htmlFor="room-code">Room code<input id="room-code" name="room" value={joinCode} onChange={(e) => setJoinCode(e.target.value.trim())} autoCapitalize="none" autoCorrect="off" spellCheck={false} disabled={locked} required /></label>}
+            {error && <p className="landing-error" role="alert">{error}</p>}
+            <button className="landing-form-submit" type="submit" disabled={locked}>{busy ? "Opening…" : mode === "host" ? "Choose a property" : "Enter café"}</button>
           </form>}
         </div>
         <div className="landing-install"><InstallGame /></div>
