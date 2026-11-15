@@ -6,6 +6,8 @@
 
 Read [MASTER_PLAN.md](MASTER_PLAN.md) for scope, [PROGRESS.md](PROGRESS.md) for dated evidence, and [RELEASE_AUDIT.md](RELEASE_AUDIT.md) before publication. Render is the only production host: https://playitfirst.onrender.com/?demo=1.
 
+Use [PROBLEM_EVIDENCE.md](PROBLEM_EVIDENCE.md) for primary sources supporting the business problem and the limits of the pitch claims.
+
 ## Evidence boundary for this pitch
 
 Public measured-property rendering, matched Matterport metadata, manual paid service and storage access have recorded evidence; the public game is no longer described as mock-only. See [public building evidence](screenshots/public-motion-fidelity-verification.json), [public storage evidence](screenshots/public-storage-verification.json), and the dated progress report. These records do not verify every newer commit or grant sponsor publication rights. Confirm the actual deployed SHA and property source before each demonstration.

@@ -2,6 +2,12 @@
 
 Tracking https://github.com/farhanmir/PlayItFirst/issues/2. Work directly on `main` under AGENTS.md.
 
+## Pickup handoff and problem research — November 14
+
+The serving check now requires the player to reach within 1.5 world units of the pickup shelf when one exists. The previous 2.4-unit general station range could accept a handoff while the player was still at the order-counter side. A server regression test checks that a drink remains held with no sale when pickup is nearest but too far away, then accepts service after the player reaches the shelf. The shared rule also drives the client action hint. Local verification: 223 JavaScript tests, typecheck and production build passed. Public browser and physical phone acceptance for this change have not yet been recorded.
+
+[Problem evidence](PROBLEM_EVIDENCE.md) links primary SBA guidance, a small exploratory layout study and BLS establishment survival data, with claim limits for the pitch. It does not validate simulated sales or a real-world survival benefit.
+
 ## Remaining working-tree changes published
 
 Owner authorized publishing all remaining changes: the previously preserved **Vitest5.1.0** package/lock upgrade and the local `overhaul-*` gameplay/build/first-person/phone-sized captures. These captures are historical mock-property evidence from the pre-merge character/control pass on port5195, not the latest public measured-floor build; the first-person capture predates the later foreground-cup correction. Its recorded cappuccino sale was $9 with exactly one milk/cup/bean consumed and a shared plant edit, with no browser errors. Latest combined validation is **132 tests across24 files**, typecheck/build passing. Private `.env`, sponsor data/responses and SSH credentials remain excluded.
