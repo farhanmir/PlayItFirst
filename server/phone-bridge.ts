@@ -41,6 +41,12 @@ export function phoneConfig(): Config {
     activationCode: process.env.PHOTON_ACTIVATION_CODE?.trim() || "",
   };
 }
+/** First two sentences of a model reply, markdown stripped, at most ~280 characters. */
+export const briefly = (text: string) => {
+  const plain = text.replace(/[*_`#>]+/g, "").replace(/^\s*[-•]\s*/gm, "").replace(/\s+/g, " ").trim();
+  const two = (plain.match(/[^.!?]+[.!?]+/g) ?? [plain]).slice(0, 2).join(" ").replace(/\s+/g, " ").trim();
+  return two.length > 280 ? two.slice(0, 277).trimEnd() + "…" : two;
+};
 // PHOTON_TEST_SENDER may list several teammates' iMessage handles, comma-separated. Pairing still binds one sender per session.
 export const allowedSenders = (c: Config) => c.senderHandle.split(",").map((h) => h.trim()).filter(Boolean);
 // Compare phone handles by digits so "+1 (703) 863-8400", "7038638400" and "+17038638400" all match; emails compare case-insensitively.
@@ -226,13 +232,27 @@ export class PhoneBridge {
     finally { s.busy = false; }
     await this.reply(s, m, result);
   }
-  private describe(s: Session, view: ManagerView) {
+  // Phone-sized: Jamie's gist (2 sentences, no markdown), one state line, and only actionable proposals.
+  private describe(s: Session, view: ManagerView, forVoice = false) {
     const current = s.owner.read();
-    const proposals = view.proposals.slice(-3).map(p => p.status === "pending"
-      ? p.action + " — $" + p.cost.toFixed(2) + ". APPROVE " + p.id
-      : p.action + " — " + p.status + (p.result ? ": " + p.result : "") + (p.transactionId ? " (game receipt " + p.transactionId + ")" : ""));
-    return [view.summary.slice(0, 1600), "Actual game cash $" + current.finance.balance.toFixed(2) +
-      "; milk " + current.inventory.milk + ", cups " + current.inventory.cups + ", beans " + current.inventory.beans + ".", ...proposals].join("\n");
+    const gist = briefly(view.summary);
+    const state = "Cash $" + Math.round(current.finance.balance) + " · milk " + current.inventory.milk + " · cups " + current.inventory.cups + " · beans " + current.inventory.beans;
+    const pending = view.proposals.filter(p => p.status === "pending").slice(-2);
+    const done = view.proposals.filter(p => p.status !== "pending").slice(-1);
+    const lines = forVoice
+      ? pending.map(p => "Pending: " + p.action.replace(/_/g, " ") + " for $" + p.cost.toFixed(0) + ".")
+      : [...done.map(p => "✓ " + p.action.replace(/_/g, " ") + ": " + p.status),
+         ...pending.map(p => p.action.replace(/_/g, " ") + " $" + p.cost.toFixed(0) + " → reply:\nAPPROVE " + p.id)];
+    return [gist, state, ...lines].filter(Boolean).join("\n");
+  }
+  /** After a call changes or plans something, text the paired phone so the conversation continues over iMessage. */
+  private async textRecap(s: Session, text: string) {
+    const m = s.paired;
+    if (!m || !this.live(s) || !messagingConfigured(this.c)) return;
+    try {
+      await sendPhotonText({ projectId: this.c.projectId, senderId: m.agentId, spaceId: m.spaceId,
+        text: text.slice(0, 1200), idempotencyKey: "playitfirst:call:" + randomBytes(8).toString("hex") }, this.c.apiKey, this.fetcher);
+    } catch { /* the call already answered; a missed recap is not retried */ }
   }
   issueVoiceApproval(owner: PhoneOwner, proposalId: string) {
     const s = this.get(owner);
@@ -246,7 +266,11 @@ export class PhoneBridge {
   async voice(auth: string, body: Record<string, unknown>) {
     if (!voiceConfigured(this.c) || !secretEqual(auth, "Bearer " + this.c.voiceSecret)) throw new Error("Unauthorized voice tool.");
     const s = this.session;
-    if (!s || !this.live(s) || typeof body.code !== "string" || !secretEqual(body.code.toLowerCase(), s.code)) throw new Error("Valid owner phone session code required.");
+    if (!s || !this.live(s)) throw new Error("No phone session is open. Start one in the game first.");
+    // A caller on the team's allowed list needs no spoken code; anyone else must say the session code.
+    const byCaller = senderAllowed(this.c, body.callerId);
+    if (!byCaller && (typeof body.code !== "string" || !secretEqual(body.code.toLowerCase().replace(/\s+/g, ""), s.code)))
+      throw new Error("This number is not on the team list. Say the session code from the game.");
     if (s.busy || this.now() < s.nextVoiceAt) throw new Error("Jamie is busy; try again after this operation.");
     s.nextVoiceAt = this.now() + 2500;
     s.busy = true;
@@ -256,15 +280,23 @@ export class PhoneBridge {
         if (typeof body.question !== "string" || !body.question.trim() || body.question.length > 1200) throw new Error("A question is required.");
         view = await s.owner.manager.request(s.owner.actor, body.question);
       } else if (body.action === "approve") {
-        if (typeof body.proposalId !== "string" || typeof body.approvalCode !== "string") throw new Error("Exact proposal ID and owner-issued approval code required.");
-        const approval = s.approvals.get(body.proposalId);
-        if (!approval || approval.expires <= this.now() || !secretEqual(body.approvalCode.toLowerCase(), approval.code)) throw new Error("Invalid or expired owner approval code.");
-        s.approvals.delete(body.proposalId);
+        if (typeof body.proposalId !== "string") throw new Error("Which proposal? Ask for status first.");
+        if (byCaller) {
+          // The voice agent must read back the cost and get a clear yes; it passes confirmed=true only then.
+          if (body.confirmed !== true) throw new Error("Read the cost back and get a clear yes before approving.");
+          const p = view.proposals.find(p => p.id === body.proposalId && p.status === "pending" && p.requestedBy === s.owner.actor.memberId);
+          if (!p) throw new Error("That proposal is not pending any more.");
+        } else {
+          const approval = s.approvals.get(body.proposalId);
+          if (typeof body.approvalCode !== "string" || !approval || approval.expires <= this.now() || !secretEqual(body.approvalCode.toLowerCase(), approval.code)) throw new Error("Invalid or expired owner approval code.");
+          s.approvals.delete(body.proposalId);
+        }
         view = await s.owner.manager.approve(s.owner.actor, body.proposalId);
       } else if (body.action !== "status") throw new Error("Unsupported voice action.");
       if (!this.live(s)) throw new Error("Phone session ended.");
       s.voiceSeen = true;
-      return { answer: this.describe(s, view), proposals: view.proposals.slice(-3).map(p => ({ id:p.id, action:p.action, costUSD:p.cost, status:p.status, result:p.result, transactionId:p.transactionId })), callVerified: false };
+      if (body.action !== "status") void this.textRecap(s, "From your call: " + this.describe(s, view));
+      return { answer: this.describe(s, view, true), proposals: view.proposals.slice(-3).map(p => ({ id:p.id, action:p.action, costUSD:p.cost, status:p.status, result:p.result, transactionId:p.transactionId })), callVerified: false };
     } finally { s.busy = false; }
   }
 }

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { PhoneBridge, parseIncoming, rejectReason } from "./phone-bridge.ts";
+import { PhoneBridge, briefly, parseIncoming, rejectReason } from "./phone-bridge.ts";
 import type { PhoneOwner } from "./phone-bridge.ts";
 import type { ManagerView } from "../shared/manager.ts";
 import type { RoomSnapshot } from "../shared/types.ts";
@@ -42,6 +42,25 @@ describe("bounded phone demo",()=>{
     expect(parseIncoming({...m,sentBy:{...m.sentBy,handle:"+14155550999"}},team,now-1000)?.senderId).toBe(senderId);
     expect(parseIncoming({...m,sentBy:{...m.sentBy,handle:"+14155550998"}},team,now-1000)).toBeNull();
     expect(parseIncoming({...m,sentBy:{...m.sentBy,handle:""}},{...config,senderHandle:" , "},now-1000)).toBeNull();
+  });
+  it("lets a team caller ID talk to Jamie without codes, but only approves after an explicit yes",async()=>{
+    vi.useFakeTimers();
+    const {owner}=fixture();
+    const bridge=new PhoneBridge({...config,apiKey:""},fetch),auth="Bearer "+config.voiceSecret;
+    await expect(bridge.voice(auth,{callerId:config.senderHandle,action:"status"})).rejects.toThrow(/No phone session/);
+    bridge.start(owner);
+    expect((await bridge.voice(auth,{callerId:"(415) 555-0123",action:"status"})).answer).toMatch(/Cash \$100/);
+    await expect(bridge.voice(auth,{callerId:"+19999999999",action:"status"})).rejects.toThrow(/session code/);
+    vi.setSystemTime(Date.now()+3000);
+    await expect(bridge.voice(auth,{callerId:config.senderHandle,action:"approve",proposalId})).rejects.toThrow(/clear yes/);
+    expect(owner.manager.approve).not.toHaveBeenCalled();
+    vi.setSystemTime(Date.now()+3000);
+    await bridge.voice(auth,{callerId:config.senderHandle,action:"approve",proposalId,confirmed:true});
+    expect(owner.manager.approve).toHaveBeenCalledTimes(1);
+  });
+  it("keeps phone text short and markdown-free",()=>{
+    expect(briefly("**Milk** is at 24. Nobody waiting. Cups 40. Beans 30.")).toBe("Milk is at 24. Nobody waiting.");
+    expect(briefly("x".repeat(400)).length).toBeLessThanOrEqual(280);
   });
   it("requires session and separate exact one-use owner approval for voice",async()=>{
     vi.useFakeTimers();
