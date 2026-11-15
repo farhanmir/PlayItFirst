@@ -1,0 +1,116 @@
+[
+  {
+    "mobile": false,
+    "play": {
+      "viewport": [
+        1440,
+        900
+      ],
+      "canvas": [
+        0,
+        0,
+        1440,
+        900
+      ],
+      "scroll": [
+        0,
+        0
+      ],
+      "module": "https://playitfirst.onrender.com/assets/index-DFMZ6yNO.js"
+    },
+    "build": {
+      "viewport": [
+        1440,
+        900
+      ],
+      "canvas": [
+        0,
+        0,
+        1440,
+        900
+      ],
+      "scroll": [
+        0,
+        0
+      ],
+      "module": "https://playitfirst.onrender.com/assets/index-DFMZ6yNO.js"
+    },
+    "noMutation": true,
+    "resumeSameMember": true,
+    "playersBefore": 1,
+    "playersAfter": 1,
+    "install": "Play from your home screen",
+    "sw": {
+      "controller": true,
+      "cacheKeys": [
+        "playitfirst-offline-v1"
+      ],
+      "entries": [
+        {
+          "key": "playitfirst-offline-v1",
+          "urls": [
+            "https://playitfirst.onrender.com/offline.html"
+          ]
+        }
+      ]
+    },
+    "errors": []
+  },
+  {
+    "mobile": true,
+    "play": {
+      "viewport": [
+        393,
+        852
+      ],
+      "canvas": [
+        0,
+        0,
+        393,
+        852
+      ],
+      "scroll": [
+        0,
+        0
+      ],
+      "module": "https://playitfirst.onrender.com/assets/index-DFMZ6yNO.js"
+    },
+    "build": {
+      "viewport": [
+        393,
+        852
+      ],
+      "canvas": [
+        0,
+        0,
+        393,
+        852
+      ],
+      "scroll": [
+        0,
+        0
+      ],
+      "module": "https://playitfirst.onrender.com/assets/index-DFMZ6yNO.js"
+    },
+    "noMutation": true,
+    "resumeSameMember": true,
+    "playersBefore": 1,
+    "playersAfter": 1,
+    "install": "Play from your home screen",
+    "sw": {
+      "controller": true,
+      "cacheKeys": [
+        "playitfirst-offline-v1"
+      ],
+      "entries": [
+        {
+          "key": "playitfirst-offline-v1",
+          "urls": [
+            "https://playitfirst.onrender.com/offline.html"
+          ]
+        }
+      ]
+    },
+    "errors": []
+  }
+]

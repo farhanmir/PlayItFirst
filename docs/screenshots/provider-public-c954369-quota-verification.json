@@ -1,0 +1,35 @@
+{
+  "at": "2026-11-15T01:17:03.892Z",
+  "stage": "planning",
+  "error": "Error: Timed out waiting for manager stage",
+  "fictionalPropertyOnly": true,
+  "propertySource": "costar-mock",
+  "manager": {
+    "runtime": "deepagents",
+    "providerVerified": false,
+    "busy": false,
+    "summary": "Manager run failed. Model rate limit or quota reached (HTTP 429); no automatic retry. Check recorded receipts before retrying; completed actions are not rolled back.",
+    "proposals": [],
+    "trace": [
+      {
+        "tool": "get_cafe_state",
+        "detail": "Read tick 56: $13090, 0 in line",
+        "at": 1794705339616
+      },
+      {
+        "tool": "run_failed",
+        "detail": "Model rate limit or quota reached (HTTP 429); no automatic retry.",
+        "at": 1794705339869
+      }
+    ]
+  },
+  "cash": 13090,
+  "inventory": {
+    "milk": 24,
+    "cups": 40,
+    "beans": 30
+  },
+  "timeline": [],
+  "deploymentCommit": "c9543693f753eb14e0f3228c09834a92515e0003",
+  "verification": "Failed: provider HTTP 429 after get_cafe_state; no proposal, approval, or execution. Exact provider/model identity is unconfirmed because this failed run did not return providerIdentity."
+}
