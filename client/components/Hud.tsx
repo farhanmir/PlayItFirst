@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { RoomSnapshot } from "../../shared/types";
 import { useApp } from "../lib/store";
-import { setMuted, play } from "../lib/audio";
+import { setMuted, isMuted, play } from "../lib/audio";
 
 export function Hud({
   snapshot,
@@ -17,7 +17,7 @@ export function Hud({
   const qrSvg = useApp((s) => s.qrSvg);
   const roomCode = useApp((s) => s.roomCode);
   const status = useApp((s) => s.status);
-  const [mute, setMute] = useState(false);
+  const [mute, setMute] = useState(isMuted);
   const invite = useRef<HTMLDetailsElement>(null);
   useEffect(() => {
     const dismiss = (event: PointerEvent) => {

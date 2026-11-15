@@ -30,6 +30,7 @@ export function HelpOverlay() {
       <div className="help-inputs"><p><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Move · drag the café to look</p>
         <p><kbd>E</kbd> / <kbd>Space</kbd> Nearby action</p><p><kbd>Tab</kbd> Build · <kbd>Esc</kbd> Menu</p>
         <p>On your phone, hold the movement pad and drag the café with your other thumb to look.</p></div>
+      <p><a href="/audio/README.md" target="_blank" rel="noreferrer">Music and sound credits</a></p>
       <form method="dialog"><button autoFocus className="btn" value="close">Back to the café</button></form>
     </dialog>
   </>;

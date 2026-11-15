@@ -34,6 +34,7 @@ const server = http.createServer({ headersTimeout: 15_000, requestTimeout: 20_00
 server.maxConnections = 256;
 const roomLimiter = createRoomRateLimiter();
 const refreshLimiter = createPropertyRefreshLimiter();
+let propertyRefresh: Promise<unknown> | null = null;
 const wss = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 });
 const rooms = new CafeRoomServer(wss);
 
@@ -60,6 +61,8 @@ const vite = production
     });
 
 const mime: Record<string, string> = {
+  ".mp3": "audio/mpeg",
+  ".md": "text/plain; charset=utf-8",
   ".webmanifest": "application/manifest+json; charset=utf-8",
   ".html": "text/html; charset=utf-8",
   ".js": "application/javascript; charset=utf-8",
@@ -158,7 +161,8 @@ server.on("request", (req, res) => {
       if (url.searchParams.get("refresh") === "1") {
         const limit = refreshLimiter.take("refresh");
         if (!limit.allowed) { res.setHeader("Retry-After", limit.retryAfterSeconds); json(res, 429, { error: "Property refresh is cooling down. Try again shortly." }); return; }
-        await rooms.refreshProperties();
+        propertyRefresh ??= rooms.refreshProperties().finally(() => { propertyRefresh = null; });
+        await propertyRefresh;
       }
       const bundle = getCachedProperties();
       res.writeHead(200, {
