@@ -15,7 +15,7 @@ export function CrewBoard({ snapshot }: { snapshot: RoomSnapshot }) {
             <span className="crew-swatch" style={{ background: p.color }} />
             <div>
               <strong>{p.name}</strong>
-              <em>{p.role}</em>
+              <em>{p.connected === false ? "Disconnected · place saved" : p.role}</em>
             </div>
             <b>{p.score}</b>
           </li>
@@ -25,7 +25,7 @@ export function CrewBoard({ snapshot }: { snapshot: RoomSnapshot }) {
           <span className="crew-swatch" style={{ background: "#6b7280" }} />
           <div>
             <strong>Jamie</strong>
-            <em>{jamieBusy ? holdingLabel(jamie?.holding) : "on standby"}</em>
+            <em>{jamie?.status ?? (jamieBusy ? holdingLabel(jamie?.holding) : "on standby")}</em>
           </div>
           <b>{jamieBusy ? "·" : "—"}</b>
         </li>

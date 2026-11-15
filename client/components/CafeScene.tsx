@@ -11,6 +11,7 @@ import { play } from "../lib/audio";
 import { useApp } from "../lib/store";
 import { CafeCharacter } from "./CafeCharacter";
 import { MeasuredShell } from "./MeasuredShell";
+import { EntranceMarkers } from "./EntranceMarkers";
 
 const STATION_KIND: Record<string, FurnitureItem["kind"]> = {
   counter: "counter",
@@ -165,6 +166,7 @@ export function CafeScene({ snapshot, viewMode = "monitor", buildMode = false }:
               : null
           }
         />
+        <EntranceMarkers property={property} />
         {canFloorPlace && buildKind && hover ? (
           <PlacementGhost snapshot={snapshot} kind={buildKind} x={hover.x} z={hover.z} rotation={buildRotation} movingId={buildMovingId} />
         ) : null}
@@ -179,7 +181,7 @@ export function CafeScene({ snapshot, viewMode = "monitor", buildMode = false }:
             displayStatus={snapshot.aiBarista.status}
           />
         )}
-        {snapshot.players.map((p) => (
+        {snapshot.players.filter((p) => p.connected !== false).map((p) => (
           <PlayerMesh
             key={p.id}
             player={p}
@@ -475,13 +477,15 @@ function CafeRoom({
       {/* Warm plaster walls — listing tone stays as an accent strip, not the whole room */}
       <Wall length={w} position={[w / 2, 1.45, 0]} color={PALETTE.wall} />
       {!cutaway && <Wall length={w} position={[w / 2, 1.45, d]} color={PALETTE.wall} />}
-      <Wall length={d} position={[0, 1.45, d / 2]} rotation={Math.PI / 2} color={PALETTE.wall} />
-      <Wall length={d} position={[w, 1.45, d / 2]} rotation={Math.PI / 2} color={PALETTE.wall} />
+      {/* Fictional demo doors match the simulation's arrival/departure lanes. */}
+      {[{ x: 0, low: .6, high: 3.4 }, { x: w, low: .5, high: 1.5 }].map(({ x, low, high }) => <group key={x}>
+        <Wall length={low} position={[x, 1.45, low / 2]} rotation={Math.PI / 2} />
+        <Wall length={d - high} position={[x, 1.45, (d + high) / 2]} rotation={Math.PI / 2} />
+        <mesh position={[x, 2.6, (low + high) / 2]}><boxGeometry args={[.2, .6, high - low]} /><meshStandardMaterial color={PALETTE.wall} roughness={.92} /></mesh>
+      </group>)}
       {/* Sage wainscoting and hand-lettered café identity. */}
-      <mesh position={[0.12, 0.5, d / 2]} receiveShadow>
-        <boxGeometry args={[0.04, 1, d - 0.25]} /><meshStandardMaterial color="#6b8068" roughness={0.9} />
-      </mesh>
-      {Array.from({ length: Math.floor(d) }).map((_, i) => (
+      {[[.125,.6],[3.4,d-.125]].map(([a,b]) => <mesh key={a} position={[.12,.5,(a+b)/2]} receiveShadow><boxGeometry args={[.04,1,b-a]} /><meshStandardMaterial color="#6b8068" roughness={.9} /></mesh>)}
+      {Array.from({ length: Math.floor(d) }).map((_, i) => i + .5 >= .6 && i + .5 <= 3.4 ? null : (
         <mesh key={`panel-${i}`} position={[0.15, 0.5, i + 0.5]}>
           <boxGeometry args={[0.03, 0.9, 0.035]} /><meshStandardMaterial color="#9aa58a" roughness={0.9} />
         </mesh>
@@ -505,12 +509,7 @@ function CafeRoom({
         <meshStandardMaterial color={PALETTE.wallTrim} roughness={0.85} />
       </mesh>
 
-      {/* Entrance warm glow */}
-      <mesh position={[-0.04, 1.15, 1.5]}>
-        <boxGeometry args={[0.1, 2.3, 1.9]} />
-        <meshStandardMaterial color="#f4d2a0" emissive={PALETTE.ember} emissiveIntensity={0.45} transparent opacity={0.85} />
-      </mesh>
-      <pointLight position={[0.4, 1.4, 1.5]} intensity={0.65} color="#f0b878" distance={5} decay={2} />
+      <pointLight position={[0.4, 1.4, 2]} intensity={0.65} color="#f0b878" distance={5} decay={2} />
 
       {/* Front windows + night city + light shafts */}
       <WindowBank width={w * 0.42} centerX={w * 0.32} z={0.06} />

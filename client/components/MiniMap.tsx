@@ -38,7 +38,7 @@ export function MiniMap({ snapshot }: { snapshot: RoomSnapshot }) {
         {snapshot.customers.map((c) => (
           <circle key={c.id} cx={c.x} cy={c.z} r={0.18} fill="#f3ebe2" opacity={0.75} />
         ))}
-        {snapshot.players.map((pl) => (
+        {snapshot.players.filter((pl) => pl.connected !== false).map((pl) => (
           <circle
             key={pl.id}
             cx={pl.x}

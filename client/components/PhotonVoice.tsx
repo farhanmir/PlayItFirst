@@ -13,7 +13,7 @@ export function PhotonVoice({ snapshot }: { snapshot: RoomSnapshot }) {
   const session = useRef<VoiceSession | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const peers = snapshot.players.filter((p) => p.id !== you);
+  const peers = snapshot.players.filter((p) => p.id !== you && p.connected !== false);
 
   useEffect(() => {
     if (!conn || !you) return;

@@ -1,0 +1,8 @@
+{
+  "hiddenWhileDisconnected": true,
+  "sameIdentity": true,
+  "samePosition": true,
+  "sameHolding": true,
+  "connectedAfterResume": true,
+  "errors": []
+}

@@ -87,12 +87,18 @@ const MeasuredWall = memo(function MeasuredWall({ wall, height, overhead, cutawa
     }
     const scale = cutaway || obstructs ? .85 / height : 1;
     root.current.scale.y += (scale - root.current.scale.y) * (1 - Math.exp(-10 * dt));
+    // Compressing a lintel lowers it into an otherwise open doorway. In cutaway
+    // views omit only the high header pieces; retain their exact source geometry
+    // for full-height views and leave the walkable opening visually clear.
+    for (const piece of root.current.children) {
+      if (piece.userData.openingHeader) piece.visible = root.current.scale.y > .98;
+    }
   });
   const length = Math.hypot(wall.b.x - wall.a.x, wall.b.z - wall.a.z);
   const pieces: ReactNode[] = [];
-  const block = (a: number, b: number, y: number, h: number, key: string) => {
+  const block = (a: number, b: number, y: number, h: number, key: string, openingHeader = false) => {
     if (b - a < .005 || h <= 0) return;
-    pieces.push(<mesh key={key} position={[(a + b - length) / 2, y + h / 2, 0]} castShadow receiveShadow>
+    pieces.push(<mesh key={key} userData={{ openingHeader }} position={[(a + b - length) / 2, y + h / 2, 0]} castShadow receiveShadow>
       <boxGeometry args={[b - a, h, wall.thickness]} /><meshStandardMaterial color="#e7e2d5" roughness={.95} />
     </mesh>);
     if (y === 0) pieces.push(<mesh key={`${key}-base`} position={[(a + b - length) / 2, .04, 0]}>
@@ -105,7 +111,7 @@ const MeasuredWall = memo(function MeasuredWall({ wall, height, overhead, cutawa
     const { bottom, top } = openingVerticalSpan(opening);
     block(from, a, 0, height, `${opening.id}-wall`);
     block(a, b, 0, bottom, `${opening.id}-sill`);
-    block(a, b, top, height - top, `${opening.id}-header`);
+    block(a, b, top, height - top, `${opening.id}-header`, true);
     if (opening.type === "window") {
       const cx = (a + b - length) / 2, width = b-a, h = top-bottom;
       const mullions = Math.max(2, Math.ceil(width / .9) + 1);
