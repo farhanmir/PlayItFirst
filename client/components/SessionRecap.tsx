@@ -1,6 +1,7 @@
 import type { RoomSnapshot } from "../../shared/types";
 import { useApp } from "../lib/store";
 import { play } from "../lib/audio";
+import { CustomerFeedback } from "./CustomerFeedback";
 
 export function SessionRecap({ snapshot }: { snapshot: RoomSnapshot }) {
   const conn = useApp((s) => s.conn);
@@ -39,6 +40,19 @@ export function SessionRecap({ snapshot }: { snapshot: RoomSnapshot }) {
           </dd>
         </div>
       </dl>
+      <CustomerFeedback feedback={snapshot.feedback} />
+      {snapshot.reviews && snapshot.reviews.length > 0 && (
+        <section className="recap-reviews" aria-label="Customer reviews">
+          <p className="tag">What customers said · Grok</p>
+          <ul>
+            {snapshot.reviews.slice(0, 5).map((r) => (
+              <li key={`${r.at}-${r.name}`} className={r.outcome === "served" ? "ok" : "bad"}>
+                <strong>{r.name}</strong> “{r.text}”{r.tip ? ` · tipped $${r.tip.toFixed(2)}` : ""}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <button
         className="btn"
         type="button"

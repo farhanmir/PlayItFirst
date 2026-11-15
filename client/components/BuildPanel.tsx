@@ -2,6 +2,7 @@ import { FURNITURE_CATALOG, type FurnitureKind, type RoomSnapshot } from "../../
 import { useApp } from "../lib/store";
 import { play } from "../lib/audio";
 import { removalIssue } from "../../shared/placement";
+import { CustomerFeedback } from "./CustomerFeedback";
 
 export function BuildPanel({
   snapshot,
@@ -47,6 +48,7 @@ export function BuildPanel({
         Choose a piece, then <strong>tap the floor</strong> to place it.
         {liveEdit ? " Service keeps running for everyone else." : " Layout changes hit everyone in the room live."}
       </p>
+      <CustomerFeedback feedback={snapshot.feedback} limit={3} />
       {!buildKind && selected ? (
         <p className="build-place-hint build-selected" aria-live="polite">
           <span className="hint-text">{selectedBlocked ? <>Last <strong>{selected.label}</strong> · needed to serve</> : <>Selected <strong>{selected.label}</strong></>}</span>

@@ -1151,6 +1151,28 @@ function CharacterHead({ seed, y, office = false }: { seed: string; y: number; o
 const SHIRT_PROFILE = [new Vector2(0, -0.3), new Vector2(0.19, -0.3), new Vector2(0.18, -0.12), new Vector2(0.22, 0.16), new Vector2(0.25, 0.22), new Vector2(0.11, 0.3), new Vector2(0, 0.3)];
 const BARISTA_PROFILE = [new Vector2(0, -0.34), new Vector2(0.21, -0.34), new Vector2(0.19, -0.1), new Vector2(0.25, 0.2), new Vector2(0.28, 0.25), new Vector2(0.12, 0.34), new Vector2(0, 0.34)];
 
+/** In-character line from a customer's Grok mind, shown for a few seconds. */
+function SpeechBubble({ text, y }: { text: string; y: number }) {
+  const lines = Math.min(3, Math.ceil(text.length / 30));
+  const width = Math.min(1.9, Math.max(0.7, text.length * 0.058 + 0.24));
+  const height = 0.16 + lines * 0.13;
+  return (
+    <Billboard position={[0, y, 0]}>
+      <mesh>
+        <boxGeometry args={[width, height, 0.03]} />
+        <meshStandardMaterial color="#ffffff" emissive="#fff4e6" emissiveIntensity={0.45} />
+      </mesh>
+      <mesh position={[-width * 0.25, -height / 2 - 0.05, 0]} rotation={[0, 0, Math.PI]}>
+        <coneGeometry args={[0.07, 0.12, 3]} />
+        <meshStandardMaterial color="#ffffff" />
+      </mesh>
+      <Text position={[0, 0, 0.025]} fontSize={0.1} lineHeight={1.25} color={PALETTE.espresso} anchorX="center" anchorY="middle" maxWidth={width - 0.16} textAlign="center">
+        {text}
+      </Text>
+    </Billboard>
+  );
+}
+
 function CustomerMesh({ customer, appearance, featured, yourTicket, queuePosition }: {
   appearance: number; customer: Customer; featured: boolean; yourTicket: boolean; queuePosition: number;
 }) {
@@ -1259,6 +1281,9 @@ function CustomerMesh({ customer, appearance, featured, yourTicket, queuePositio
             {orderLabel}
           </Text>
         </Billboard>
+      )}
+      {customer.say && (
+        <SpeechBubble text={customer.say} y={waiting && featured ? 2.66 : waiting ? 2.3 : 2.1} />
       )}
       {waiting && !featured && (
         <Billboard position={[0, 1.97, 0]}>

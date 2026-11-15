@@ -20,6 +20,7 @@ import { attachNessieAccount, refreshNessie } from "./finance.ts";
 import { getCachedProperties, loadProperties } from "./costar.ts";
 import { withMatterportDefaults } from "./matterport.ts";
 import { CafeManager, type ManagerActor } from "./manager.ts";
+import { applyMindDecisions, cafeView, createCustomerMindsFromEnv, departedCustomers, describeLayoutChanges, detectMindMoments, dueLooks, CHANGE_MEMORY, type CustomerMinds, type LayoutChange, type LookSchedule } from "./customer-mind.ts";
 import { PhotonBridge, PhotonRequestError, photonConfigFromEnv, photonConfigurationStatus } from "./photon-bridge.ts";
 import type { PhoneOwner } from "./phone-bridge.ts";
 import {
@@ -57,6 +58,18 @@ interface Room {
   directorTimer?: ReturnType<typeof setInterval>;
   expiryTimer?: ReturnType<typeof setTimeout>;
   lastHeartbeatAt: number;
+  /** Grok customer minds, null when XAI_API_KEY is not configured */
+  minds?: CustomerMinds | null;
+  /** Customers the simulation served whose exit decision is still pending */
+  mindServed?: Set<string>;
+  /** Customer ids already introduced to their Grok mind */
+  mindSeen?: Set<string>;
+  /** When each customer next looks around the café */
+  mindLooks?: LookSchedule;
+  /** Recent layout edits customers can notice */
+  mindChanges?: LayoutChange[];
+  /** Layout customers last saw */
+  mindLayout?: RoomSnapshot["layout"];
 }
 
 const TICK_HZ = 20;
@@ -561,7 +574,40 @@ export class CafeRoomServer {
     if(![...session.room.members.values()].some(m=>m.socket?.readyState===WebSocket.OPEN))this.scheduleExpiry(session.room);
   }
 
+  /** Ask Grok about new customer moments and fold finished answers into the snapshot. */
+  private tickMinds(room: Room, prev: RoomSnapshot, next: RoomSnapshot): RoomSnapshot {
+    if (room.minds === undefined) room.minds = createCustomerMindsFromEnv();
+    const minds = room.minds;
+    if (!minds) return next;
+    const served = (room.mindServed ??= new Set());
+    const seen = (room.mindSeen ??= new Set());
+    const looks = (room.mindLooks ??= new Map());
+    const changes = (room.mindChanges ??= []);
+    // Layout edits arrive between ticks, so compare with the layout customers last saw.
+    const edits = room.mindLayout === undefined ? [] : describeLayoutChanges(room.mindLayout, next.layout);
+    room.mindLayout = next.layout;
+    for (const text of edits) changes.push({ at: next.simTime, text });
+    while (changes.length && next.simTime - changes[0].at > CHANGE_MEMORY) changes.shift();
+    const cafe = cafeView(next, changes);
+    const requests = [...detectMindMoments(prev, next, seen, cafe), ...dueLooks(next, looks, cafe, edits.length > 0)];
+    for (const req of requests) {
+      if (req.moment === "exit" && req.ctx.outcome === "served") served.add(req.customer.id);
+      void minds.ask(req.customer, req.moment, req.ctx, req.round);
+    }
+    const decisions = minds.drain();
+    let out = applyMindDecisions(next, decisions, served);
+    for (const d of decisions) if (d.moment === "exit") served.delete(d.customerId);
+    for (const id of departedCustomers(prev, out)) { minds.forget(id); seen.delete(id); looks.delete(id); }
+    if (served.size > 100) served.clear();
+    const { answered, failed } = minds.stats;
+    if (out.minds?.answered !== answered || out.minds?.failed !== failed || !out.minds?.active) {
+      out = { ...out, minds: { active: true, answered, failed } };
+    }
+    return out;
+  }
+
   private stopLoops(room:Room){
+    room.minds?.close();
     clearInterval(room.stepTimer);clearInterval(room.snapshotTimer);clearInterval(room.directorTimer);
     room.stepTimer=undefined;room.snapshotTimer=undefined;room.directorTimer=undefined;
   }
@@ -601,7 +647,8 @@ export class CafeRoomServer {
   private startLoops(room: Room) {
     if (room.stepTimer) return;
     room.stepTimer = setInterval(() => {
-      room.snapshot = stepSimulation(room.snapshot, 1 / TICK_HZ);
+      const prev = room.snapshot;
+      room.snapshot = this.tickMinds(room, prev, stepSimulation(prev, 1 / TICK_HZ));
       refreshNessie(room.snapshot.finance, () => { if (this.rooms.get(room.code) === room) this.broadcast(room); });
     }, 1000 / TICK_HZ);
 

@@ -96,6 +96,25 @@ export interface Customer {
   joinedAt: number;
   /** Sim-seconds spent queueing, ordering, or waiting. Drives avgWaitSec. */
   waitSec?: number;
+  /** Speech bubble text from this customer's Grok mind */
+  say?: string;
+  /** simTime after which the speech bubble disappears */
+  sayUntil?: number;
+  /** Set once Grok has shaped this customer */
+  mind?: "grok";
+}
+
+export type FeedbackTopic = "seating" | "decor" | "queue" | "staff" | "stock" | "layout" | "vibe";
+
+/** Tally of what Grok-driven customers noticed about the café this shift. */
+export type CafeFeedback = Partial<Record<FeedbackTopic, { liked: number; disliked: number; last?: string }>>;
+
+export interface CustomerReview {
+  name: string;
+  text: string;
+  tip?: number;
+  outcome: "served" | "walked_out";
+  at: number;
 }
 
 export interface PlayerState {
@@ -208,6 +227,12 @@ export interface RoomSnapshot {
   simTime: number;
   open: boolean;
   eventLog: string[];
+  /** Reviews left by Grok-driven customers this shift (newest first) */
+  reviews?: CustomerReview[];
+  /** What customers noticed about the café this shift */
+  feedback?: CafeFeedback;
+  /** Grok customer mind status for this room */
+  minds?: { active: boolean; answered: number; failed: number };
   /** Soft difficulty modifier from director choices */
   rushBoost?: number;
   menuReduced?: boolean;

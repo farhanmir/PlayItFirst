@@ -1914,6 +1914,16 @@
 
 .recap-grid .ok { color: var(--leaf-bright); }
 .recap-grid .bad { color: var(--danger); }
+.recap-reviews { margin: 0.75rem 0; }
+.recap-reviews ul { list-style: none; margin: 0.35rem 0 0; padding: 0; display: grid; gap: 0.4rem; }
+.recap-reviews li { font-size: 0.85rem; line-height: 1.35; padding-left: 0.6rem; border-left: 3px solid var(--leaf-bright); }
+.recap-reviews li.bad { border-left-color: var(--danger); }
+.customer-feedback { margin: 0.75rem 0; }
+.customer-feedback ul { list-style: none; margin: 0.35rem 0 0; padding: 0; display: grid; gap: 0.45rem; }
+.customer-feedback li { display: grid; grid-template-columns: auto 1fr; column-gap: 0.5rem; font-size: 0.85rem; line-height: 1.35; padding-left: 0.6rem; border-left: 3px solid var(--leaf-bright); }
+.customer-feedback li.bad { border-left-color: var(--danger); }
+.customer-feedback li span { opacity: 0.8; }
+.customer-feedback li em { grid-column: 1 / -1; opacity: 0.85; }
 
 .action-grid button.suggested {
   border-color: rgba(217, 119, 63, 0.55);
