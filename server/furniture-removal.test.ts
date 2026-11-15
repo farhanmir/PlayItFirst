@@ -6,9 +6,9 @@ import { getCachedProperties } from "./costar.ts";
 const room = () => selectProperty(createRoomSnapshot("removal-test"), getCachedProperties().listings.find((p) => p.id === "hou-eaado-41")!);
 
 describe("deleting placed furniture", () => {
-  it("refuses to delete the last service counter and the last espresso machine", () => {
+  it("refuses to delete the last service counter, espresso machine or pickup station", () => {
     const snapshot = room();
-    for (const kind of ["counter", "coffee_machine"] as const) {
+    for (const kind of ["counter", "coffee_machine", "pickup"] as const) {
       const pieces = snapshot.layout!.furniture.filter((f) => f.kind === kind);
       expect(pieces).toHaveLength(1);
       expect(removalIssue(snapshot.layout!.furniture, pieces[0].id)).toMatch(/Keep at least one/);
@@ -24,7 +24,7 @@ describe("deleting placed furniture", () => {
     expect(removalIssue(twoCounters.layout.furniture, counter.id)).toBeNull();
     expect(removeFurniture(twoCounters, counter.id).layout!.furniture.filter((f) => f.kind === "counter")).toHaveLength(1);
 
-    const other = snapshot.layout!.furniture.find((f) => f.kind !== "counter" && f.kind !== "coffee_machine")!;
+    const other = snapshot.layout!.furniture.find((f) => f.kind !== "counter" && f.kind !== "coffee_machine" && f.kind !== "pickup")!;
     const after = removeFurniture(snapshot, other.id);
     expect(after.layout!.furniture.some((f) => f.id === other.id)).toBe(false);
     expect(after.finance.balance).toBe(snapshot.finance.balance + Math.round(other.cost * 0.6));
