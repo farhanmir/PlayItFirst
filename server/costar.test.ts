@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { correctImportedCoordinates, getCachedProperties, loadProperties } from "./costar.ts";
+import { correctImportedCoordinates, getCachedProperties, loadProperties, withPracticeProperties } from "./costar.ts";
 import { withMatterportDefaults, resolveMatterport } from "./matterport.ts";
 import { deepagentsConfigured } from "./deepagents.ts";
 import properties from "../data/properties.json";
@@ -49,5 +49,39 @@ describe("stretch integrations", () => {
     delete process.env.ANTHROPIC_API_KEY;
     delete process.env.DEEPAGENTS_URL;
     expect(deepagentsConfigured()).toBe(false);
+  });
+});
+
+
+describe("fictional practice properties beside real listings", () => {
+  it("keeps real provenance first and adds contrasting explicitly fictional layouts", () => {
+    const real = { ...properties[0], id: "authorized-suite", source: "costar-extract" as const } as PropertyListing;
+    const bundle = withPracticeProperties({ source: "costar-extract", fetchedAt: 123, detail: "Authorized extract", listings: [real] });
+    expect(bundle.source).toBe("costar-extract");
+    expect(bundle.fetchedAt).toBe(123);
+    expect(bundle.detail).toBe("Authorized extract");
+    expect(bundle.listings[0]).toBe(real);
+    expect(bundle.listings).toHaveLength(3);
+    const [compact, large] = bundle.listings.slice(1);
+    expect(compact.width * compact.depth).toBeLessThan(large.width * large.depth);
+    for (const listing of [compact, large]) {
+      expect(listing.source).toBe("costar-mock");
+      expect(listing.description).toContain("Fictional practice property");
+      expect(listing.floorPlan).toBeUndefined();
+      expect(listing.provenance).toBeUndefined();
+      expect(listing.matterportModelId).toBeUndefined();
+    }
+  });
+  it("never duplicates IDs or appends more practices on repeated decoration", () => {
+    const bundle = { source: "costar-live" as const, fetchedAt: 1, listings: [{ ...properties[2], source: "costar-live" as const } as PropertyListing] };
+    const once = withPracticeProperties(bundle);
+    const twice = withPracticeProperties(once);
+    expect(twice.listings).toHaveLength(2);
+    expect(new Set(twice.listings.map((item) => item.id)).size).toBe(2);
+    expect(twice.listings[0].source).toBe("costar-live");
+  });
+  it("preserves the existing fallback catalog", () => {
+    const bundle = { source: "costar-mock" as const, fetchedAt: 1, listings: properties as PropertyListing[] };
+    expect(withPracticeProperties(bundle)).toBe(bundle);
   });
 });

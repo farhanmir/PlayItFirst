@@ -51,6 +51,23 @@ function stamp(listings: PropertyListing[], source: ListingSource, detail?: stri
   };
 }
 
+/** Keep the real catalog first while offering two explicitly fictional practice spaces. */
+export function withPracticeProperties(bundle: CoStarBundle): CoStarBundle {
+  if (bundle.source === "costar-mock") return bundle;
+  const ids = new Set(bundle.listings.map((listing) => listing.id));
+  const practiceIds = ["hou-eaado-41", "la-arts-district-302"];
+  const practices = practiceIds.flatMap((id) => {
+    const listing = local.find((item) => item.id === id);
+    if (!listing || ids.has(id)) return [];
+    ids.add(id);
+    return [{ ...listing, source: "costar-mock" as const,
+      description: `Fictional practice property. ${listing.description}`,
+      matterportHint: "Assumed rectangular practice layout; not a measured Matterport reconstruction.",
+    } as PropertyListing];
+  });
+  return { ...bundle, listings: [...bundle.listings, ...practices] };
+}
+
 /** Map a remote CoStar-shaped payload into PropertyListing. */
 function normalizeRemote(raw: unknown): PropertyListing[] | null {
   if (!Array.isArray(raw)) return null;
@@ -116,11 +133,11 @@ export async function loadProperties(force = false): Promise<CoStarBundle> {
           throw new Error("Invalid authorized CoStar extract file");
         }
         const listings = await Promise.all((rows as PropertyListing[]).map((p) => enrichMeasuredProperty(correctImportedCoordinates(p))));
-        cache = stamp(listings, "costar-extract", "Authorized hackathon extract; asking terms, not an executed lease. See per-property assumptions.");
+        cache = withPracticeProperties(stamp(listings, "costar-extract", "Authorized hackathon extract; asking terms, not an executed lease. Two separately labeled fictional practice properties are also available."));
         return cache;
       }
       const live = await fetchLive();
-      cache = live ?? stamp(local as PropertyListing[], "costar-mock", "Using bundled Houston/LA listings (set COSTAR_API_URL for live)");
+      cache = live ? withPracticeProperties(live) : stamp(local as PropertyListing[], "costar-mock", "Using bundled Houston/LA listings (set COSTAR_API_URL for live)");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "CoStar fetch failed";
       cache = stamp(local as PropertyListing[], "costar-mock", `Live CoStar unavailable (${msg}) — mock fallback`);
