@@ -1,0 +1,231 @@
+{
+  "play": {
+    "scroll": [
+      0,
+      0
+    ],
+    "elements": [
+      {
+        "name": "game game-immersive  ",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 1200,
+          "height": 800,
+          "top": 0,
+          "right": 1200,
+          "bottom": 800,
+          "left": 0
+        },
+        "scrollLeft": 0
+      },
+      {
+        "name": "game-stage",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 1200,
+          "height": 800,
+          "top": 0,
+          "right": 1200,
+          "bottom": 800,
+          "left": 0
+        },
+        "scrollLeft": 0
+      },
+      {
+        "name": "",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 1200,
+          "height": 800,
+          "top": 0,
+          "right": 1200,
+          "bottom": 800,
+          "left": 0
+        },
+        "scrollLeft": 0
+      }
+    ]
+  },
+  "drawer": {
+    "scroll": [
+      0,
+      0
+    ],
+    "elements": [
+      {
+        "name": "game game-immersive  drawer-open",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 1200,
+          "height": 800,
+          "top": 0,
+          "right": 1200,
+          "bottom": 800,
+          "left": 0
+        },
+        "scrollLeft": 0
+      },
+      {
+        "name": "game-stage",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 1200,
+          "height": 800,
+          "top": 0,
+          "right": 1200,
+          "bottom": 800,
+          "left": 0
+        },
+        "scrollLeft": 0
+      },
+      {
+        "name": "",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 1200,
+          "height": 800,
+          "top": 0,
+          "right": 1200,
+          "bottom": 800,
+          "left": 0
+        },
+        "scrollLeft": 0
+      }
+    ]
+  },
+  "build": {
+    "scroll": [
+      0,
+      0
+    ],
+    "elements": [
+      {
+        "name": "game game-immersive build-open ",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 1200,
+          "height": 800,
+          "top": 0,
+          "right": 1200,
+          "bottom": 800,
+          "left": 0
+        },
+        "scrollLeft": 0
+      },
+      {
+        "name": "game-stage",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 1200,
+          "height": 800,
+          "top": 0,
+          "right": 1200,
+          "bottom": 800,
+          "left": 0
+        },
+        "scrollLeft": 0
+      },
+      {
+        "name": "",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 1200,
+          "height": 800,
+          "top": 0,
+          "right": 1200,
+          "bottom": 800,
+          "left": 0
+        },
+        "scrollLeft": 0
+      }
+    ]
+  },
+  "exit": {
+    "scroll": [
+      0,
+      0
+    ],
+    "elements": [
+      {
+        "name": "game game-immersive  ",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 1200,
+          "height": 800,
+          "top": 0,
+          "right": 1200,
+          "bottom": 800,
+          "left": 0
+        },
+        "scrollLeft": 0
+      },
+      {
+        "name": "game-stage",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 1200,
+          "height": 800,
+          "top": 0,
+          "right": 1200,
+          "bottom": 800,
+          "left": 0
+        },
+        "scrollLeft": 0
+      },
+      {
+        "name": "",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 1200,
+          "height": 800,
+          "top": 0,
+          "right": 1200,
+          "bottom": 800,
+          "left": 0
+        },
+        "scrollLeft": 0
+      }
+    ]
+  },
+  "before": {
+    "position": [
+      7,
+      11,
+      18
+    ],
+    "rotation": [
+      -0.6840516601317805,
+      0,
+      0,
+      "XYZ"
+    ]
+  },
+  "after": {
+    "position": [
+      2.331391041727249,
+      15.801920024214281,
+      9.727044527232945
+    ],
+    "rotation": [
+      -1.2730097530818667,
+      -0.2820524984847199,
+      -0.7365936823412658,
+      "XYZ"
+    ]
+  },
+  "cameraChanged": true,
+  "noMutation": true,
+  "errors": []
+}

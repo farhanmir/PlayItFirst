@@ -276,5 +276,5 @@ body:has(.game-immersive) #root,
 .app-shell:has(.game-immersive) {
   height: 100dvh;
   min-height: 0;
-  overflow: hidden;
+  overflow: clip;
 }

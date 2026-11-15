@@ -222,7 +222,7 @@ export function Game() {
             <div className="build-banner" role="status">
               <strong>Build mode</strong>
               <span>
-                {buildKind ? "Click the floor to place · syncs live for everyone" : "Pick furniture · others keep serving"}
+                {buildMovingId ? "Tap the floor to move · drag to orbit" : buildKind ? "Tap the floor to place · drag to orbit" : "Pick furniture · drag to orbit · others keep serving"}
               </span>
             </div>
             <aside className="build-catalog" aria-label="Furniture catalog">

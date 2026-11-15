@@ -2358,6 +2358,7 @@
 /* The world fills the device viewport, independent of its aspect ratio. */
 .game.game-immersive {
   width: 100%;
+  overflow: clip;
   height: 100vh;
   height: 100dvh;
   min-height: 0;
@@ -2369,7 +2370,7 @@
   --safe-bottom: max(16px, env(safe-area-inset-bottom));
 }
 .game-immersive .game-stage,
-.game-immersive .cafe-canvas { min-height: 0; }
+.game-immersive .cafe-canvas { min-height: 0; overflow: clip; }
 .game-immersive .game-drawer {
   grid-template-rows: auto auto minmax(0, 1fr);
   padding-top: env(safe-area-inset-top);
