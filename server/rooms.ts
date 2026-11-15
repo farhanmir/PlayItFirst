@@ -168,13 +168,13 @@ export class CafeRoomServer {
     return listings();
   }
 
-  createRoom(): { code: string; snapshot: RoomSnapshot } {
+  createRoom(judgeDemo = false): { code: string; snapshot: RoomSnapshot } {
     if(this.rooms.size>=this.limits.maxRooms)throw new RoomCapacityError();
     let code = roomCode();
     while(this.rooms.has(code))code=roomCode();
     const room: Room = {
       code,
-      snapshot: createRoomSnapshot(code),
+      snapshot: { ...createRoomSnapshot(code), judgeDemo },
       members: new Map(),
       lastHeartbeatAt:Date.now(),
     };
@@ -669,6 +669,7 @@ export class CafeRoomServer {
     room.directorTimer = setInterval(() => {
       void (async () => {
         if (room.snapshot.phase !== "play") return;
+        if (room.snapshot.judgeDemo && room.snapshot.metrics.customersServed < 1) return;
         if (room.snapshot.director && !room.snapshot.director.resolved) return;
         const now = Date.now();
         const event = maybeSpawnDirectorEvent(room.snapshot, now);

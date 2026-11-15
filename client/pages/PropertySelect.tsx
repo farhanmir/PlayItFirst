@@ -62,11 +62,11 @@ export function PropertySelect() {
                   {p.provenance && <p>{p.provenance.geometry} · Asking rent excludes additional charges. Café use and capacity require verification.</p>}
                   <p>{p.matterportHint}</p>
                   {plan && <p>The layout is measured. Café equipment is your proposed fit-out. Finishes are reconstructed; use the walkthrough to inspect the original interior.</p>}
-                  <p>{!realListing ? "Unrelated Matterport showcase stand-in; not a tour of this fictional property." : p.matterportModelId ? "Matched Matterport model available; preview access must still be verified." : "No matched Matterport model is recorded."}</p>
+                  <p>{!realListing ? "Fictional practice layout; no matched property walkthrough." : p.matterportModelId ? "Matched Matterport model available; preview access must still be verified." : "No matched Matterport model is recorded."}</p>
                 </details>
                 <div className="property-actions">
                   <button className="property-open" type="button" onClick={() => { conn?.send({ t: "select_property", propertyId: p.id }); set({ screen: "game" }); }}>Open this property <span aria-hidden="true">→</span></button>
-                  <button className="property-preview" type="button" aria-expanded={previewId === p.id} onClick={() => setPreviewId(previewId === p.id ? null : p.id)}>{previewId === p.id ? "Close preview" : "Preview this space"}</button>
+                  {realListing && p.matterportModelId && <button className="property-preview" type="button" aria-expanded={previewId === p.id} onClick={() => setPreviewId(previewId === p.id ? null : p.id)}>{previewId === p.id ? "Close preview" : "Preview this space"}</button>}
                 </div>
                 {previewId === p.id && <MatterportPanel property={p} />}
               </div>

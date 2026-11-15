@@ -3,12 +3,12 @@
 export const DEMO_PROPERTY_ID = "hou-midtown-1204";
 export const DEMO_PLAYER_NAME = "Judge";
 
-/**
- * Play Demo always starts in the open-plan Midtown sample café when it is offered,
- * even when measured CoStar suites are loaded; those stay selectable on the property screen.
- */
-export function demoPropertyId(properties: { id: string }[]): string {
-  return properties.some((p) => p.id === DEMO_PROPERTY_ID) ? DEMO_PROPERTY_ID : properties[0]?.id ?? DEMO_PROPERTY_ID;
+/** Prefer the validated measured suite; practice mode explicitly selects Midtown. */
+export const MEASURED_DEMO_PROPERTY_ID = "costar-1018657-21963212";
+export function demoPropertyId(properties: { id: string; source?: string; floorPlan?: unknown }[], practice = false): string {
+  const measured = properties.filter(p => p.source === "costar-extract" && !!p.floorPlan);
+  if (!practice && measured.length) return measured.find(p => p.id === MEASURED_DEMO_PROPERTY_ID)?.id ?? measured[0].id;
+  return properties.find(p => p.id === DEMO_PROPERTY_ID)?.id ?? properties[0]?.id ?? DEMO_PROPERTY_ID;
 }
 
 export type DemoPhase =
@@ -36,7 +36,7 @@ export function demoStatusFor(phase: DemoPhase): DemoStatus {
     case "opening":
       return { phase, message: "Unlocking the doors for service…" };
     case "ready":
-      return { phase, message: "Café open. Take your first order at the counter." };
+      return { phase, message: "Café open. Watch Jamie serve, or take an order yourself." };
     case "error":
       return { phase, message: "Demo hitch — try Host café instead." };
     default:

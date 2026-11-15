@@ -80,6 +80,9 @@ export function CafeScene({ snapshot, viewMode = "monitor", buildMode = false }:
     ?? serviceLine.find((customer) => customer.state === "waiting")
     ?? serviceLine[0];
   const queuedCustomers = serviceLine.filter((customer) => customer.state !== "waiting");
+  // At most one conversational bubble; keep it away from the featured order.
+  const speaker = snapshot.customers.filter(c => c.say && c.id !== featuredCustomer?.id && (!featuredCustomer || Math.hypot(c.x - featuredCustomer.x, c.z - featuredCustomer.z) > 2.2))
+    .sort((a,b) => Math.hypot(a.x-(me?.x ?? 0),a.z-(me?.z ?? 0))-Math.hypot(b.x-(me?.x ?? 0),b.z-(me?.z ?? 0)) || a.id.localeCompare(b.id))[0];
   const mode = viewMode;
   const canFloorPlace =
     !!buildKind &&
@@ -172,7 +175,7 @@ export function CafeScene({ snapshot, viewMode = "monitor", buildMode = false }:
         ) : null}
         {snapshot.customers.map((c) => (
           <CustomerMesh key={c.id} customer={c} appearance={appearances.current.get(c.id)!} featured={c.id === featuredCustomer?.id}
-            yourTicket={c.ticketHolder === you} queuePosition={queuedCustomers.findIndex((customer) => customer.id === c.id) + 1} />
+            yourTicket={c.ticketHolder === you} showSpeech={c.id === speaker?.id} queuePosition={queuedCustomers.findIndex((customer) => customer.id === c.id) + 1} />
         ))}
         {snapshot.aiBarista && snapshot.aiBarista.x != null && snapshot.aiBarista.z != null && (
           <PlayerMesh
@@ -1153,9 +1156,10 @@ const BARISTA_PROFILE = [new Vector2(0, -0.34), new Vector2(0.21, -0.34), new Ve
 
 /** In-character line from a customer's Grok mind, shown for a few seconds. */
 function SpeechBubble({ text, y }: { text: string; y: number }) {
-  const lines = Math.min(3, Math.ceil(text.length / 30));
-  const width = Math.min(1.9, Math.max(0.7, text.length * 0.058 + 0.24));
-  const height = 0.16 + lines * 0.13;
+  const line = text.trim().replace(/\s+/g, " ");
+  const visible = line.length > 60 ? line.slice(0, 57).trimEnd() + "…" : line;
+  const width = 2.2;
+  const height = 0.63;
   return (
     <Billboard position={[0, y, 0]}>
       <mesh>
@@ -1166,15 +1170,15 @@ function SpeechBubble({ text, y }: { text: string; y: number }) {
         <coneGeometry args={[0.07, 0.12, 3]} />
         <meshStandardMaterial color="#ffffff" />
       </mesh>
-      <Text position={[0, 0, 0.025]} fontSize={0.1} lineHeight={1.25} color={PALETTE.espresso} anchorX="center" anchorY="middle" maxWidth={width - 0.16} textAlign="center">
-        {text}
+      <Text position={[0, 0, 0.025]} fontSize={0.115} lineHeight={1.25} color={PALETTE.espresso} anchorX="center" anchorY="middle" maxWidth={width - 0.24} textAlign="center">
+        {visible}
       </Text>
     </Billboard>
   );
 }
 
-function CustomerMesh({ customer, appearance, featured, yourTicket, queuePosition }: {
-  appearance: number; customer: Customer; featured: boolean; yourTicket: boolean; queuePosition: number;
+function CustomerMesh({ customer, appearance, featured, yourTicket, showSpeech, queuePosition }: {
+  appearance: number; customer: Customer; featured: boolean; yourTicket: boolean; showSpeech: boolean; queuePosition: number;
 }) {
   const angry = customer.state === "angry" || customer.patience < 20;
   const waiting = customer.state === "waiting" || customer.state === "ordering" || customer.state === "queue";
@@ -1282,7 +1286,7 @@ function CustomerMesh({ customer, appearance, featured, yourTicket, queuePositio
           </Text>
         </Billboard>
       )}
-      {customer.say && (
+      {showSpeech && customer.say && (
         <SpeechBubble text={customer.say} y={waiting && featured ? 2.66 : waiting ? 2.3 : 2.1} />
       )}
       {waiting && !featured && (

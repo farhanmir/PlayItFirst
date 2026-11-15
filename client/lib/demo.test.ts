@@ -15,14 +15,17 @@ describe("judge demo helpers", () => {
   it("returns messaging for each phase", () => {
     expect(demoStatusFor("selecting").message).toMatch(/property/i);
     expect(demoStatusFor("opening").message.length).toBeGreaterThan(4);
-    expect(demoStatusFor("ready").message).toMatch(/first order/i);
+    expect(demoStatusFor("ready").message).toMatch(/Jamie/i);
   });
 });
 
 describe("demo property choice", () => {
-  it("starts in the open-plan Midtown sample even when measured suites come first", () => {
-    expect(demoPropertyId([{ id: "costar-1018657-21963212" }, { id: "costar-353482-18036295" }, { id: DEMO_PROPERTY_ID }, { id: "hou-eaado-41" }]))
-      .toBe(DEMO_PROPERTY_ID);
+  it("prefers the known measured suite and retains an explicit practice mode", () => {
+    const properties = [{ id: DEMO_PROPERTY_ID, source: "costar-mock" }, { id: "costar-other", source: "costar-extract", floorPlan: {} }, { id: "costar-1018657-21963212", source: "costar-extract", floorPlan: {} }];
+    expect(demoPropertyId(properties)).toBe("costar-1018657-21963212");
+    expect(demoPropertyId(properties, true)).toBe(DEMO_PROPERTY_ID);
+    expect(demoPropertyId(properties.slice(0,2))).toBe("costar-other");
+    expect(demoPropertyId([{id:"unmeasured",source:"costar-extract"},{id:DEMO_PROPERTY_ID,source:"costar-mock"}])).toBe(DEMO_PROPERTY_ID);
   });
   it("falls back to the first listing, then the default id", () => {
     expect(demoPropertyId([{ id: "only-suite" }])).toBe("only-suite");

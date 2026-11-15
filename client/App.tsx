@@ -77,7 +77,7 @@ export function App() {
   );
 }
 
-async function startHost(name: string) {
+async function startHost(name: string, judgeDemo = false) {
   void unlockAudio().catch(() => undefined);
   play("ui");
   const set = useApp.getState().set;
@@ -85,7 +85,7 @@ async function startHost(name: string) {
   const res = await fetch(apiUrl("/api/rooms"), {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-SoftOpen-Public-Origin": publicOrigin() },
-    body: JSON.stringify({ publicOrigin: publicOrigin() }),
+    body: JSON.stringify({ publicOrigin: publicOrigin(), judgeDemo }),
     signal: AbortSignal.timeout(12000),
   });
   if (!res.ok) throw new Error("Could not open a café. Please try again.");
@@ -124,9 +124,14 @@ async function runJudgeDemo(setPhase: (p: DemoPhase) => void) {
     setPhase("hosting");
     void unlockAudio().catch(() => undefined);
     play("ui");
-    const code = await startHost(DEMO_PLAYER_NAME);
+    const practice = new URLSearchParams(location.search).get("practice") === "1";
+    const code = await startHost(DEMO_PLAYER_NAME, true);
     setPhase("selecting");
-    await sleep(500);
+    const catalog = await fetch(apiUrl("/api/properties"), { signal: AbortSignal.timeout(12000) });
+    if (!catalog.ok) throw new Error("Property catalog unavailable");
+    const properties = await catalog.json() as PropertyListing[];
+    if (!Array.isArray(properties) || !properties.length) throw new Error("Property catalog is empty");
+    useApp.getState().set({ properties });
 
     // Wait for WS welcome so select_property lands
     for (let i = 0; i < 60; i++) {
@@ -137,7 +142,7 @@ async function runJudgeDemo(setPhase: (p: DemoPhase) => void) {
 
     const conn = useApp.getState().conn;
     if (!conn) throw new Error("No connection for judge demo");
-    const demoPropertyId = pickDemoProperty(useApp.getState().properties);
+    const demoPropertyId = pickDemoProperty(properties, practice);
     conn.send({ t: "select_property", propertyId: demoPropertyId });
     useApp.getState().set({ screen: "game" });
     setPhase("entering");
@@ -160,25 +165,18 @@ async function runJudgeDemo(setPhase: (p: DemoPhase) => void) {
       await sleep(50);
     }
 
-    // Seed a rush so the floor is alive — the player still takes the first order.
-    conn.send({ t: "demo_boost" });
-    for (let i = 0; i < 25; i++) {
-      const s = useApp.getState().snapshot;
-      if (s?.director && !s.director.resolved && (s.customers?.length ?? 0) >= 3) break;
-      if (i === 12) conn.send({ t: "demo_boost" });
-      await sleep(120);
-    }
-
-    const snap = useApp.getState().snapshot;
-    const counter = snap?.layout?.furniture.find((f) => f.kind === "counter");
-    if (counter) conn.send({ t: "player_move", x: counter.x + 0.35, z: counter.z + 0.9 });
+    if (!useApp.getState().snapshot?.open) throw new Error("Café did not open");
+    // Guided rooms seed a customer on the server; Jamie can serve while a visitor watches.
 
     setPhase("ready");
-    history.replaceState({}, "", `/?room=${code}&demo=1`);
+    history.replaceState({}, "", `/?room=${code}&demo=1${practice ? "&practice=1" : ""}`);
     await sleep(1200);
     setPhase("idle");
   } catch (err) {
     console.warn(err);
+    useApp.getState().conn?.close();
+    useApp.getState().set({ conn: null, snapshot: null, you: null, screen: "landing", status: "closed", connectionError: "The demo could not open. Please try Play demo again or host a café." });
+    history.replaceState({}, "", "/");
     setPhase("error");
   }
 }

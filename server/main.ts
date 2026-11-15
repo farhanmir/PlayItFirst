@@ -212,7 +212,7 @@ server.on("request", (req, res) => {
       json(res, 200, {
         costar: getCachedProperties().source,
         costarDetail: getCachedProperties().detail,
-        matterport: !!(process.env.MATTERPORT_TOKEN || process.env.MATTERPORT_SDK_TOKEN),
+        matterport: !!(process.env.MATTERPORT_API_KEY && (process.env.MATTERPORT_TOKEN || process.env.MATTERPORT_SDK_TOKEN)),
         nessie: !!process.env.NESSIE_KEY,
         deepagents: deepagentsConfigured(),
         photonVoice: phones.status().voiceConfigured ? "voice-tool-configured-call-unverified" : "webrtc-crew-not-photon-2",
@@ -244,7 +244,7 @@ server.on("request", (req, res) => {
         json(res, 429, { error: "Too many new cafés. Wait a minute, or rejoin your existing room." }); return;
       }
       const body = await readJsonBody(req);
-      const created = rooms.createRoom();
+      const created = rooms.createRoom(body.judgeDemo === true);
       const join = rooms.joinUrl(joinOrigin(req, typeof body.publicOrigin === "string" ? body.publicOrigin : undefined), created.code);
       json(res, 200, {
         code: created.code,

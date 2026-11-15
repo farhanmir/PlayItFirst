@@ -55,7 +55,7 @@ function stamp(listings: PropertyListing[], source: ListingSource, detail?: stri
 export function withPracticeProperties(bundle: CoStarBundle): CoStarBundle {
   if (bundle.source === "costar-mock") return bundle;
   const ids = new Set(bundle.listings.map((listing) => listing.id));
-  // The open-plan Midtown suite is the Play Demo café; the other two are extra practice layouts.
+  // The open-plan Midtown suite is available as an explicit practice demo; real measured properties are preferred by default.
   const practiceIds = ["hou-midtown-1204", "hou-eaado-41", "la-arts-district-302"];
   const practices = practiceIds.flatMap((id) => {
     const listing = local.find((item) => item.id === id);
@@ -134,7 +134,7 @@ export async function loadProperties(force = false): Promise<CoStarBundle> {
           throw new Error("Invalid authorized CoStar extract file");
         }
         const listings = await Promise.all((rows as PropertyListing[]).map((p) => enrichMeasuredProperty(correctImportedCoordinates(p))));
-        cache = withPracticeProperties(stamp(listings, "costar-extract", "Authorized hackathon extract; asking terms, not an executed lease. Three separately labeled fictional practice properties (including the open-plan demo café) are also available."));
+        cache = withPracticeProperties(stamp(listings, "costar-extract", "Authorized hackathon extract; asking terms, not an executed lease. Three separately labeled fictional practice properties (including the open-plan practice café) are also available."));
         return cache;
       }
       const live = await fetchLive();

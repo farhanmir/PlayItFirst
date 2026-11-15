@@ -402,12 +402,15 @@ export function movePlayer(snapshot: RoomSnapshot, playerId: string, x: number, 
 
 export function openCafe(snapshot: RoomSnapshot): RoomSnapshot {
   if (!snapshot.property || !snapshot.layout) return snapshot;
-  return {
+  if (snapshot.judgeDemo && snapshot.open) return snapshot;
+  const opened: RoomSnapshot = {
     ...snapshot,
     phase: "play",
     open: true,
+    ...(snapshot.judgeDemo ? { lastHumanInteractAt: snapshot.simTime } : {}),
     eventLog: ["Doors open. Customers incoming.", ...snapshot.eventLog].slice(0, 30),
   };
+  return snapshot.judgeDemo && !opened.customers.length ? seedDemoCrowd(opened, 1) : opened;
 }
 
 /** Brew time (sim seconds) before a drink becomes holdable. */
@@ -655,7 +658,8 @@ export function runAiBaristaAssist(snapshot: RoomSnapshot, dt = 0.05): RoomSnaps
   if (!spawn) return snapshot;
   let staff = { ...previous, x:spawn.x, z:spawn.z };
   const working = !!staff.holding || !!staff.task;
-  const mayStart = snapshot.metrics.customersServed > 0 && snapshot.simTime-(snapshot.lastHumanInteractAt??0)>=AI_IDLE_SEC;
+  const idle = snapshot.simTime-(snapshot.lastHumanInteractAt??0);
+  const mayStart = snapshot.judgeDemo ? idle >= 3 : snapshot.metrics.customersServed > 0 && idle >= AI_IDLE_SEC;
   if (!working && !mayStart) return { ...snapshot, aiBarista:{...staff,status:"Ready to help"} };
   const jamie: PlayerState = { id:AI_PLAYER_ID,name:"Jamie (AI)",role:"barista",x:staff.x,z:staff.z,holding:staff.holding,score:0,color:"#54786b" };
   const brewing = parseBrewing(staff.holding);
@@ -728,15 +732,18 @@ export function stepSimulation(snapshot: RoomSnapshot, dt: number): RoomSnapshot
   const ambience = Math.min(8, plants * 1.5);
 
   // Spawn based on foot traffic + capacity pressure (tuned for playable demo pacing)
-  const openSlots = Math.max(0, Math.min(10, property.capacity) - customers.length);
+  const guidedIdle = snapshot.judgeDemo && snapshot.simTime - (snapshot.lastHumanInteractAt ?? 0) >= 3;
+  const openSlots = Math.max(0, Math.min(snapshot.judgeDemo ? 2 : 10, property.capacity) - customers.length);
   const rush = snapshot.rushBoost ?? 0;
-  const spawnChance = property.footTraffic * (0.1 + rush * 0.06) * dt;
+  const spawnChance = property.footTraffic * (guidedIdle ? 0.045 : 0.1 + rush * 0.06) * dt;
   if (openSlots > 0 && Math.random() < spawnChance) {
-    customers.push(spawnCustomer(property, queueAnchor.x, queueAnchor.z));
+    const customer = spawnCustomer(property, queueAnchor.x, queueAnchor.z);
+    if (snapshot.judgeDemo) customer.patience = 280;
+    customers.push(customer);
   }
 
   // Rush boost from unresolved director events (keep dramatic but not unmanageable)
-  if (snapshot.director && !snapshot.director.resolved && snapshot.director.title.includes("rush")) {
+  if (!snapshot.judgeDemo && snapshot.director && !snapshot.director.resolved && snapshot.director.title.includes("rush")) {
     if (openSlots > 0 && Math.random() < 0.12 * dt) customers.push(spawnCustomer(property, queueAnchor.x, queueAnchor.z));
   }
 
@@ -892,16 +899,17 @@ export function stepSimulation(snapshot: RoomSnapshot, dt: number): RoomSnapshot
 }
 
 /** Seed a visible queue for judge demo — deterministic enough for live pitches. */
-export function seedDemoCrowd(snapshot: RoomSnapshot): RoomSnapshot {
+export function seedDemoCrowd(snapshot: RoomSnapshot, count = 5): RoomSnapshot {
   if (!snapshot.property || !snapshot.layout) return snapshot;
   const counter = snapshot.layout.furniture.find((f) => f.kind === "counter") ?? { x: 2, z: 3 };
   const extras: Customer[] = [];
   const states: Customer["state"][] = ["ordering", "queue", "queue", "entering", "entering"];
-  for (let i = 0; i < states.length; i++) {
+  for (let i = 0; i < Math.min(count, states.length); i++) {
     const c = spawnCustomer(snapshot.property, counter.x, counter.z);
     c.state = states[i];
     // Generous patience so the judge pitch stays playable under the rush
     c.patience = 280;
+    if (snapshot.judgeDemo && count === 1) { c.persona = "regular"; c.preference = "espresso"; c.budget = 10; }
     c.x = counter.x + 0.2;
     c.z = Math.max(0.8, counter.z - 1.2 - i * 0.7);
     c.targetX = c.x;
@@ -916,7 +924,7 @@ export function seedDemoCrowd(snapshot: RoomSnapshot): RoomSnapshot {
     customers: [...snapshot.customers, ...extras].slice(0, 12),
     metrics: {
       ...snapshot.metrics,
-      queueLength: snapshot.metrics.queueLength + 3,
+      queueLength: snapshot.metrics.queueLength + Math.min(3, count),
     },
   };
 }

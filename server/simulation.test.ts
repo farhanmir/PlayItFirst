@@ -50,6 +50,25 @@ describe("café simulation", () => {
     expect(snap.inventory).toEqual(inventory);
     expect(snap.eventLog.some((line) => line.includes("Jamie (AI)"))).toBe(false);
   });
+  it("guided room opens with a genuine Jamie service cycle without human input", () => {
+    let snap = selectProperty({ ...createRoomSnapshot("guided"), judgeDemo: true }, { ...listing, footTraffic: 0 });
+    snap = addPlayer(snap, "p1", "Judge", "owner");
+    snap = openCafe(snap);
+    expect(snap.customers).toHaveLength(1);
+    expect(openCafe(snap).customers).toHaveLength(1);
+    const before = { ...snap.inventory };
+    const start = { x: snap.aiBarista!.x!, z: snap.aiBarista!.z! };
+    let moved = false;
+    for (let i = 0; i < 1400 && !snap.metrics.customersServed; i++) {
+      snap = stepSimulation(snap, 0.05);
+      moved ||= Math.hypot(snap.aiBarista!.x! - start.x, snap.aiBarista!.z! - start.z) > 0.5;
+    }
+    expect(moved).toBe(true);
+    expect(snap.metrics.customersServed).toBe(1);
+    expect(snap.aiBarista?.served).toBe(1);
+    expect(snap.finance.revenue).toBeGreaterThan(0);
+    expect(snap.inventory).toEqual({ ...before, cups: before.cups - 1, beans: before.beans - 1 });
+  });
   it("selects a property and spends starter budget", () => {
     let snap = createRoomSnapshot("demo");
     snap = selectProperty(snap, listing);

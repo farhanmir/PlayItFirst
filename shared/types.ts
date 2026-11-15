@@ -210,6 +210,8 @@ export interface CafeLayout {
 
 export interface RoomSnapshot {
   manager?: ManagerView;
+  /** Guided judge room: NPC service may begin before a human sale. */
+  judgeDemo?: boolean;
   code: string;
   phase: GamePhase;
   businessType: BusinessType;

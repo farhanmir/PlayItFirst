@@ -22,6 +22,7 @@ export function MatterportPanel({ property }: { property: PropertyListing }) {
     setModel(null);
     setOpen(false);
     setError(null);
+    if (property.source !== "costar-extract" && property.source !== "costar-live") return;
     void fetch(apiUrl(`/api/matterport/${encodeURIComponent(property.id)}`))
       .then(async (r) => {
         if (!r.ok) throw new Error("Matterport lookup failed");
@@ -36,33 +37,24 @@ export function MatterportPanel({ property }: { property: PropertyListing }) {
     return () => {
       cancelled = true;
     };
-  }, [property.id]);
+  }, [property.id, property.source]);
+
+  if (property.source !== "costar-extract" && property.source !== "costar-live") return null;
+  const verified = model?.source === "matterport-live" && model.modelId === property.matterportModelId;
 
   return (
     <aside className="side-panel panel matterport-panel">
-      <p className="tag">Matterport twin</p>
+      <p className="tag">Matched Matterport property</p>
       <h3>{property.name}</h3>
-      <p>
-        {model?.detail || property.matterportHint}
-        {model ? (
-          <>
-            {" "}
-            · <code>{model.source}</code>
-          </>
-        ) : null}
-      </p>
-      {error ? <p className="muted">{error}</p> : null}
-      <div className="matterport-actions">
-        <button type="button" className="btn" disabled={!model} onClick={() => setOpen((v) => !v)}>
-          {open ? "Hide walkthrough" : "Open Matterport walkthrough"}
-        </button>
-        {model ? (
-          <a className="btn btn-ghost" href={model.embedUrl} target="_blank" rel="noreferrer">
-            Open in Matterport
-          </a>
-        ) : null}
-      </div>
-      {open && model ? (
+      <p>{property.floorPlan ? "Playable reconstruction uses measured rooms, walls and openings from the matched scan." : property.matterportHint}</p>
+      {!verified ? <p className="muted">{error || model ? "Live walkthrough unavailable; the reconstructed floor remains playable." : "Checking matched walkthrough availability…"}</p> : <>
+        <p>Matched model metadata verified · <code>{model!.source}</code></p>
+        <div className="matterport-actions">
+          <button type="button" className="btn" onClick={() => setOpen(v => !v)}>{open ? "Hide walkthrough" : "Open Matterport walkthrough"}</button>
+          <a className="btn btn-ghost" href={model!.embedUrl} target="_blank" rel="noreferrer">Open in Matterport</a>
+        </div>
+      </>}
+      {open && model && verified ? (
         <div className="matterport-frame">
           <iframe
             title={`Matterport ${model.modelId}`}

@@ -1,7 +1,7 @@
 import type { DemoStatus } from "../lib/demo";
 
 export function DemoOverlay({ status }: { status: DemoStatus | null }) {
-  if (!status || status.phase === "idle" || status.phase === "ready") return null;
+  if (!status || status.phase === "idle" || status.phase === "ready" || status.phase === "error") return null;
 
   return (
     <div className="demo-overlay" role="status" aria-live="polite">
