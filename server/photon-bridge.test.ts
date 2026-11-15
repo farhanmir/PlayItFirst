@@ -4,7 +4,7 @@ import { PhotonBridge, photonConfigurationStatus } from "./photon-bridge.ts";
 import { CafeManager } from "./manager.ts";
 import { addPlayer, createRoomSnapshot } from "./simulation.ts";
 const identifier = (kind: string, n = 1) => `pho_${kind}_${String(n).padStart(26, "0")}`;
-const config = { projectId: identifier("prj"), senderId: identifier("usr"), apiKey: "pho_sk_test", webhookSecret: `whsec_${Buffer.alloc(32, 7).toString("base64")}` };
+const config = { senderHandle: "+15555550123", projectId: identifier("prj"), senderId: identifier("usr"), apiKey: "pho_sk_test", webhookSecret: `whsec_${Buffer.alloc(32, 7).toString("base64")}` };
 const owner = { roomCode: "test-room", memberId: "owner" };
 function setup() {
   let now = Date.now();
@@ -30,6 +30,9 @@ function setup() {
 }
 describe("Photon authenticated owner pairing and shared manager", () => {
   it("reports readiness using environment names without exposing secrets", () => {
+    vi.stubEnv("PHOTON_MESSAGING_TRANSPORT", "webhook");
+    vi.stubEnv("PHOTON_ACTIVATION_CODE", "a".repeat(32));
+    vi.stubEnv("PHOTON_TEST_SENDER", config.senderHandle);
     vi.stubEnv("PHOTON_PROJECT_ID", config.projectId);
     vi.stubEnv("PHOTON_SENDER_ID", "");
     vi.stubEnv("PHOTON_API_KEY", "sensitive-invalid-key");

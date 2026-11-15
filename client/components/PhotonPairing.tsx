@@ -1,8 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useApp } from "../lib/store";
 
 /** Phone linking lives in the management drawer, never on the service HUD. */
 export function PhotonPairing() {
+  const [activation, setActivation] = useState("");
   const conn = useApp(s => s.conn);
   const snapshot = useApp(s => s.snapshot);
   const you = useApp(s => s.you);
@@ -11,7 +12,7 @@ export function PhotonPairing() {
   const connection = useApp(s => s.status);
   const owner = snapshot?.players.some(p => p.id === you && p.role === "owner");
   useEffect(() => { if (owner && connection === "open") conn?.send({ t: "photon_pair_status" }); }, [conn, owner, connection]);
-  if (!owner) return null;
+  if (!owner || (state && state.status.transport !== "webhook")) return null;
   const pairing = state?.pairing;
   const configured = state?.status.configured === true;
   const online = connection === "open";
@@ -24,7 +25,8 @@ export function PhotonPairing() {
       <p role="status">Phone {pairing.candidate} connected to this café. Send Jamie a request. Purchases require an explicit proposal approval.</p>
       <button type="button" className="btn btn-small" disabled={!online} onClick={() => conn?.send({ t: "photon_pair_revoke" })}>Disconnect phone</button>
     </> : <>
-      <button type="button" className="btn btn-small" disabled={!configured || !online} onClick={() => conn?.send({ t: "photon_pair_start" })}>{pairing?.code ? "Replace pairing code" : "Create pairing code"}</button>
+      <label>Team phone activation code <input type="password" autoComplete="off" maxLength={256} value={activation} onChange={e => setActivation(e.target.value)} /></label>
+      <button type="button" className="btn btn-small" disabled={!configured || !online || !activation.trim()} onClick={() => { conn?.send({ t: "photon_pair_start", activationCode: activation }); setActivation(""); }}>{pairing?.code ? "Replace pairing code" : "Create pairing code"}</button>
       {pairing?.code && <p>Send <code>PAIR {pairing.code}</code> to your provisioned Photon line. This code expires in five minutes.</p>}
       {pairing?.candidate && <>
         <p>Phone ending {pairing.candidate} requested access. Confirm only if this is your phone.</p>

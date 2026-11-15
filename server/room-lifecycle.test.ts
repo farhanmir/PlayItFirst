@@ -71,6 +71,9 @@ describe("bounded room lifecycle and active sessions",()=>{
     expect(state.snapshot.players.find((p: any) => p.id === welcome.you)).toMatchObject({ connected: true, x: 4.25, z: 6.75, holding: "drink:latte" });
   });
   it("unicasts phone pairing codes to the authenticated owner only", async () => {
+    vi.stubEnv("PHOTON_MESSAGING_TRANSPORT", "webhook");
+    vi.stubEnv("PHOTON_ACTIVATION_CODE", "a".repeat(32));
+    vi.stubEnv("PHOTON_TEST_SENDER", "+15555550123");
     vi.stubEnv("PHOTON_PROJECT_ID", "pho_prj_00000000000000000000000001");
     vi.stubEnv("PHOTON_SENDER_ID", "pho_usr_00000000000000000000000001");
     vi.stubEnv("PHOTON_API_KEY", "pho_sk_test");
@@ -80,10 +83,20 @@ describe("bounded room lifecycle and active sessions",()=>{
       const owner = await join(code, "owner"), guest = await join(code, "barista");
       await send(guest, { t: "photon_pair_start" });
       expect(guest.messages.at(-1).t).toBe("photon_pair_error");
-      await send(owner, { t: "photon_pair_start" });
+      await send(owner, { t: "photon_pair_start", activationCode: "wrong" });
+      expect(owner.messages.at(-1).t).toBe("photon_pair_error");
+      await send(owner, { t: "photon_pair_start", activationCode: "a".repeat(32) });
       expect(owner.messages.at(-1)).toMatchObject({ t: "photon_pairing", pairing: { paired: false, code: expect.any(String) } });
       expect(guest.messages.some(m => m.t === "photon_pairing")).toBe(false);
       expect(JSON.stringify(rooms.getRoom(code)!.snapshot)).not.toContain(owner.messages.at(-1).pairing.code);
+      const room = rooms.getRoom(code)!;
+      room.snapshot = { ...room.snapshot, property: { ...rooms.listProperties()[0], source: "costar-extract" } };
+      vi.stubEnv("ALLOW_SPONSOR_PHONE_CONTEXT", "false");
+      await send(owner, { t: "photon_pair_start", activationCode: "a".repeat(32) });
+      expect(owner.messages.at(-1).t).toBe("photon_pair_error");
+      vi.stubEnv("ALLOW_SPONSOR_PHONE_CONTEXT", "true");
+      await send(owner, { t: "photon_pair_start", activationCode: "a".repeat(32) });
+      expect(owner.messages.at(-1).t).toBe("photon_pairing");
     } finally { vi.unstubAllEnvs(); }
   });
   it("enforces member cap and rejects invalid resume instead of allocating another member",async()=>{

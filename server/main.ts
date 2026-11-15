@@ -16,6 +16,7 @@ import { resolveMatterport } from "./matterport.ts";
 import { deepagentsConfigured } from "./deepagents.ts";
 import { PhotonRequestError } from "./photon-bridge.ts";
 import { readJsonBody, readRawBody, respondHttpInputError, createRoomRateLimiter, createPropertyRefreshLimiter, clientAddress } from "./httpLimits.ts";
+import { PhoneBridge } from "./phone-bridge.ts";
 
 // Node 22's loader preserves values already supplied by Render's environment.
 if (existsSync(".env")) loadEnvFile(".env");
@@ -37,6 +38,7 @@ const refreshLimiter = createPropertyRefreshLimiter();
 let propertyRefresh: Promise<unknown> | null = null;
 const wss = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 });
 const rooms = new CafeRoomServer(wss);
+const phones = new PhoneBridge();
 
 server.on("upgrade", (request, socket, head) => {
   if (new URL(request.url || "/", "http://localhost").pathname === "/ws") {
@@ -157,6 +159,38 @@ server.on("request", (req, res) => {
       res.writeHead(204); res.end(); return;
     }
 
+    if (url.pathname === "/api/phone/session" || url.pathname === "/api/phone/voice" || url.pathname === "/api/nessie/activate") {
+      res.setHeader("Cache-Control", "no-store");
+      if (req.method !== "POST") { json(res, 405, { error: "POST required" }); return; }
+      try {
+        const body = await readJsonBody(req, { maxBytes: 8192 });
+        if (url.pathname === "/api/phone/voice") {
+          const result = await phones.voice(req.headers.authorization || "", body);
+          json(res, 200, result); return;
+        }
+        const auth = req.headers.authorization || "";
+        if (typeof body.room !== "string" || !/^Bearer [0-9a-f]{24}$/.test(auth)) throw new Error("Owner authorization required");
+        if (url.pathname === "/api/nessie/activate") {
+          if (typeof body.activationCode !== "string") throw new Error("Sandbox activation code required.");
+          json(res, 200, rooms.activateNessie(body.room, auth.slice(7), body.activationCode));
+          return;
+        }
+        const owner = rooms.phoneOwner(body.room, auth.slice(7));
+        const result = body.action === "start" ? phones.start(owner, typeof body.activationCode === "string" ? body.activationCode : "")
+          : body.action === "status" ? phones.getStatus(owner)
+          : body.action === "end" ? phones.end(owner)
+          : body.action === "voice_approval" && typeof body.proposalId === "string" ? phones.issueVoiceApproval(owner, body.proposalId)
+          : null;
+        if (!result) { json(res, 400, { error: "Unsupported phone session action" }); return; }
+        json(res, 200, result);
+      } catch (error) {
+        if (respondHttpInputError(req, res, error)) return;
+        // Never return provider errors or secret-bearing bodies to clients.
+        json(res, 400, { error: error instanceof Error ? error.message.slice(0, 240) : "Phone request refused" });
+      }
+      return;
+    }
+
     if (url.pathname === "/api/properties") {
       if (url.searchParams.get("refresh") === "1") {
         const limit = refreshLimiter.take("refresh");
@@ -181,8 +215,8 @@ server.on("request", (req, res) => {
         matterport: !!(process.env.MATTERPORT_TOKEN || process.env.MATTERPORT_SDK_TOKEN),
         nessie: !!process.env.NESSIE_KEY,
         deepagents: deepagentsConfigured(),
-        photonVoice: "webrtc-crew-not-photon-2",
-        photonMessaging: rooms.photonStatus(),
+        photonVoice: phones.status().voiceConfigured ? "voice-tool-configured-call-unverified" : "webrtc-crew-not-photon-2",
+        photonMessaging: { ...rooms.photonStatus(), inbox: phones.status() },
         webxr: "client",
       });
       return;

@@ -219,7 +219,8 @@ export interface RoomSnapshot {
 }
 
 export type ClientMsg =
-  | { t: "photon_pair_start" | "photon_pair_confirm" | "photon_pair_revoke" | "photon_pair_status" }
+  | { t: "photon_pair_start"; activationCode?: string }
+  | { t: "photon_pair_confirm" | "photon_pair_revoke" | "photon_pair_status" }
   | { t: "manager_request"; prompt: string }
   | { t: "manager_approve"; proposalId: string }
   | { t: "manager_decline"; proposalId: string }

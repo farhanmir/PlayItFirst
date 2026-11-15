@@ -1,3 +1,4 @@
+import { photonMessagingTransport } from "./phone-policy.ts";
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import type { CafeManager, ManagerActor } from "./manager.ts";
@@ -14,7 +15,7 @@ const inbound = z.object({ id: id("evt"), apiVersion: z.literal("2026-07-01"), t
       space: z.object({ id: id("spc"), projectId: id("prj"), platform: z.literal("imessage"), participantIds: z.array(id("usr")).length(2) }),
       content: z.object({ type: z.literal("text"), format: z.literal("plain"), text: z.string().min(1).max(1200) }),
     }) }) });
-export interface PhotonConfig { projectId: string; senderId: string; apiKey: string; webhookSecret: string }
+export interface PhotonConfig { senderHandle: string; projectId: string; senderId: string; apiKey: string; webhookSecret: string }
 import type { PhotonPairingView } from "../shared/photon.ts";
 export type { PhotonPairingView } from "../shared/photon.ts";
 interface Pairing { actor: ManagerActor; code: string; expiresAt: number; candidate?: { senderId: string; spaceId: string; handle: string }; confirmed: boolean; lastReply?: PhotonPairingView["lastReply"] }
@@ -63,7 +64,7 @@ export class PhotonBridge {
     catch { throw new PhotonRequestError(400, "Invalid Photon signature or event schema"); }
     const message = event.data.object;
     const project = this.config.projectId;
-    if (event.id !== headers["webhook-id"] || event.data.projectId !== project || message.projectId !== project || message.sentBy.projectId !== project || message.space.projectId !== project || message.sentBy.id === this.config.senderId || !message.space.participantIds.includes(this.config.senderId) || !message.space.participantIds.includes(message.sentBy.id)) throw new PhotonRequestError(400, "Photon identity mismatch");
+    if (event.id !== headers["webhook-id"] || event.data.projectId !== project || message.projectId !== project || message.sentBy.projectId !== project || message.space.projectId !== project || message.sentBy.id === this.config.senderId || message.sentBy.handle !== this.config.senderHandle || !message.space.participantIds.includes(this.config.senderId) || !message.space.participantIds.includes(message.sentBy.id)) throw new PhotonRequestError(400, "Photon identity mismatch");
     const previous = this.events.get(event.id);
     if (previous) return previous;
     // Never evict accepted event IDs during this process's room lifetime.
@@ -120,16 +121,19 @@ export class PhotonBridge {
 }
 
 export function photonConfigFromEnv(): PhotonConfig | null {
-  const config = { projectId: process.env.PHOTON_PROJECT_ID?.trim(), senderId: process.env.PHOTON_SENDER_ID?.trim(),
+  if (photonMessagingTransport() !== "webhook") return null;
+  const config = { senderHandle: process.env.PHOTON_TEST_SENDER?.trim(), projectId: process.env.PHOTON_PROJECT_ID?.trim(), senderId: process.env.PHOTON_SENDER_ID?.trim(),
     apiKey: process.env.PHOTON_API_KEY?.trim(), webhookSecret: process.env.PHOTON_WEBHOOK_SECRET?.trim() };
-  if (!config.projectId || !config.senderId || !config.apiKey || !config.webhookSecret) return null;
-  if (!id("prj").safeParse(config.projectId).success || !id("usr").safeParse(config.senderId).success || !config.apiKey.startsWith("pho_sk_") || !config.webhookSecret.startsWith("whsec_")) return null;
+  if (!config.senderHandle || !config.projectId || !config.senderId || !config.apiKey || !config.webhookSecret) return null;
+  if ((process.env.PHOTON_ACTIVATION_CODE?.trim().length ?? 0) < 32 || !id("prj").safeParse(config.projectId).success || !id("usr").safeParse(config.senderId).success || !config.apiKey.startsWith("pho_sk_") || !config.webhookSecret.startsWith("whsec_")) return null;
   return config as PhotonConfig;
 }
 
 /** Safe public readiness: names only, never credential values or fragments. */
 export function photonConfigurationStatus() {
   const checks: Record<string, (value: string) => boolean> = {
+    PHOTON_TEST_SENDER: value => value.length > 0,
+    PHOTON_ACTIVATION_CODE: value => value.length >= 32,
     PHOTON_PROJECT_ID: value => id("prj").safeParse(value).success,
     PHOTON_SENDER_ID: value => id("usr").safeParse(value).success,
     PHOTON_API_KEY: value => value.startsWith("pho_sk_"),
@@ -137,5 +141,5 @@ export function photonConfigurationStatus() {
   };
   const missing = Object.keys(checks).filter(key => !process.env[key]?.trim());
   const invalid = Object.entries(checks).filter(([key, validate]) => process.env[key]?.trim() && !validate(process.env[key]!.trim())).map(([key]) => key);
-  return { configured: missing.length === 0 && invalid.length === 0, missing, invalid, apiVersion: "2026-07-01", deliveryVerified: false };
+  return { transport: photonMessagingTransport(), configured: photonMessagingTransport() === "webhook" && missing.length === 0 && invalid.length === 0, missing, invalid, apiVersion: "2026-07-01", deliveryVerified: false };
 }
