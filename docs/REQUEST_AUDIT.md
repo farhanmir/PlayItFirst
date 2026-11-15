@@ -10,7 +10,7 @@ This audits the owner's requests, not merely whether code exists. Fresh public d
 | Smooth movement and facing | Prediction/reconciliation and movement-facing fixes preserved; public keyboard/touch movement and release verified | Physical-device performance and perceived smoothness not verified |
 | Different faces and believable characters | Five hair styles, varied skin/hair/build/face proportions and animated rigs preserved | Visual quality remains a human acceptance question |
 | Remove face card / floating coffee | Rigid apron panels removed; hand-bone grip and non-accumulating pose tested locally; public complete service clears held item | First-person ticket/brewing prop is absent; only finished drink has first-person hand model. Public screenshots still show large world labels |
-| Jamie as a real character | Visible persistent body and collision-routed real service implemented; local cycle verified | Starts a new task only after first human sale plus 18 seconds of inactivity. Public idle-body verification is not a completed service-cycle claim |
+| Jamie as a real character | Public measured cycle verified: takes ticket, walks to Kitchen, brews, carries to pickup, serves same customer; one $9 receipt | Starts a new task only after first human sale plus 18 seconds of inactivity. Public cycle completed in30.8s observation with20.1m travel and no human gameplay input |
 | Actual cafe order loop and useful pickup | Public keyboard take → measured Kitchen brew → pickup serve earned $10 once, deducted inventory, cleared hands | Pickup fallback to counter exists only when no pickup station is present |
 | Build/move in Orbit | Public desktop/phone-emulated Orbit drag changes camera without furniture mutation; exiting clears move selection | Physical touch acceptance pending |
 | Meaningful shared furniture effects | Two live public clients observed same customer reroute after counter moved 1m | Proves route change, not faster service or improved efficiency |
@@ -29,6 +29,7 @@ This audits the owner's requests, not merely whether code exists. Fresh public d
 
 ## Evidence
 
+- [Public Jamie service](screenshots/public-jamie-service-c954369.json)
 - [Public service](screenshots/public-service-c954369.json)
 - [Public two-client counter reroute](screenshots/public-reroute-c954369.json)
 - [Fresh public UI](screenshots/public-ui-c954369.json)
