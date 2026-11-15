@@ -164,11 +164,12 @@ export async function reconcileNessie(finance: FinanceState) {
 
 const refreshTimes = new WeakMap<NessieSync, number>();
 /** At most one read-only reconciliation per 15 seconds per active room. */
-export function refreshNessie(finance: FinanceState) {
+/** onChange publishes the mutated sync even when no other snapshot broadcast is scheduled. */
+export function refreshNessie(finance: FinanceState, onChange: () => void = () => {}) {
   const sync = finance.nessieSync;
   if (!sync?.accountId || Date.now() - (refreshTimes.get(sync) ?? 0) < 15000) return;
   refreshTimes.set(sync, Date.now());
-  void reconcileNessie(finance).then(() => drain(sync));
+  void reconcileNessie(finance).then(() => drain(sync)).finally(onChange);
 }
 
 function parseBill(value: unknown, accountId: string): NonNullable<NessieSync["bills"]>[number] {

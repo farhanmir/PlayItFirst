@@ -597,7 +597,7 @@ export class CafeRoomServer {
     if (room.stepTimer) return;
     room.stepTimer = setInterval(() => {
       room.snapshot = stepSimulation(room.snapshot, 1 / TICK_HZ);
-      refreshNessie(room.snapshot.finance);
+      refreshNessie(room.snapshot.finance, () => { if (this.rooms.get(room.code) === room) this.broadcast(room); });
     }, 1000 / TICK_HZ);
 
     room.snapshotTimer = setInterval(() => {

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { applyTransaction, attachNessieAccount, createFinance, reconcileNessie } from "./finance";
+import { applyTransaction, attachNessieAccount, createFinance, reconcileNessie, refreshNessie } from "./finance";
 const response = (value: object) => Promise.resolve(new Response(JSON.stringify(value), { status: 200 }));
 const flush = async () => { for (let i = 0; i < 15; i++) await new Promise((r) => setTimeout(r, 0)); };
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
@@ -41,6 +41,17 @@ describe("Nessie v2 mirroring", () => {
     expect(finance.nessieSync?.records[0].status).toBe("confirmed");
     expect(finance.nessieSync?.differenceCents).toBe(3500); expect(finance.balance).toBe(72);
     expect(fetcher.mock.calls.slice(3).every(([,options]) => options.method === "GET")).toBe(true);
+  });
+  it("publishes background reconciliation results through onChange", async () => {
+    vi.stubEnv("NESSIE_KEY", "nsk_test");
+    const fetcher = vi.fn().mockImplementationOnce(() => response({ id: "customer" })).mockImplementationOnce(() => response({ id: "account" }))
+      .mockImplementationOnce(() => response({ balance_cents: 10000 })).mockImplementationOnce(() => response({ items: [] }));
+    vi.stubGlobal("fetch", fetcher);
+    const finance = createFinance(100); attachNessieAccount(finance); await flush();
+    const published = vi.fn();
+    refreshNessie(finance, published); await flush();
+    expect(published).toHaveBeenCalledTimes(1);
+    expect(finance.nessieSync?.checkedAt).toBeTypeOf("number");
   });
   it("reports explicit provider rejection without claiming completion", async () => {
     vi.stubEnv("NESSIE_KEY", "nsk_test");
