@@ -66,11 +66,18 @@ export function connect(room: string, name: string, role?: PlayerRole): Conn {
       if (m.t === "snapshot" && you) m = { ...m, snapshot: prediction.reconcile(m.snapshot, you) };
       for (const f of msgFns) f(m);
     };
-    sock.onclose = () => {
+    sock.onclose = (event) => {
       if (ws !== sock) return;
       ws = null;
       prediction.reset();
       setStatus("closed");
+      // A second tab explicitly resumed this identity. Do not fight it by
+      // reconnecting and taking ownership back forever.
+      if (event.code === 4001) {
+        closed = true; queue.length = 0;
+        document.removeEventListener("visibilitychange", onVis);
+        for (const f of msgFns) f({ t: "error", message: "This café was resumed in another tab. Reload to reconnect here." });
+      }
       if (closed) return;
       retry++;
       retryTimer = setTimeout(open, Math.min(4000, 250 * 2 ** Math.min(retry, 4)));
@@ -91,7 +98,7 @@ export function connect(room: string, name: string, role?: PlayerRole): Conn {
         if (m.t === "player_move") m = { ...m, ...prediction.record(m.x, m.z) };
         ws.send(JSON.stringify(m));
       }
-      else if (m.t !== "player_move") queue.push(m);
+      else if (!closed && m.t !== "player_move" && queue.length < 64) queue.push(m);
     },
     onMessage(fn) {
       msgFns.push(fn);

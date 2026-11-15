@@ -52,6 +52,26 @@ describe("bounded phone demo",()=>{
     snapshot.property={id:"real",source:"costar-extract"} as RoomSnapshot["property"];
     expect(()=>bridge.start(owner)).toThrow(/not authorized/);
   });
+  it("uses an exact message approval, rejects group/wrong-space input and never charges a duplicate message twice",async()=>{
+    vi.useFakeTimers();
+    const {owner}=fixture();
+    let items:unknown[]=[];
+    const fetcher=vi.fn(async(_url:string|URL|Request,init?:RequestInit)=>new Response(JSON.stringify(init?.method==="POST"?{id:"pho_msg_00000000000000000000000006",projectId}:{items}),{status:init?.method==="POST"?202:200}));
+    const bridge=new PhoneBridge(config,fetcher as typeof fetch);
+    const session=bridge.start(owner);
+    const pair=message("PAIR "+session.code);
+    items=[pair]; await vi.advanceTimersByTimeAsync(1);
+    const ask={...message("Please check supplies"),id:"pho_msg_00000000000000000000000007"};
+    items=[pair,ask]; await vi.advanceTimersByTimeAsync(3000);
+    expect(owner.manager.request).toHaveBeenCalledTimes(1);
+    const approve={...message("APPROVE "+proposalId),id:"pho_msg_00000000000000000000000008"};
+    items=[pair,ask,{...approve,id:"pho_msg_00000000000000000000000009",space:{kind:"group",id:spaceId}},approve];
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(owner.manager.approve).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(owner.manager.approve).toHaveBeenCalledTimes(1);
+    bridge.end(owner);
+  });
   it("pairs only on the fresh code and deduplicates an incoming message",async()=>{
     vi.useFakeTimers();
     const {owner}=fixture();

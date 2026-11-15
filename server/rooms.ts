@@ -2,7 +2,7 @@
  * Authoritative multiplayer rooms — adapted from Gitzilla's RoomServer pattern
  * (WebSocket hello/resume, snapshot broadcast, tick loop) for SoftOpen cafés.
  */
-import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import type { IncomingMessage } from "node:http";
 import { WebSocket, WebSocketServer, type RawData } from "ws";
 import type {
@@ -87,6 +87,7 @@ export function requestOrigin(
 
 export class CafeRoomServer {
   private rooms = new Map<string, Room>();
+  private bankProvisioned = 0;
   private sessions = new WeakMap<WebSocket, { room: Room; member: Member }>();
 
   constructor(private wss: WebSocketServer) {
@@ -125,6 +126,31 @@ export class CafeRoomServer {
     if (!room || !member || !token || member.socket?.readyState !== WebSocket.OPEN) throw new Error("Authenticated connected owner required.");
     return { actor: { roomCode: code, memberId: member.id }, manager: this.managerFor(room),
       read: () => room.snapshot, active: () => this.rooms.get(code) === room && room.members.get(member.id) === member && member.socket?.readyState === WebSocket.OPEN };
+  }
+
+  private attachRoomBank(room: Room) {
+    if (!process.env.NESSIE_KEY?.trim() || room.snapshot.finance.nessieSync) return;
+    const property = room.snapshot.property;
+    if (!property) throw new Error("Select a café property first.");
+    if ((property.source === "costar-extract" || property.source === "costar-live") && process.env.ALLOW_SPONSOR_BANK_CONTEXT !== "true")
+      throw new Error("Sponsor-property banking context is not authorized. Use a synthetic room.");
+    // Global demo budget: cap provisioning attempts, including uncertain writes.
+    const limit = 3;
+    if (this.bankProvisioned >= limit) throw new Error("This server reached its sandbox account limit.");
+    this.bankProvisioned++;
+    attachNessieAccount(room.snapshot.finance, () => this.broadcast(room), { monthlyRent: property.monthlyRent });
+    this.broadcast(room);
+  }
+
+  activateNessie(code: string, token: string, activationCode: string) {
+    this.phoneOwner(code, token); // same active-owner authentication, not a phone requirement
+    const room = this.rooms.get(code)!;
+    const secret = process.env.NESSIE_ACTIVATION_CODE?.trim() || "";
+    const a = Buffer.from(activationCode), b = Buffer.from(secret);
+    if (secret.length < 32 || a.length !== b.length || !timingSafeEqual(a,b)) throw new Error("Valid sandbox activation code required.");
+    if (!process.env.NESSIE_KEY?.trim()) throw new Error("Sandbox key is not configured.");
+    this.attachRoomBank(room);
+    return { status: room.snapshot.finance.nessieSync?.status || "not-configured" };
   }
 
   joinUrl(base: string, code: string) {
@@ -194,7 +220,11 @@ export class CafeRoomServer {
           return;
         }
         room.snapshot = selectProperty(room.snapshot, property);
-        attachNessieAccount(room.snapshot.finance, () => this.broadcast(room), { monthlyRent: property.monthlyRent });
+        // Public judges must not create external accounts just by opening a room.
+        // Retain automatic attachment for local development only without an activation code.
+        if (!process.env.NESSIE_ACTIVATION_CODE && !process.env.RENDER) {
+          try { this.attachRoomBank(room); } catch { /* local simulation remains playable */ }
+        }
         this.broadcast(room);
         break;
       }

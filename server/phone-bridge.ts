@@ -167,7 +167,7 @@ export class PhoneBridge {
     if (m.senderId !== s.paired.senderId || m.agentId !== s.paired.agentId || m.spaceId !== s.paired.spaceId) return;
     if (/^stop$/i.test(m.text)) {
       await this.reply(s, m, "Phone session disconnected. Start another in the game to reconnect.");
-      this.stop(); return;
+      if (this.session === s) this.stop(); return;
     }
     if (/^pair /i.test(m.text)) return;
     if (s.busy) { await this.reply(s, m, "Jamie is busy. Send a new message when the current operation finishes."); return; }

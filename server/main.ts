@@ -167,7 +167,7 @@ server.on("request", (req, res) => {
     }
     const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
 
-    if (url.pathname === "/api/phone/session" || url.pathname === "/api/phone/voice") {
+    if (url.pathname === "/api/phone/session" || url.pathname === "/api/phone/voice" || url.pathname === "/api/nessie/activate") {
       res.setHeader("Cache-Control", "no-store");
       if (req.method !== "POST") { json(res, 405, { error: "POST required" }); return; }
       try {
@@ -178,6 +178,11 @@ server.on("request", (req, res) => {
         }
         const auth = req.headers.authorization || "";
         if (typeof body.room !== "string" || !/^Bearer [0-9a-f]{24}$/.test(auth)) throw new Error("Owner authorization required");
+        if (url.pathname === "/api/nessie/activate") {
+          if (typeof body.activationCode !== "string") throw new Error("Sandbox activation code required.");
+          json(res, 200, rooms.activateNessie(body.room, auth.slice(7), body.activationCode));
+          return;
+        }
         const owner = rooms.phoneOwner(body.room, auth.slice(7));
         const result = body.action === "start" ? phones.start(owner)
           : body.action === "status" ? phones.getStatus(owner)

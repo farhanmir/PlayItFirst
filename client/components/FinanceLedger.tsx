@@ -1,9 +1,30 @@
+import { useState } from "react";
 import type { RoomSnapshot } from "../../shared/types";
+import { useApp } from "../lib/store";
+import { getResumeToken } from "../lib/storage";
 
 const dollars = (amount: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
 const checked = (timestamp: number) => new Date(timestamp).toLocaleString();
 
 export function FinanceLedger({ snapshot }: { snapshot: RoomSnapshot }) {
+  const you = useApp(s => s.you);
+  const owner = snapshot.players.some(p => p.id === you && p.role === "owner");
+  const [activation, setActivation] = useState("");
+  const [activationStatus, setActivationStatus] = useState("");
+  const [activationBusy, setActivationBusy] = useState(false);
+  async function activate() {
+    const token = getResumeToken(snapshot.code);
+    if (!token || !activation || activationBusy) return;
+    setActivationBusy(true); setActivationStatus("");
+    try {
+      const r = await fetch("/api/nessie/activate", {method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},
+        body:JSON.stringify({room:snapshot.code,activationCode:activation}),signal:AbortSignal.timeout(12000)});
+      const value = await r.json();
+      if (!r.ok) throw new Error(value.error || "Sandbox activation failed");
+      setActivation(""); setActivationStatus("Sandbox activation requested. Wait for confirmed provider records.");
+    } catch(error) {setActivationStatus(error instanceof Error ? error.message : "Sandbox activation failed");}
+    finally {setActivationBusy(false);}
+  }
   const f = snapshot.finance;
   const sync = f.nessieSync;
   const records = new Map(sync?.records.map((record) => [record.localId, record]) ?? []);
@@ -46,7 +67,7 @@ export function FinanceLedger({ snapshot }: { snapshot: RoomSnapshot }) {
             <em>{dollars(record.amountCents / 100)}</em>
           </li>)}</ul>
         </details>
-      </section> : <p className="sub">Simulated only. No external bank connection.</p>}
+      </section> : <><p className="sub">Simulated only. No external bank connection.</p>{owner ? <details><summary>Connect Nessie sandbox</summary><p className="sub">Use the team-issued sandbox activation code, not your API key. Existing local receipts are not replayed.</p><form className="photon-compose" onSubmit={e=>{e.preventDefault();void activate();}}><input type="password" autoComplete="off" aria-label="Sandbox activation code" value={activation} maxLength={256} onChange={e=>setActivation(e.target.value)} /><button type="submit" className="btn btn-small" disabled={!activation || activationBusy}>{activationBusy?"Connecting…":"Connect"}</button></form>{activationStatus?<p role="status">{activationStatus}</p>:null}</details>:null}</>}
       <ul>
         {f.transactions.slice(0, 8).map((tx) => {
           const record = records.get(tx.id);
