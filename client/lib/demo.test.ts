@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEMO_PROPERTY_ID, demoStatusFor, isDemoQuery } from "./demo";
+import { DEMO_PROPERTY_ID, demoPropertyId, demoStatusFor, isDemoQuery } from "./demo";
 
 describe("judge demo helpers", () => {
   it("detects demo query flags", () => {
@@ -16,5 +16,16 @@ describe("judge demo helpers", () => {
     expect(demoStatusFor("selecting").message).toMatch(/property/i);
     expect(demoStatusFor("opening").message.length).toBeGreaterThan(4);
     expect(demoStatusFor("ready").message).toMatch(/first order/i);
+  });
+});
+
+describe("demo property choice", () => {
+  it("starts in the open-plan Midtown sample even when measured suites come first", () => {
+    expect(demoPropertyId([{ id: "costar-1018657-21963212" }, { id: "costar-353482-18036295" }, { id: DEMO_PROPERTY_ID }, { id: "hou-eaado-41" }]))
+      .toBe(DEMO_PROPERTY_ID);
+  });
+  it("falls back to the first listing, then the default id", () => {
+    expect(demoPropertyId([{ id: "only-suite" }])).toBe("only-suite");
+    expect(demoPropertyId([])).toBe(DEMO_PROPERTY_ID);
   });
 });

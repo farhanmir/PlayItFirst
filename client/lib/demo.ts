@@ -3,6 +3,14 @@
 export const DEMO_PROPERTY_ID = "hou-midtown-1204";
 export const DEMO_PLAYER_NAME = "Judge";
 
+/**
+ * Play Demo always starts in the open-plan Midtown sample café when it is offered,
+ * even when measured CoStar suites are loaded; those stay selectable on the property screen.
+ */
+export function demoPropertyId(properties: { id: string }[]): string {
+  return properties.some((p) => p.id === DEMO_PROPERTY_ID) ? DEMO_PROPERTY_ID : properties[0]?.id ?? DEMO_PROPERTY_ID;
+}
+
 export type DemoPhase =
   | "idle"
   | "hosting"

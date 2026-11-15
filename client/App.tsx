@@ -9,7 +9,7 @@ import type { PlayerRole, PropertyListing } from "../shared/types";
 import { unlockAudio, play } from "./lib/audio";
 import {
   DEMO_PLAYER_NAME,
-  DEMO_PROPERTY_ID,
+  demoPropertyId as pickDemoProperty,
   demoStatusFor,
   isDemoQuery,
   sleep,
@@ -137,7 +137,7 @@ async function runJudgeDemo(setPhase: (p: DemoPhase) => void) {
 
     const conn = useApp.getState().conn;
     if (!conn) throw new Error("No connection for judge demo");
-    const demoPropertyId = useApp.getState().properties.find((p) => p.source === "costar-extract")?.id ?? DEMO_PROPERTY_ID;
+    const demoPropertyId = pickDemoProperty(useApp.getState().properties);
     conn.send({ t: "select_property", propertyId: demoPropertyId });
     useApp.getState().set({ screen: "game" });
     setPhase("entering");

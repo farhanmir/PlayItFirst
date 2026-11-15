@@ -61,10 +61,11 @@ describe("fictional practice properties beside real listings", () => {
     expect(bundle.fetchedAt).toBe(123);
     expect(bundle.detail).toBe("Authorized extract");
     expect(bundle.listings[0]).toBe(real);
-    expect(bundle.listings).toHaveLength(3);
-    const [compact, large] = bundle.listings.slice(1);
+    expect(bundle.listings).toHaveLength(4);
+    const [demo, compact, large] = bundle.listings.slice(1);
+    expect(demo.id).toBe("hou-midtown-1204");
     expect(compact.width * compact.depth).toBeLessThan(large.width * large.depth);
-    for (const listing of [compact, large]) {
+    for (const listing of [demo, compact, large]) {
       expect(listing.source).toBe("costar-mock");
       expect(listing.description).toContain("Fictional practice property");
       expect(listing.floorPlan).toBeUndefined();
@@ -76,8 +77,8 @@ describe("fictional practice properties beside real listings", () => {
     const bundle = { source: "costar-live" as const, fetchedAt: 1, listings: [{ ...properties[2], source: "costar-live" as const } as PropertyListing] };
     const once = withPracticeProperties(bundle);
     const twice = withPracticeProperties(once);
-    expect(twice.listings).toHaveLength(2);
-    expect(new Set(twice.listings.map((item) => item.id)).size).toBe(2);
+    expect(twice.listings).toHaveLength(3);
+    expect(new Set(twice.listings.map((item) => item.id)).size).toBe(3);
     expect(twice.listings[0].source).toBe("costar-live");
   });
   it("preserves the existing fallback catalog", () => {
