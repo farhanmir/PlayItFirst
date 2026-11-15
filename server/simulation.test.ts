@@ -260,3 +260,38 @@ describe("café simulation", () => {
     expect(snap.metrics.satisfaction).toBeGreaterThanOrEqual(55);
   });
 });
+
+
+describe("dedicated pickup handoff", () => {
+  function ready() {
+    let snap = addPlayer(openCafe(selectProperty(createRoomSnapshot("pickup"), listing)), "p", "Pat", "barista");
+    snap.layout!.furniture = [
+      { id: "counter", kind: "counter", label: "Counter", x: 2, z: 3, rotation: 0, cost: 0 },
+      { id: "pickup", kind: "pickup", label: "Pickup", x: 4, z: 3, rotation: 0, cost: 0 },
+    ];
+    snap.players[0] = { ...snap.players[0], x: 2, z: 2, holding: "drink:latte" };
+    snap.customers = [{ ...seedCustomer({ state: "waiting", order: "latte" }), ticketHolder: "p" }];
+    return snap;
+  }
+  it("rejects the counter even inside overlapping pickup range without consuming or charging", () => {
+    const before = ready();
+    const after = interact(before, "p", "serve");
+    expect(after.finance).toEqual(before.finance);
+    expect(after.inventory).toEqual(before.inventory);
+    expect(after.players).toEqual(before.players);
+    expect(after.customers).toEqual(before.customers);
+    expect(after.metrics.customersServed).toBe(0);
+    expect(after.eventLog[0]).toContain("Walk to pickup");
+    after.players = [{ ...after.players[0], x: 4, z: 2 }];
+    const served = interact(after, "p", "serve");
+    expect(served.metrics.customersServed).toBe(1);
+    expect(served.finance.balance).toBeGreaterThan(before.finance.balance);
+    expect(served.players[0].holding).toBeNull();
+    expect(interact(served, "p", "serve").finance).toEqual(served.finance);
+  });
+  it("retains counter service only when the layout has no pickup", () => {
+    const snap = ready();
+    snap.layout!.furniture = snap.layout!.furniture.filter(item => item.kind !== "pickup");
+    expect(interact(snap, "p", "serve").metrics.customersServed).toBe(1);
+  });
+});

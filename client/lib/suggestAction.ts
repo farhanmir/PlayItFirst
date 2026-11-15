@@ -1,5 +1,5 @@
 import type { RoomSnapshot } from "../../shared/types";
-import { nearStation, type StationHint } from "../../shared/stations";
+import { nearStation, nearServingStation, type StationHint } from "../../shared/stations";
 
 export type PlayAction = "take_order" | "make_coffee" | "serve" | "restock" | "collect";
 
@@ -10,7 +10,7 @@ export function suggestedAction(snapshot: RoomSnapshot, playerId: string | null)
   if (!me) return null;
 
   const holding = me.holding;
-  if (holding?.startsWith("drink:")) return nearStation(snapshot, playerId, ["pickup", "counter"]) ? "serve" : null;
+  if (holding?.startsWith("drink:")) return nearServingStation(snapshot, playerId) ? "serve" : null;
   if (holding?.startsWith("brewing:")) return null;
   const waiting = snapshot.customers.some((c) => c.state === "waiting" && c.order && (c.ticketHolder === playerId || c.ticketHolder == null));
   if (holding?.startsWith("ticket:") || waiting) return nearStation(snapshot, playerId, ["coffee_machine"]) ? "make_coffee" : null;
@@ -47,7 +47,7 @@ export function actionPrompt(snapshot: RoomSnapshot, playerId: string | null): s
   const waiting = snapshot.customers.find((c) => c.state === "ordering" || c.state === "queue");
 
   if (me?.holding?.startsWith("drink:")) {
-    if (!playerId || !nearStation(snapshot, playerId, ["pickup", "counter"])) return "Carry your drink to pickup";
+    if (!playerId || !nearServingStation(snapshot, playerId)) return snapshot.layout?.furniture.some(item => item.kind === "pickup") ? "Carry your drink to pickup" : "Carry your drink to the counter";
     const hasTicket = snapshot.customers.some((c) => c.state === "waiting" && c.order === drink && (c.ticketHolder === playerId || c.ticketHolder == null));
     return hasTicket ? `E · Serve ${drink}` : `E · Clear unclaimed ${drink}`;
   }

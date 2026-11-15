@@ -27,7 +27,7 @@ export function nearStation(snapshot: RoomSnapshot, playerId: string, kinds: Fur
  * Nearest interactive station for a player, or null if none are in range.
  * Used for client action hints (`nearStation`).
  */
-export function nearestStation(snapshot: RoomSnapshot, playerId: string): StationHint | null {
+export function nearestStation(snapshot: RoomSnapshot, playerId: string, kinds?: FurnitureKind[]): StationHint | null {
   const player = snapshot.players.find((p) => p.id === playerId);
   if (!player || !snapshot.layout) return null;
 
@@ -36,7 +36,7 @@ export function nearestStation(snapshot: RoomSnapshot, playerId: string): Statio
 
   for (const { kind, station } of STATION_MAP) {
     for (const item of snapshot.layout.furniture) {
-      if (item.kind !== kind) continue;
+      if (item.kind !== kind || (kinds && !kinds.includes(kind))) continue;
       if (snapshot.property?.floorPlan && !floorMoveClear(snapshot.property.floorPlan, player, item, .05)) continue;
       const dist = Math.hypot(item.x - player.x, item.z - player.z);
       if (dist < bestDist) {
@@ -47,4 +47,11 @@ export function nearestStation(snapshot: RoomSnapshot, playerId: string): Statio
   }
 
   return bestDist <= NEAR_RADIUS ? best : null;
+}
+
+/** A dedicated pickup must be the closer handoff station, even when ranges overlap. */
+export function nearServingStation(snapshot: RoomSnapshot, playerId: string): boolean {
+  const hasPickup = snapshot.layout?.furniture.some(item => item.kind === "pickup");
+  if (!hasPickup) return nearStation(snapshot, playerId, ["counter"]);
+  return nearestStation(snapshot, playerId, ["counter", "pickup"]) === "pickup";
 }

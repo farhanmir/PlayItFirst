@@ -19,7 +19,7 @@ import type {
   RoomSnapshot,
 } from "../shared/types.ts";
 import { FURNITURE_CATALOG } from "../shared/types.ts";
-import { BREW_SECONDS, nearestStation, nearStation } from "../shared/stations.ts";
+import { BREW_SECONDS, nearestStation, nearStation, nearServingStation } from "../shared/stations.ts";
 import { placementIssue } from "../shared/placement.ts";
 import { floorMoveClear, floorPositionClear } from "../shared/floorplan.ts";
 import { measuredGrid, measuredRoute } from "./navigation.ts";
@@ -429,7 +429,7 @@ function stationOk(
   if (action === "collect") return true;
   if (action === "take_order") return nearStation(snapshot, playerId, ["counter"]);
   if (action === "make_coffee") return nearStation(snapshot, playerId, ["coffee_machine"]);
-  if (action === "serve") return nearStation(snapshot, playerId, ["pickup", "counter"]);
+  if (action === "serve") return nearServingStation(snapshot, playerId);
   if (action === "restock") return nearStation(snapshot, playerId, ["fridge"]);
   return true;
 }
@@ -457,7 +457,7 @@ export function interact(
         : action === "make_coffee"
           ? "Walk to the espresso machine"
           : action === "serve"
-            ? "Walk to pickup (or counter)"
+            ? snapshot.layout?.furniture.some(item => item.kind === "pickup") ? "Walk to pickup" : "Walk to the counter"
             : action === "restock"
               ? "Walk to the fridge"
               : "Get closer to the station";

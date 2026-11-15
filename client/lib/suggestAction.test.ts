@@ -55,7 +55,7 @@ describe("suggestedAction", () => {
     expect(actionPrompt(near, "u")).toMatch(/Clear unclaimed espresso/);
     const far = snap({ players: [{ ...player, x: 8, z: 8 }] });
     expect(suggestedAction(far, "u")).toBeNull();
-    expect(actionPrompt(far, "u")).toMatch(/Carry your drink to pickup/);
+    expect(actionPrompt(far, "u")).toBe("Carry your drink to the counter");
   });
 
   it("guides a ticket holder to the machine without offering an out-of-range action", () => {
@@ -94,4 +94,15 @@ describe("suggestedAction", () => {
     expect(suggestedAction(s, "u")).toBe("take_order");
     expect(actionPrompt(s, "u")).toMatch(/Take latte order/i);
   });
+});
+
+
+it("guides drinks past the order counter to the dedicated pickup", () => {
+  const s = snap({players:[{id:"u",name:"U",role:"barista",x:0,z:1,holding:"drink:latte",score:0,color:"#fff"}]});
+  s.layout!.furniture.push({id:"pickup",kind:"pickup",label:"Pickup",x:2,z:0,rotation:0,cost:0});
+  expect(suggestedAction(s,"u")).toBeNull();
+  expect(actionPrompt(s,"u")).toBe("Carry your drink to pickup");
+  s.players[0].x = 2;
+  expect(suggestedAction(s,"u")).toBe("serve");
+  expect(actionPrompt(s,"u")).toContain("Clear unclaimed latte");
 });

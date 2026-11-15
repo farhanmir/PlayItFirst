@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nearStation, nearestStation } from "./stations.ts";
+import { nearStation, nearestStation, nearServingStation } from "./stations.ts";
 import properties from "../data/properties.json";
 import type { RoomSnapshot } from "./types.ts";
 
@@ -74,6 +74,9 @@ describe("measured station access", () => {
       walls: [{ id: "divider", a: {x:3,z:0}, b:{x:3,z:8}, thickness:.16, openings:[] }],
     } };
     expect(nearStation(snap, "u1", ["coffee_machine"])).toBe(false);
+    snap.layout!.furniture[0] = { ...snap.layout!.furniture[0], kind: "pickup" };
+    expect(nearServingStation(snap, "u1")).toBe(false);
+    snap.layout!.furniture[0] = { ...snap.layout!.furniture[0], kind: "coffee_machine" };
     expect(nearestStation(snap, "u1")).toBeNull();
     snap.property = { ...snap.property, floorPlan: { ...snap.property.floorPlan!, walls: [{
       ...snap.property.floorPlan!.walls[0], openings: [{ id:"door",type:"doorway",center:3/8,width:1.2,height:2.1 }],

@@ -281,8 +281,9 @@ describe("paid order, inventory, and exactly-once revenue", () => {
     expect(snap.players[0]?.holding).toBe("ticket:latte");
   });
 
-  it("serves at a valid counter even when the coffee machine is slightly closer", () => {
+  it("uses the counter fallback without pickup even when the machine is closer", () => {
     let snap = addPlayer(openCafe(selectProperty(createRoomSnapshot("overlap-stations"), listing)), "p1", "Alex", "barista");
+    snap.layout = { ...snap.layout!, furniture: snap.layout!.furniture.filter(item => item.kind !== "pickup") };
     snap = {
       ...snap,
       players: snap.players.map((p) => ({ ...p, x: 1.3, z: 5.1, holding: "drink:espresso" })),
