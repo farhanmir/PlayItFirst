@@ -1,13 +1,12 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Billboard, OrbitControls, PerspectiveCamera, RoundedBox, Sparkles, Text } from "@react-three/drei";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { CanvasTexture, Vector2, RepeatWrapping, SRGBColorSpace, Shape, DoubleSide, MathUtils, type Group, type PerspectiveCamera as ThreePerspectiveCamera } from "three";
+import { CanvasTexture, Vector2, RepeatWrapping, SRGBColorSpace, DoubleSide, MathUtils, type Group, type PerspectiveCamera as ThreePerspectiveCamera } from "three";
 import type { Customer, FurnitureItem, FurnitureKind, PlayerState, PropertyListing, RoomSnapshot } from "../../shared/types";
 import { nearestStation } from "../../shared/stations";
 import { placementIssue, snapFloor } from "../../shared/placement";
 import { getLook, nudgeLook } from "../lib/look";
 import { createTouchLookTracker } from "../lib/touchLook";
-import { play } from "../lib/audio";
 import { useApp } from "../lib/store";
 import { CafeCharacter } from "./CafeCharacter";
 import { MeasuredShell } from "./MeasuredShell";
@@ -1095,17 +1094,6 @@ function PlantProp({ item }: { item: FurnitureItem }) {
       </group>)}
     </group>
   );
-}
-
-function personaColor(persona: Customer["persona"]): string {
-  switch (persona) {
-    case "student":
-      return PALETTE.leafBright;
-    case "office":
-      return "#3d5a80";
-    default:
-      return PALETTE.crema;
-  }
 }
 
 function CharacterFace({ y = 1.42, office = false }: { y?: number; office?: boolean }) {

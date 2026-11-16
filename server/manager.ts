@@ -230,7 +230,7 @@ export class CafeManager {
           this.view.providerIdentity = result.providerIdentity;
         }
       } else {
-        this.localPlan(actor, prompt, tools, approvedId);
+        this.localPlan(prompt, tools, approvedId);
       }
       this.history = [...this.history, `Owner: ${prompt}`, `Jamie: ${this.view.summary}`].slice(-6);
     } catch (error) {
@@ -249,7 +249,7 @@ export class CafeManager {
     }
     return this.getView();
   }
-  private localPlan(actor: ManagerActor, prompt: string, tools: ManagerTools, approvedId?: string) {
+  private localPlan(prompt: string, tools: ManagerTools, approvedId?: string) {
     const state = this.room.read();
     tools.inspect();
     if (approvedId) {

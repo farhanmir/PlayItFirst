@@ -12,3 +12,11 @@ costar-hackathon-kit.zip
 .sponsor/
 __pycache__/
 *.pyc
+
+# Local agent instructions and production workspaces
+.agents/
+.claude/
+.impeccable.md
+AGENTS.md
+CLAUDE.md
+demo/

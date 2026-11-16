@@ -1,60 +1,128 @@
+<div align="center">
+
+<img src="docs/images/cover.png" alt="Play It First — a multiplayer café business simulator" width="900" />
+
 # Play It First
 
-> Play your business before you pay for it.
+### Play your business before you pay for it.
 
-A multiplayer business simulation that transforms a real commercial property into a playable café. Design the space, work together, serve customers, manage finances and test business decisions before committing actual capital. Before every grand opening, there's a soft opening. We built one you can play.
+*A multiplayer business simulator that turns commercial properties into playable cafés. Design the space, run a soft opening with friends, and test business decisions before committing real capital.*
 
-**Play:** https://playitfirst.onrender.com/ · [Judge demo](https://playitfirst.onrender.com/?demo=1)  
-**Repo:** https://github.com/farhanmir/PlayItFirst
+<p>
+  <img alt="React 19" src="https://img.shields.io/badge/React-19-61DAFB?logo=react&amp;logoColor=black" />
+  <img alt="TypeScript 5.9" src="https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&amp;logoColor=white" />
+  <img alt="Node.js 22" src="https://img.shields.io/badge/Node.js-22-5FA04E?logo=nodedotjs&amp;logoColor=white" />
+  <img alt="Three.js" src="https://img.shields.io/badge/Three.js-0.180-000000?logo=threedotjs&amp;logoColor=white" />
+  <img alt="Vite 7" src="https://img.shields.io/badge/Vite-7-646CFF?logo=vite&amp;logoColor=white" />
+  <img alt="LangChain Deep Agents" src="https://img.shields.io/badge/LangChain-Deep%20Agents-1C3C3C?logo=langchain&amp;logoColor=white" />
+  <img alt="Capital One Nessie sandbox" src="https://img.shields.io/badge/Capital%20One-Nessie-D03027" />
+  <img alt="HackPrinceton Fall 2026 winner" src="https://img.shields.io/badge/HackPrinceton%20Fall%202026-Winner-gold" />
+</p>
 
-## Start here
+<sub>🏆 Winner: <b>Best Use of Nessie - Capital One</b> @ HackPrinceton Fall 2026</sub>
 
-- [Master product plan and complete implementation audit](docs/MASTER_PLAN.md)
-- [Agent instructions](AGENTS.md) · [Current alignment](docs/ALIGNMENT.md) · [Progress/evidence](docs/PROGRESS.md)
-- [Render deployment and credentials](docs/DEPLOY.md) · [Judging and pitch](docs/HACKATHON.md)
+</div>
 
-## Run locally (Node 22)
+---
+
+## The game
+
+### Build your café
+Choose a property, inspect its walkthrough and arrange the café. Build mode offers snapped placement, rotation, moving and removal with shared collision and route validation. A friend can keep serving while you edit; moving a counter changes the customers' routes.
+
+The bundled practice properties are fictional. An authorized CoStar extract and matched Matterport capture can supply a real listing and measured floor plan. Real-property data and credentials are configured separately and are not included in the checkout.
+
+### Work a shift together
+Customers enter, queue and place orders. Take a ticket, walk to the espresso machine, brew, carry the cup and deliver it at pickup. Accepted actions update shared orders, stock and cash. QR invites and resume tokens bring friends into the same authoritative simulation.
+
+### Make business decisions
+Jamie, the café manager, inspects the room, proposes changes and executes an exact owner-approved action through LangChain Deep Agents. It reads the outcome from the simulation. Without a configured model, the game uses labeled local rules.
+
+Capital One Nessie mirrors accepted transactions into a **sandbox** account and reconciles them with the game ledger. Optional Grok customer reactions add feedback; the launch blueprint exports the actual session's layout, receipts and operating assumptions. All money is simulated.
+
+## Gameplay
+
+<p align="center"><img src="docs/images/gameplay.png" alt="Gameplay in the fictional practice café" width="900"></p>
+
+## Controls
+
+| Action | Desktop | Phone |
+| --- | --- | --- |
+| Move | WASD | Touch movement controls |
+| Look | Mouse / camera controls | Drag to look |
+| Take order, brew, serve | Context action with E / Space | On-screen action button |
+| Build | Tab or Build menu | Build menu |
+| Manage, invite, sound, help | Menu and HUD controls | Menu and HUD controls |
+
+Start with **Play Demo** for a guided shift, or host a room and invite friends by QR. First-person, third-person and tabletop views are available. See the in-game help for camera-specific controls.
+
+## Run locally
+
+Use **Node.js 22** and npm. Sponsor credentials are optional for the practice café.
 
 ```sh
+git clone https://github.com/farhanmir/PlayItFirst.git
+cd PlayItFirst
 npm ci --include=dev
 npm run dev
 ```
 
-Open http://localhost:5173. Copy .env.example to ignored .env only if configuring sponsor credentials. Never commit actual keys or private .sponsor data.
+Open **http://localhost:5173**. The same process serves the game, HTTP API and WebSocket connection. Copy [`.env.example`](.env.example) to an ignored `.env` only when configuring integrations. On PowerShell, use `Copy-Item .env.example .env`; `npm.cmd` works if the shell blocks `npm.ps1`.
 
-## Play
+For a local production run:
 
-Host or join a business, select a property, view its walkthrough, open the café. Move with WASD or touch; E/Space performs contextual service action. Take an order, brew, carry and serve. Tab/build lets the owner edit the shared floor while others play. Menu contains finance, Jamie manager, crew, comparison and blueprint. Friends join by QR. Judge demo creates a fresh playable shift and prefers the authorized property extract when configured; otherwise clearly labeled mock fallback. No real money.
+```sh
+npm run build
+npm start
+```
 
-## Current implementation status (Nov 14)
+Phones must reach the server's actual LAN or HTTPS origin; `localhost` on a phone refers to the phone. Production is configured for one existing Render service, with same-origin HTTP/WSS and proxy-aware QR links. [Deployment instructions](docs/DEPLOY.md).
 
-| Area | Status |
+## How it works
+
+```mermaid
+flowchart LR
+    Players[Desktop / phone clients] -->|HTTP + WebSocket| Server[Node authoritative café simulation]
+    Server --> Layout[Shared layout, navigation and orders]
+    Server --> Ledger[Inventory and transaction ledger]
+    Jamie[Jamie / Deep Agents] -->|Approved tools| Server
+    Models[Gemini / OpenAI / Anthropic] --> Jamie
+    Property[Optional CoStar + Matterport] --> Server
+    Ledger --> Nessie[Optional Nessie sandbox]
+    Server --> Blueprint[Session blueprint]
+```
+
+| Directory | Responsibility |
 | --- | --- |
-| 3D café, manual service, customers, inventory, cash | Implemented; browser-tested |
-| Multiplayer, QR/resume, shared build | Public service and shared counter rerouting verified; physical-phone acceptance pending |
-| CoStar and Matterport | Public matched measured suite and live Model API verified; publication/external-processing permissions remain separate |
-| Deepagents and Gemini | Actual provider-approved execution recorded; latest recorded run hit quota, so reliable live access remains a demo gate |
-| Nessie | Live synthetic account, settled sale/purchase, future rent bill and reconciled balance verified; Render configuration and played-session banking pending |
-| Photon | Messaging inbox/webhook and voice backend implemented; actual message delivery and telephone calls unverified |
-| Timeline/rival | Illustrative heuristics, not measured counterfactuals |
-| Blueprint | Actual session Markdown export verified |
-| WebXR | Optional entry/dollhouse fallback; headset unverified |
+| `client/` | React, Vite, React Three Fiber scene, controls and optional management panels |
+| `server/` | Node HTTP/WebSocket server, rooms, simulation, navigation, manager and provider adapters |
+| `shared/` | TypeScript contracts, movement, placement and floor-plan validation |
+| `data/` | Bundled fictional property fixtures |
+| `public/` | Game assets, installation shell and offline notice |
+| `scripts/` | Deployment, provider and private-property conversion checks |
+| `docs/` | Deployment, integration setup and presentation images |
 
-See REQUEST_AUDIT and PROGRESS for current evidence. Public APIs reported `costar-extract` on Render `1f078ae` during the latest check; the active production commit may differ from main. Older screenshots remain accessible through pinned Git-history links; the checkout retains a curated recent set and compact verification traces.
+Rooms live in memory and reset on process restart. Installation support does not make multiplayer available offline. Timeline/rival comparisons are labeled heuristics; optional WebXR remains unverified on a headset.
 
-## Architecture and deployment
+## Integrations and configuration
 
-React/Vite/R3F client + shared TypeScript contracts + persistent Node/WebSocket authoritative simulation. server/main.ts serves SPA/API/ws on a single port. Render is the only production host; see render.yaml and DEPLOY.md. No separate frontend hosting. In-memory rooms reset on process restart; no durable saves. Former names SoftOpen/PlayFirst remain only for compatible resume/storage and service identifiers.
+| Integration | Configuration / limits |
+| --- | --- |
+| CoStar + Matterport | Authorized private extract and server-side Matterport credentials; preserve source and publication permissions |
+| Jamie / Deep Agents | `GOOGLE_API_KEY` or `GEMINI_API_KEY`, `OPENAI_API_KEY`, or `ANTHROPIC_API_KEY`; provider precedence and optional model override in the environment example |
+| Nessie | `NESSIE_KEY`, optional sandbox URL and owner activation code; game ledger remains authoritative |
+| Grok customers | `XAI_API_KEY`; generic café counts only, scripted behavior without the key |
+| Photon messaging / voice | Optional provisioned provider identities and owner pairing; implemented paths do not establish delivered messages or completed telephone calls |
+
+Keep secrets server-side. Leave `ALLOW_SPONSOR_MODEL_CONTEXT`, `ALLOW_SPONSOR_BANK_CONTEXT` and `ALLOW_SPONSOR_PHONE_CONTEXT` false unless the relevant external processing is authorized. [Environment example](.env.example) · [Provider and deployment setup](docs/DEPLOY.md) · [Photon setup](docs/PHOTON_SETUP.md).
+
+## Checks
 
 ```sh
 npm test
 npm run typecheck
 npm run build
-node scripts/check-deployment.mjs https://playitfirst.onrender.com
+python -m unittest discover -s scripts -p 'test_*.py'
 ```
 
-Optional geometry checks: python -m unittest discover -s scripts -p 'test_*.py'. Live Gemini check: node --import tsx scripts/check-gemini-manager.ts (requires real key, synthetic data only). Do not count scripted/mock model tests as real provider proof.
-
-## Environment
-
-Use .env.example and docs/DEPLOY.md. Render server secrets: COSTAR_DATA_FILE (authorized secret file property.json), MATTERPORT_API_KEY + MATTERPORT_TOKEN, GOOGLE_API_KEY (or GEMINI_API_KEY; OpenAI/Anthropic supported), optional DEEPAGENTS_MODEL and NESSIE_KEY. Keep ALLOW_SPONSOR_MODEL_CONTEXT=false until sponsor authorizes external processing. See docs/PHOTON_SETUP.md for the remaining provider provisioning and pairing steps. No secrets in VITE_* or client code. Check /api/health, /api/integrations and /api/properties; keys alone do not verify actual integration.
+After starting a production build, run `node scripts/check-deployment.mjs http://127.0.0.1:5173`. This checks assets, HTTP, two WebSocket clients, layout sync and resume; it does not verify WebGL, phone hardware or live providers.

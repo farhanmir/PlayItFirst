@@ -14,7 +14,6 @@ import type {
   ServerMsg,
 } from "../shared/types.ts";
 import type { PropertyListing } from "../shared/types.ts";
-import { qrSvg } from "./qr.ts";
 import { applyDirectorChoice, forceDemoRushEvent, maybeSpawnDirectorEvent } from "./director.ts";
 import { attachNessieAccount, refreshNessie } from "./finance.ts";
 import { getCachedProperties, loadProperties } from "./costar.ts";
@@ -132,7 +131,7 @@ export class CafeRoomServer {
   private limits:RoomLimits;
   private photon: PhotonBridge | null = null;
 
-  constructor(private wss: WebSocketServer, limits:Partial<RoomLimits>={}) {
+  constructor(wss: WebSocketServer, limits:Partial<RoomLimits>={}) {
     this.limits={...ROOM_LIMITS,...limits};
     const photonConfig = photonConfigFromEnv();
     if (photonConfig) this.photon = new PhotonBridge(photonConfig, {

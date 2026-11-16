@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch server/main.ts",
-    "start": "NODE_ENV=production tsx server/main.ts",
+    "start": "tsx server/start.ts",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
